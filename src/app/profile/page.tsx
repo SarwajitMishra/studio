@@ -13,14 +13,25 @@ import { AVATARS } from "@/lib/constants";
 import { UserCircle, BarChart3, Settings, CheckCircle, LogIn, LogOut, UploadCloud, Edit3, User as UserIcon } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { auth, googleProvider, signInWithPopup, signOut as firebaseSignOut, onAuthStateChanged, type User } from '@/lib/firebase';
+import { 
+  auth, 
+  storage, 
+  googleProvider, 
+  signInWithPopup, 
+  signOut as firebaseSignOut, 
+  onAuthStateChanged, 
+  updateProfile,
+  type User 
+} from '@/lib/firebase';
+import { ref as storageRef, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 
 export default function ProfilePage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [editingUserName, setEditingUserName] = useState<string>("");
+  const [editingUserName, setEditingUserName] = useState<string>("Kiddo");
   const [selectedAvatar, setSelectedAvatar] = useState<string | null>(null);
   const avatarFileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -31,11 +42,7 @@ export default function ProfilePage() {
       } else {
         setCurrentUser(null);
         setEditingUserName("Kiddo");
-        if (AVATARS.length > 0) {
-            setSelectedAvatar(AVATARS[0].src); 
-        } else {
-            setSelectedAvatar('https://placehold.co/100x100.png');
-        }
+        setSelectedAvatar(AVATARS[0]?.src || 'https://placehold.co/100x100.png');
       }
     });
     return () => unsubscribe();
@@ -45,47 +52,41 @@ export default function ProfilePage() {
     try {
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
-      setCurrentUser(user);
-      setEditingUserName(user.displayName || "Kiddo");
-      setSelectedAvatar(user.photoURL || AVATARS[0]?.src || 'https://placehold.co/100x100.png');
+      // State will be updated by onAuthStateChanged listener
       toast({ title: "Logged In!", description: `Welcome back, ${user.displayName || 'User'}!` });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error during Google sign-in:", error);
-      toast({ variant: "destructive", title: "Login Failed", description: "Could not sign in with Google. Please try again." });
+      toast({ variant: "destructive", title: "Login Failed", description: error.message || "Could not sign in with Google. Please try again." });
     }
   };
 
   const handleLogout = async () => {
     try {
       await firebaseSignOut(auth);
-      setCurrentUser(null);
-      setEditingUserName("Kiddo");
-      if (AVATARS.length > 0) {
-        setSelectedAvatar(AVATARS[0].src); 
-      } else {
-        setSelectedAvatar('https://placehold.co/100x100.png');
-      }
+      // State will be updated by onAuthStateChanged listener
       toast({ title: "Logged Out", description: "You have been successfully logged out." });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error during sign-out:", error);
-      toast({ variant: "destructive", title: "Logout Failed", description: "Could not sign out. Please try again." });
+      toast({ variant: "destructive", title: "Logout Failed", description: error.message || "Could not sign out. Please try again." });
     }
   };
 
-  const handleUserNameSave = () => {
-    // This would typically update the user's profile in Firebase.
-    // Firebase: updateProfile(auth.currentUser, { displayName: editingUserName });
-    if (currentUser) {
-      toast({ title: "Username Updated (Locally)", description: `Your username display is now ${editingUserName}. (Note: Not saved to Firebase yet)` });
-      // To save to firebase:
-      // import { updateProfile } from "firebase/auth";
-      // if (auth.currentUser) {
-      //   updateProfile(auth.currentUser, { displayName: editingUserName })
-      //     .then(() => toast({ title: "Username Updated!", description: `Your username is now ${editingUserName}.` }))
-      //     .catch((error) => toast({ variant: "destructive", title: "Update Failed", description: error.message }));
-      // }
-    } else {
-       toast({ variant: "destructive", title: "Not Logged In", description: "Please log in to save your username." });
+  const handleUserNameSave = async () => {
+    if (!currentUser) {
+      toast({ variant: "destructive", title: "Not Logged In", description: "Please log in to save your username." });
+      return;
+    }
+    if (editingUserName.trim() === "") {
+      toast({ variant: "destructive", title: "Invalid Name", description: "Username cannot be empty." });
+      return;
+    }
+    try {
+      await updateProfile(currentUser, { displayName: editingUserName });
+      setCurrentUser(auth.currentUser); // Refresh current user data
+      toast({ title: "Username Updated!", description: `Your display name is now ${editingUserName}.` });
+    } catch (error: any) {
+      console.error("Error updating username:", error);
+      toast({ variant: "destructive", title: "Update Failed", description: error.message || "Could not update username." });
     }
   };
   
@@ -109,35 +110,57 @@ export default function ProfilePage() {
     }
   };
 
-  const handleSaveAvatar = () => {
-    // In a real app, this would upload the file to Firebase Storage and then update the user's photoURL.
-    // For now, this is a simulated save.
-    if (currentUser && selectedAvatar && selectedAvatar.startsWith('data:image')) {
-        toast({
-            title: "Avatar Saved (Simulated)",
-            description: "Your new avatar preview has been set. (Note: Not uploaded to Firebase yet)",
-        });
-        // To save to Firebase Storage and update profile:
-        // 1. Upload selectedAvatar (if it's a data URI) to Firebase Storage.
-        // 2. Get the download URL.
-        // 3. updateProfile(auth.currentUser, { photoURL: downloadURL });
-    } else if (currentUser && selectedAvatar) {
-         toast({
-            title: "Avatar Selected",
-            description: "Predefined avatar set. (Note: Not saved to Firebase yet)",
-        });
-        // To save to Firebase:
-        // updateProfile(auth.currentUser, { photoURL: selectedAvatar });
-    } else {
-        toast({
-            variant: "destructive",
-            title: "Cannot Save Avatar",
-            description: "No user logged in or no avatar selected.",
-        });
+  const handleSaveAvatar = async () => {
+    if (!currentUser) {
+      toast({ variant: "destructive", title: "Not Logged In", description: "Please log in to save your avatar." });
+      return;
+    }
+    if (!selectedAvatar) {
+      toast({ variant: "destructive", title: "No Avatar", description: "No avatar selected to save." });
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      let photoURLToSave = selectedAvatar;
+
+      if (selectedAvatar.startsWith('data:image')) { // New custom avatar uploaded
+        const avatarPath = `avatars/${currentUser.uid}/profileImage.png`;
+        const imageRef = storageRef(storage, avatarPath);
+        
+        // If there's an old custom avatar, delete it first (optional, good practice)
+        // This assumes previous custom avatar was stored at the same path.
+        // For simplicity, we're not tracking the old path if it was a predefined one.
+        // try {
+        //   const currentPhotoURL = currentUser.photoURL;
+        //   if (currentPhotoURL && currentPhotoURL.includes(currentUser.uid)) { // Heuristic to check if it's a custom one
+        //      const oldImageRef = storageRef(storage, currentPhotoURL); // This needs exact path or URL parsing
+        //      await deleteObject(oldImageRef);
+        //   }
+        // } catch (deleteError) {
+        //   console.warn("Could not delete old avatar, or no old custom avatar:", deleteError);
+        // }
+
+        await uploadString(imageRef, selectedAvatar, 'data_url');
+        photoURLToSave = await getDownloadURL(imageRef);
+      }
+      
+      await updateProfile(currentUser, { photoURL: photoURLToSave });
+      setCurrentUser(auth.currentUser); // Refresh current user data
+      setSelectedAvatar(photoURLToSave); // Ensure local preview matches saved URL
+      toast({ title: "Avatar Saved!", description: "Your new avatar has been saved." });
+
+    } catch (error: any) {
+      console.error("Error saving avatar:", error);
+      toast({ variant: "destructive", title: "Avatar Save Failed", description: error.message || "Could not save avatar." });
+    } finally {
+      setIsUploading(false);
     }
   };
   
   const userNameDisplay = currentUser?.displayName || editingUserName || "Kiddo";
+  const avatarDisplayUrl = selectedAvatar || currentUser?.photoURL || AVATARS[0]?.src || 'https://placehold.co/100x100.png';
+
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
@@ -177,15 +200,15 @@ export default function ProfilePage() {
         </CardContent>
         <CardFooter>
             <p className="text-xs text-muted-foreground">
-                User login is managed by Firebase. Avatar uploads are currently local previews.
+                User login is managed by Firebase. Avatars and display names are saved to your Firebase profile.
             </p>
         </CardFooter>
       </Card>
 
       <header className="flex items-center space-x-4 p-6 bg-primary/10 rounded-lg shadow">
-        {selectedAvatar ? (
+        {avatarDisplayUrl ? (
           <Avatar className="h-24 w-24 border-4 border-accent shadow-md">
-            <AvatarImage src={selectedAvatar} alt={`${userNameDisplay}'s Avatar`} data-ai-hint="avatar character" />
+            <AvatarImage src={avatarDisplayUrl} alt={`${userNameDisplay}'s Avatar`} data-ai-hint="avatar character" />
             <AvatarFallback className="text-3xl bg-muted text-muted-foreground">
               {userNameDisplay.substring(0, 2).toUpperCase()}
             </AvatarFallback>
@@ -216,7 +239,7 @@ export default function ProfilePage() {
           <Card className="shadow-lg">
             <CardHeader>
               <CardTitle>Choose Your Avatar</CardTitle>
-              <CardDescription>Select a predefined avatar or upload your own.</CardDescription>
+              <CardDescription>Select a predefined avatar or upload your own (max 2MB).</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div>
@@ -231,6 +254,7 @@ export default function ProfilePage() {
                         selectedAvatar === avatar.src ? "border-accent ring-2 ring-accent" : "border-transparent hover:border-primary/50"
                       )}
                       aria-label={`Select ${avatar.alt}`}
+                      disabled={!currentUser || isUploading}
                     >
                       <Image
                         src={avatar.src}
@@ -257,12 +281,13 @@ export default function ProfilePage() {
                   ref={avatarFileInputRef}
                   className="hidden"
                   id="avatar-upload"
+                  disabled={!currentUser || isUploading}
                 />
                 <Button 
                   variant="outline" 
                   onClick={() => avatarFileInputRef.current?.click()}
                   className="w-full sm:w-auto"
-                  disabled={!currentUser}
+                  disabled={!currentUser || isUploading}
                 >
                   <UploadCloud className="mr-2 h-5 w-5" /> Upload Image
                 </Button>
@@ -270,8 +295,8 @@ export default function ProfilePage() {
                 <p className="text-xs text-muted-foreground mt-2">Max file size: 2MB. PNG, JPG, GIF accepted.</p>
               </div>
               
-              <Button onClick={handleSaveAvatar} className="w-full sm:w-auto bg-accent text-accent-foreground hover:bg-accent/90 mt-4" disabled={!currentUser}>
-                Save Avatar
+              <Button onClick={handleSaveAvatar} className="w-full sm:w-auto bg-accent text-accent-foreground hover:bg-accent/90 mt-4" disabled={!currentUser || isUploading}>
+                {isUploading ? "Saving..." : "Save Avatar"}
               </Button>
             </CardContent>
           </Card>
