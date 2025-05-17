@@ -1,5 +1,6 @@
+
 import type { LucideIcon } from 'lucide-react';
-import { HomeIcon, LayoutGrid, Puzzle, BookOpen, UserCircle, Settings, BarChart3, Zap } from 'lucide-react';
+import { HomeIcon, LayoutGrid, Puzzle, BookOpen, UserCircle, Settings, BarChart3, Zap, Apple, Banana, Cherry, Grape, Carrot, Pizza, CakeSlice, IceCream2 } from 'lucide-react';
 
 export type GameCategory = 'Strategy' | 'Puzzles' | 'Learning';
 
@@ -38,7 +39,7 @@ export const GAMES: Game[] = [
     category: 'Puzzles',
     Icon: Zap, // Using Zap for quick thinking / memory
     description: 'Test your memory by matching pairs of cards.',
-    href: '/puzzles#memory',
+    href: '/puzzles/memory', // Updated link
     color: 'text-pink-600',
   },
   {
@@ -58,6 +59,8 @@ export interface PuzzleType {
   Icon: LucideIcon;
   description: string;
   color?: string;
+  href?: string; // Make href optional or ensure all puzzles have one if linked
+  disabled?: boolean;
 }
 
 export const PUZZLE_TYPES: PuzzleType[] = [
@@ -67,6 +70,8 @@ export const PUZZLE_TYPES: PuzzleType[] = [
     Icon: Puzzle, 
     description: 'Assemble pieces to form a picture. Drag and drop to solve!',
     color: 'text-purple-600',
+    href: '/puzzles/jigsaw', // Assuming a future page
+    disabled: true,
   },
   { 
     id: 'memory', 
@@ -74,6 +79,8 @@ export const PUZZLE_TYPES: PuzzleType[] = [
     Icon: Zap, 
     description: 'Find matching pairs of cards. Click to reveal!',
     color: 'text-pink-600',
+    href: '/puzzles/memory',
+    disabled: false, // Enable this puzzle
   },
   { 
     id: 'numbers', 
@@ -81,6 +88,8 @@ export const PUZZLE_TYPES: PuzzleType[] = [
     Icon: BookOpen, 
     description: 'Solve math and logic puzzles. Learn while you play!',
     color: 'text-green-600',
+    href: '/puzzles/numbers', // Assuming a future page
+    disabled: true,
   },
 ];
 
@@ -104,4 +113,9 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/chess', label: 'Chess', Icon: LayoutGrid },
   { href: '/puzzles', label: 'Puzzles', Icon: Puzzle },
   { href: '/profile', label: 'Profile', Icon: UserCircle },
+];
+
+// Icons for Memory Match game
+export const MEMORY_ICONS: LucideIcon[] = [
+  Apple, Banana, Cherry, Grape, Carrot, Pizza, CakeSlice, IceCream2
 ];

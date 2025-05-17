@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PUZZLE_TYPES } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
@@ -32,12 +33,20 @@ export default function PuzzlesPage() {
                 </CardHeader>
                 <CardContent className="p-4 flex-grow flex flex-col">
                   <p className="text-sm text-foreground/80 mb-4 flex-grow">{puzzle.description}</p>
-                  <Button variant="default" className="mt-auto bg-accent text-accent-foreground hover:bg-accent/90 w-full" disabled>
-                    {/* <Link href={`/puzzles/${puzzle.id}`}> Currently disabled, actual puzzle pages not implemented */}
-                      Play {puzzle.name} <ArrowRight size={16} className="ml-2" />
-                    {/* </Link> */}
-                  </Button>
-                   <p className="text-xs text-muted-foreground mt-2 text-center">(Coming Soon!)</p>
+                  {puzzle.href && !puzzle.disabled ? (
+                    <Button asChild variant="default" className="mt-auto bg-accent text-accent-foreground hover:bg-accent/90 w-full">
+                      <Link href={puzzle.href}>
+                        Play {puzzle.name} <ArrowRight size={16} className="ml-2" />
+                      </Link>
+                    </Button>
+                  ) : (
+                    <>
+                      <Button variant="default" className="mt-auto bg-accent text-accent-foreground hover:bg-accent/90 w-full" disabled>
+                        Play {puzzle.name} <ArrowRight size={16} className="ml-2" />
+                      </Button>
+                      <p className="text-xs text-muted-foreground mt-2 text-center">(Coming Soon!)</p>
+                    </>
+                  )}
                 </CardContent>
               </Card>
             ))}
