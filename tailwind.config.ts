@@ -8,7 +8,17 @@ export default {
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
+    container: { // Added container default settings
+      center: true,
+      padding: "1rem", // Default padding for containers
+      screens: {
+        "2xl": "1400px",
+      },
+    },
   	extend: {
+      fontFamily: { // Added fontFamily
+        sans: ["var(--font-inter)", "system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", "Noto Sans", "sans-serif"],
+      },
   		colors: {
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
@@ -82,11 +92,16 @@ export default {
   				to: {
   					height: '0'
   				}
-  			}
+  			},
+        'gentle-bounce': { // Added gentle-bounce keyframes
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-3px)' },
+        },
   		},
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
-  			'accordion-up': 'accordion-up 0.2s ease-out'
+  			'accordion-up': 'accordion-up 0.2s ease-out',
+        'gentle-bounce': 'gentle-bounce 0.5s ease-in-out', // Added gentle-bounce animation
   		}
   	}
   },
