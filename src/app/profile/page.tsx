@@ -74,9 +74,19 @@ export default function ProfilePage() {
 
   const handleUserNameSave = () => {
     // This would typically update the user's profile in Firebase.
-    // For now, it's a local change to editingUserName state.
     // Firebase: updateProfile(auth.currentUser, { displayName: editingUserName });
-    toast({ title: "Username Updated (Locally)", description: `Your username display is now ${editingUserName}. (Note: Not saved to Firebase yet)` });
+    if (currentUser) {
+      toast({ title: "Username Updated (Locally)", description: `Your username display is now ${editingUserName}. (Note: Not saved to Firebase yet)` });
+      // To save to firebase:
+      // import { updateProfile } from "firebase/auth";
+      // if (auth.currentUser) {
+      //   updateProfile(auth.currentUser, { displayName: editingUserName })
+      //     .then(() => toast({ title: "Username Updated!", description: `Your username is now ${editingUserName}.` }))
+      //     .catch((error) => toast({ variant: "destructive", title: "Update Failed", description: error.message }));
+      // }
+    } else {
+       toast({ variant: "destructive", title: "Not Logged In", description: "Please log in to save your username." });
+    }
   };
   
   const handleAvatarFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -107,11 +117,17 @@ export default function ProfilePage() {
             title: "Avatar Saved (Simulated)",
             description: "Your new avatar preview has been set. (Note: Not uploaded to Firebase yet)",
         });
+        // To save to Firebase Storage and update profile:
+        // 1. Upload selectedAvatar (if it's a data URI) to Firebase Storage.
+        // 2. Get the download URL.
+        // 3. updateProfile(auth.currentUser, { photoURL: downloadURL });
     } else if (currentUser && selectedAvatar) {
          toast({
             title: "Avatar Selected",
             description: "Predefined avatar set. (Note: Not saved to Firebase yet)",
         });
+        // To save to Firebase:
+        // updateProfile(auth.currentUser, { photoURL: selectedAvatar });
     } else {
         toast({
             variant: "destructive",
