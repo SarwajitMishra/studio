@@ -1,6 +1,15 @@
 
 import { initializeApp, getApp, getApps, type FirebaseOptions } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, updateProfile, type User } from 'firebase/auth';
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithRedirect, // Ensure this is imported
+  getRedirectResult,  // Ensure this is imported
+  signOut,
+  onAuthStateChanged,
+  updateProfile,
+  type User
+} from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
 
 const firebaseConfig: FirebaseOptions = {
@@ -25,5 +34,15 @@ const auth = getAuth(app);
 const storage = getStorage(app); // Initialize Firebase Storage
 const googleProvider = new GoogleAuthProvider();
 
-export { app, auth, storage, googleProvider, signInWithPopup, signOut, onAuthStateChanged, updateProfile };
+export {
+  app,
+  auth,
+  storage,
+  googleProvider,
+  signInWithRedirect, // Ensure this is exported
+  getRedirectResult,  // Ensure this is exported
+  signOut,
+  onAuthStateChanged,
+  updateProfile,
+};
 export type { User };

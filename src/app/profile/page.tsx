@@ -16,14 +16,15 @@ import { useToast } from "@/hooks/use-toast";
 import { 
   auth, 
   storage, 
+  getRedirectResult,
   googleProvider, 
-  signInWithPopup, 
+  signInWithRedirect,
   signOut as firebaseSignOut, 
   onAuthStateChanged, 
   updateProfile,
   type User 
 } from '@/lib/firebase';
-import { ref as storageRef, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
+import { ref as storageRef, uploadString, getDownloadURL } from 'firebase/storage';
 
 export default function ProfilePage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -34,10 +35,24 @@ export default function ProfilePage() {
   const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
+    const handleRedirectResult = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result) {
+          // User successfully signed in with redirect
+          const user = result.user;
+          toast({ title: "Logged In!", description: `Welcome back, ${user.displayName || 'User'}!` });
+        }
+      } catch (error: any) {
+        console.error("Error during Google sign-in redirect result:", error);
+        toast({ variant: "destructive", title: "Login Failed", description: error.message || "Could not sign in with Google. Please try again." });
+      }
+    };
+
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         setCurrentUser(user);
-        setEditingUserName(user.displayName || "Kiddo");
+        setEditingUserName(user.displayName || ""); 
         setSelectedAvatar(user.photoURL || AVATARS[0]?.src || 'https://placehold.co/100x100.png');
       } else {
         setCurrentUser(null);
@@ -45,15 +60,15 @@ export default function ProfilePage() {
         setSelectedAvatar(AVATARS[0]?.src || 'https://placehold.co/100x100.png');
       }
     });
-    return () => unsubscribe();
-  }, []);
+
+    handleRedirectResult(); 
+
+    return () => unsubscribe(); 
+  }, [toast]); // Added toast to dependency array
 
   const handleGoogleLogin = async () => {
     try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const user = result.user;
-      // State will be updated by onAuthStateChanged listener
-      toast({ title: "Logged In!", description: `Welcome back, ${user.displayName || 'User'}!` });
+      await signInWithRedirect(auth, googleProvider);
     } catch (error: any) {
       console.error("Error during Google sign-in:", error);
       toast({ variant: "destructive", title: "Login Failed", description: error.message || "Could not sign in with Google. Please try again." });
@@ -63,9 +78,8 @@ export default function ProfilePage() {
   const handleLogout = async () => {
     try {
       await firebaseSignOut(auth);
-      // State will be updated by onAuthStateChanged listener
       toast({ title: "Logged Out", description: "You have been successfully logged out." });
-    } catch (error: any) {
+    } catch (error: any) { // Added missing opening brace
       console.error("Error during sign-out:", error);
       toast({ variant: "destructive", title: "Logout Failed", description: error.message || "Could not sign out. Please try again." });
     }
@@ -82,7 +96,7 @@ export default function ProfilePage() {
     }
     try {
       await updateProfile(currentUser, { displayName: editingUserName });
-      setCurrentUser(auth.currentUser); // Refresh current user data
+      setCurrentUser(auth.currentUser); 
       toast({ title: "Username Updated!", description: `Your display name is now ${editingUserName}.` });
     } catch (error: any) {
       console.error("Error updating username:", error);
@@ -124,30 +138,17 @@ export default function ProfilePage() {
     try {
       let photoURLToSave = selectedAvatar;
 
-      if (selectedAvatar.startsWith('data:image')) { // New custom avatar uploaded
+      if (selectedAvatar.startsWith('data:image')) { 
         const avatarPath = `avatars/${currentUser.uid}/profileImage.png`;
         const imageRef = storageRef(storage, avatarPath);
         
-        // If there's an old custom avatar, delete it first (optional, good practice)
-        // This assumes previous custom avatar was stored at the same path.
-        // For simplicity, we're not tracking the old path if it was a predefined one.
-        // try {
-        //   const currentPhotoURL = currentUser.photoURL;
-        //   if (currentPhotoURL && currentPhotoURL.includes(currentUser.uid)) { // Heuristic to check if it's a custom one
-        //      const oldImageRef = storageRef(storage, currentPhotoURL); // This needs exact path or URL parsing
-        //      await deleteObject(oldImageRef);
-        //   }
-        // } catch (deleteError) {
-        //   console.warn("Could not delete old avatar, or no old custom avatar:", deleteError);
-        // }
-
         await uploadString(imageRef, selectedAvatar, 'data_url');
         photoURLToSave = await getDownloadURL(imageRef);
       }
       
       await updateProfile(currentUser, { photoURL: photoURLToSave });
-      setCurrentUser(auth.currentUser); // Refresh current user data
-      setSelectedAvatar(photoURLToSave); // Ensure local preview matches saved URL
+      setCurrentUser(auth.currentUser); 
+      setSelectedAvatar(photoURLToSave); 
       toast({ title: "Avatar Saved!", description: "Your new avatar has been saved." });
 
     } catch (error: any) {
@@ -157,7 +158,7 @@ export default function ProfilePage() {
       setIsUploading(false);
     }
   };
-  
+
   const userNameDisplay = currentUser?.displayName || editingUserName || "Kiddo";
   const avatarDisplayUrl = selectedAvatar || currentUser?.photoURL || AVATARS[0]?.src || 'https://placehold.co/100x100.png';
 
@@ -183,7 +184,7 @@ export default function ProfilePage() {
                   className="max-w-xs text-base"
                   aria-label="Edit display name"
                 />
-                <Button onClick={handleUserNameSave} size="sm" variant="outline">
+                <Button onClick={handleUserNameSave} size="sm" variant="outline" disabled={!currentUser || isUploading}>
                   <Edit3 className="mr-2 h-4 w-4" /> Save Name
                 </Button>
               </div>
@@ -333,3 +334,4 @@ export default function ProfilePage() {
     </div>
   );
 }
+
