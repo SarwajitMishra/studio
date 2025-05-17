@@ -1,21 +1,15 @@
+
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import MainLayout from '@/components/layout/main-layout';
+import PWALoader from '@/components/pwa-loader'; // Import the PWALoader
 
 const inter = Inter({
   variable: '--font-inter',
   subsets: ['latin'],
 });
-
-// Note: The user requested Comic Sans or Quicksand.
-// Inter is a clear, friendly sans-serif font.
-// To use Quicksand (or Comic Sans), you would typically:
-// 1. Add the font using a service like Google Fonts (e.g., in the <head> via next/font/google)
-//    or by hosting the font files locally.
-// 2. Update the `fontFamily` in `tailwind.config.ts` or apply the font class to the body.
-// For now, we'll use Inter.
 
 export const metadata: Metadata = {
   title: {
@@ -23,6 +17,7 @@ export const metadata: Metadata = {
     template: '%s | Shravya Playhouse',
   },
   description: 'Fun and educational games for kids at Shravya Playhouse!',
+  manifest: '/manifest.json', // Added manifest link for PWA
 };
 
 export default function RootLayout({
@@ -32,11 +27,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.variable} font-sans antialiased`}> {/* Use font-sans from Tailwind mapped to inter */}
+      <head>
+        <meta name="theme-color" content="#87CEEB" /> {/* Added theme-color for PWA address bar styling */}
+      </head>
+      <body className={`${inter.variable} font-sans antialiased`}>
         <MainLayout>
           {children}
         </MainLayout>
         <Toaster />
+        <PWALoader /> {/* Add PWALoader here to register service worker */}
       </body>
     </html>
   );
