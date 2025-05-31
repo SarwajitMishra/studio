@@ -7,11 +7,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Dice1, Dice2, Dice3, Dice4, Dice5, Dice6, RotateCcw, Home, Users, Cpu } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
 
-const PLAYER_COLORS = ['red', 'green', 'blue', 'yellow'] as const;
+const PLAYER_COLORS = ['red', 'green', 'yellow', 'blue'] as const;
 type PlayerColor = typeof PLAYER_COLORS[number];
 
 const MAIN_PATH_LENGTH = 52;
@@ -46,13 +47,30 @@ interface Player {
 type GameState = 'setup' | 'playing' | 'gameOver';
 type GameMode = 'offline' | 'ai' | null;
 
-const initialPlayerState = (numPlayersToCreate: number, mode: GameMode): Player[] => {
+const initialPlayerState = (
+    numPlayersToCreate: number, 
+    mode: GameMode,
+    humanName?: string, // Name for the primary human player in AI mode
+    offlineNames?: string[] // Array of names for offline players
+): Player[] => {
   const activePlayerColors = PLAYER_COLORS.slice(0, numPlayersToCreate);
   return activePlayerColors.map((color, index) => {
     const isAIPlayer = mode === 'ai' && index > 0; 
+    let playerName = PLAYER_CONFIG[color].name;
+
+    if (mode === 'ai') {
+      if (index === 0) { // Human player in AI mode
+        playerName = humanName || "Human Player";
+      } else { // AI player in AI mode
+        playerName = `Shravya AI (${PLAYER_CONFIG[color].name})`;
+      }
+    } else if (mode === 'offline') { // Offline mode
+      playerName = (offlineNames && offlineNames[index]) ? offlineNames[index] : `Player ${index + 1}`;
+    }
+    
     return {
       color,
-      name: isAIPlayer ? `Shravya AI (${PLAYER_CONFIG[color].name})` : PLAYER_CONFIG[color].name,
+      name: playerName,
       tokens: Array(NUM_TOKENS_PER_PLAYER).fill(null).map((_, i) => ({
         id: i,
         color,
@@ -72,6 +90,10 @@ export default function LudoPage() {
   const [gameState, setGameState] = useState<GameState>('setup');
   const [selectedMode, setSelectedMode] = useState<GameMode>(null);
   const [selectedNumPlayers, setSelectedNumPlayers] = useState<number | null>(null);
+  
+  const [humanPlayerName, setHumanPlayerName] = useState<string>("Human Player");
+  const [offlinePlayerNames, setOfflinePlayerNames] = useState<string[]>([]);
+
 
   const [players, setPlayers] = useState<Player[]>([]);
   const [currentPlayerIndex, setCurrentPlayerIndex] = useState(0);
@@ -82,10 +104,26 @@ export default function LudoPage() {
 
   const currentPlayer = players[currentPlayerIndex];
 
+  useEffect(() => {
+    if (selectedMode === 'offline' && selectedNumPlayers) {
+      setOfflinePlayerNames(Array(selectedNumPlayers).fill('').map((_, i) => `Player ${i + 1}`));
+    } else {
+      setOfflinePlayerNames([]);
+    }
+  }, [selectedNumPlayers, selectedMode]);
+
+  const handleOfflinePlayerNameChange = (index: number, name: string) => {
+    const newNames = [...offlinePlayerNames];
+    newNames[index] = name;
+    setOfflinePlayerNames(newNames);
+  };
+
   const resetGame = useCallback(() => {
     setGameState('setup');
     setSelectedMode(null);
     setSelectedNumPlayers(null);
+    setHumanPlayerName("Human Player");
+    setOfflinePlayerNames([]);
     setPlayers([]);
     setCurrentPlayerIndex(0);
     setDiceValue(null);
@@ -99,7 +137,22 @@ export default function LudoPage() {
       toast({ variant: "destructive", title: "Setup Incomplete", description: "Please select game mode and number of players." });
       return;
     }
-    const newPlayers = initialPlayerState(selectedNumPlayers, selectedMode);
+
+    if (selectedMode === 'ai' && humanPlayerName.trim() === "") {
+      toast({ variant: "destructive", title: "Name Required", description: "Please enter your name." });
+      return;
+    }
+    if (selectedMode === 'offline' && offlinePlayerNames.some(name => name.trim() === "")) {
+      toast({ variant: "destructive", title: "Names Required", description: "Please enter names for all players." });
+      return;
+    }
+
+    const newPlayers = initialPlayerState(
+        selectedNumPlayers, 
+        selectedMode,
+        selectedMode === 'ai' ? humanPlayerName : undefined,
+        selectedMode === 'offline' ? offlinePlayerNames : undefined
+    );
     setPlayers(newPlayers);
     setCurrentPlayerIndex(0);
     setDiceValue(null);
@@ -107,13 +160,12 @@ export default function LudoPage() {
     setGameMessage(`${newPlayers[0].name}'s turn. Click your dice to roll!`);
     if (newPlayers[0].isAI) {
         setGameMessage(`${newPlayers[0].name} is thinking...`);
-        // AI turn initiation is handled by useEffect
     }
   };
 
   const handleDiceRoll = useCallback(() => {
-    if (isRolling || !currentPlayer || (currentPlayer.isAI && diceValue !== null)) return; // AI rolls once per "thought"
-    if (!currentPlayer.isAI && diceValue !== null && !currentPlayer.hasRolledSix) return; // Human already rolled unless it was a 6
+    if (isRolling || !currentPlayer || (currentPlayer.isAI && diceValue !== null)) return; 
+    if (!currentPlayer.isAI && diceValue !== null && !currentPlayer.hasRolledSix) return;
 
     const initialAnimatingRoll = Math.floor(Math.random() * 6) + 1;
     setDiceValue(initialAnimatingRoll);
@@ -131,14 +183,12 @@ export default function LudoPage() {
         processDiceRoll(finalRoll);
       }
     }, 100);
-  }, [isRolling, currentPlayer, diceValue, players, currentPlayerIndex]); // Added dependencies
+  }, [isRolling, currentPlayer, diceValue, players, currentPlayerIndex]);
 
   const getMovableTokens = (player: Player, roll: number): Token[] => {
     if (!player) return [];
     const hasTokensInBase = player.tokens.some(t => t.position === -1);
 
-    // If rolled 6 and has tokens in base, only base tokens are "primarily" movable for humans.
-    // AI can decide, but humans are guided.
     if (!player.isAI && roll === 6 && hasTokensInBase) {
         return player.tokens.filter(token => token.position === -1);
     }
@@ -146,16 +196,14 @@ export default function LudoPage() {
     return player.tokens.filter(token => {
       if (token.position === -1 && roll === 6) return true; 
       if (token.position >= 0 && token.position < 200) { 
-        // Basic check, further refinement needed for home stretch exact roll etc.
         const playerConfig = PLAYER_CONFIG[player.color];
         const currentPos = token.position;
-        const homeEntry = playerConfig.homeEntryPathIndex;
-
-        if (currentPos >= 100) { // In home stretch
+        
+        if (currentPos >= 100) { 
              const stretchPos = currentPos % 100;
-             return (stretchPos + roll) < HOME_STRETCH_LENGTH; // Can move if not overshooting final spot
+             return (stretchPos + roll) < HOME_STRETCH_LENGTH;
         }
-        return true; // On main path, assume can move
+        return true;
       }
       return false;
     });
@@ -199,22 +247,19 @@ export default function LudoPage() {
       setGameMessage(prev => prev + ` AI thinking...`);
       setTimeout(() => {
         let tokenToMoveAI: Token | undefined;
-        // AI: Prioritize moving from base if 6 is rolled and tokens are in base
         if (roll === 6 && hasTokensInBase) {
-          tokenToMoveAI = movableTokens.find(t => t.position === -1); // Pick first from base
+          tokenToMoveAI = movableTokens.find(t => t.position === -1);
         } else {
-          // Otherwise, AI picks the first movable token (can be improved with strategy)
           tokenToMoveAI = movableTokens[0];
         }
 
         if (tokenToMoveAI) {
           attemptMoveToken(currentPlayerIndex, tokenToMoveAI.id, roll);
         } else {
-          passTurn(roll !== 6); // Pass turn if no move for AI (should be rare with current getMovableTokens)
+          passTurn(roll !== 6);
         }
       }, 1000); 
     } else {
-      // Human player's turn
       setGameMessage(prev => prev + ` Select a token to move.`);
       if (roll === 6 && hasTokensInBase) {
           setGameMessage(prev => prev + ` You must move a token from base.`);
@@ -279,7 +324,6 @@ export default function LudoPage() {
       return;
     }
     
-    // Check if this token is in the list of movable tokens
     const movableTokens = getMovableTokens(currentPlayer, diceValue);
     if (!movableTokens.some(mt => mt.id === tokenId && mt.color === currentPlayer.color)) {
         toast({ variant: "destructive", title: "Cannot Move Token", description: "This token cannot make the attempted move or is not the best option." });
@@ -312,15 +356,13 @@ export default function LudoPage() {
         const start = playerConfig.pathStartIndex;
         let stepsToHomeEntry;
 
-        // Calculate steps to reach the square *before* home entry.
-        // This logic determines if the current path segment for the token leads "towards" its home entry.
-        if (start <= homeEntry) { // Path doesn't wrap around 0 for this player's home entry relative to their start
+        if (start <= homeEntry) { 
             if (currentPosOnGlobalTrack >= start && currentPosOnGlobalTrack <= homeEntry) {
                 stepsToHomeEntry = homeEntry - currentPosOnGlobalTrack;
-            } else { // Token is on a segment not leading directly to its home entry (e.g., lapped or on another player's segment)
-                stepsToHomeEntry = MAIN_PATH_LENGTH; // Effectively, very far
+            } else { 
+                stepsToHomeEntry = MAIN_PATH_LENGTH;
             }
-        } else { // Path wraps around 0 for this player (e.g. Red: start 0, home entry 50)
+        } else { 
             if (currentPosOnGlobalTrack >= start || currentPosOnGlobalTrack <= homeEntry) {
                  stepsToHomeEntry = (homeEntry - currentPosOnGlobalTrack + MAIN_PATH_LENGTH) % MAIN_PATH_LENGTH;
             } else {
@@ -328,27 +370,26 @@ export default function LudoPage() {
             }
         }
 
-
         if (roll > stepsToHomeEntry) { 
-            const stepsIntoHomeStretch = roll - stepsToHomeEntry - 1; // -1 because stepsToHomeEntry is to the square *before* home.
+            const stepsIntoHomeStretch = roll - stepsToHomeEntry - 1; 
             if (stepsIntoHomeStretch < HOME_STRETCH_LENGTH) {
-                tokenToMove.position = 100 + stepsIntoHomeStretch; // Enter home stretch
-                 if (tokenToMove.position === 100 + HOME_STRETCH_LENGTH - 1) { // Landed exactly on last home spot
+                tokenToMove.position = 100 + stepsIntoHomeStretch;
+                 if (tokenToMove.position === 100 + HOME_STRETCH_LENGTH - 1) { 
                     tokenToMove.position = 200 + tokenToMove.id; 
                     setGameMessage(`${playerToMove.name} moved token ${tokenId + 1} home!`);
                  } else {
                     setGameMessage(`${playerToMove.name} moved token ${tokenId + 1} into home stretch to S${stepsIntoHomeStretch}.`);
                  }
-            } else { // Overshot home stretch
+            } else { 
                 setGameMessage(`${playerToMove.name} cannot move token ${tokenId+1}: overshot home stretch.`);
-                moveSuccessful = false; // Invalid move
+                // moveSuccessful = false; // This was commented out, should it be?
             }
-        } else { // Move stays on main path or lands exactly on home entry point
+        } else { 
             tokenToMove.position = (currentPosOnGlobalTrack + roll) % MAIN_PATH_LENGTH;
             setGameMessage(`${playerToMove.name} moved token ${tokenId + 1} from ${originalPosition === -1 ? "base" : originalPosition} to square ${tokenToMove.position}.`);
         }
         moveSuccessful = true; 
-      } else if (tokenToMove.position >= 100 && tokenToMove.position < 200) { // Moving within home stretch
+      } else if (tokenToMove.position >= 100 && tokenToMove.position < 200) { 
         const currentHomeStretchPos = tokenToMove.position % 100;
         let newHomeStretchPos = currentHomeStretchPos + roll;
         if (newHomeStretchPos === HOME_STRETCH_LENGTH -1) { 
@@ -361,10 +402,9 @@ export default function LudoPage() {
           moveSuccessful = true;
         } else {
           setGameMessage(`${playerToMove.name} cannot move token ${tokenId+1}: overshot final home spot.`);
-          moveSuccessful = false;
+          // moveSuccessful = false; // This was commented out
         }
       }
-
 
       if (moveSuccessful) {
         const potentiallyWinningPlayer = newPlayers[playerIdx];
@@ -387,10 +427,6 @@ export default function LudoPage() {
         if (! (tokenToMove.position === -1 && roll !== 6) && tokenToMove.position < 200) {
            toast({ variant: "destructive", title: "Cannot Move Token", description: "This token cannot make the attempted move or its logic is pending." });
         }
-        // If move failed, but it was a 6, player might still get another roll (if no other token could be moved).
-        // This part is tricky: if a 6 was rolled, and the *only* valid move with that 6 failed (e.g. overshot home stretch),
-        // should they still get another roll? Standard Ludo often says yes.
-        // For now, if the move itself failed, pass turn unless it was a 6 (then try again)
         if (roll !== 6) {
             passTurn(true); 
         } else {
@@ -411,8 +447,8 @@ export default function LudoPage() {
   };
 
  const getTokenForCell = (cellIndex: number): Token[] => {
-    const tokensOnCell: Token[] = [];
-    if (!players || players.length === 0) return tokensOnCell;
+    const tokensOnThisCell: Token[] = [];
+    if (!players || players.length === 0) return tokensOnThisCell;
 
     players.forEach(player => {
       player.tokens.forEach(token => {
@@ -426,7 +462,7 @@ export default function LudoPage() {
                 yellow: [(BOARD_GRID_SIZE - 3)*BOARD_GRID_SIZE + (BOARD_GRID_SIZE - 3), (BOARD_GRID_SIZE - 3)*BOARD_GRID_SIZE + (BOARD_GRID_SIZE - 2), (BOARD_GRID_SIZE - 2)*BOARD_GRID_SIZE + (BOARD_GRID_SIZE - 3), (BOARD_GRID_SIZE - 2)*BOARD_GRID_SIZE + (BOARD_GRID_SIZE - 2)],
             };
             if (baseGridPositions[token.color] && token.id < baseGridPositions[token.color].length && baseGridPositions[token.color][token.id] === cellIndex) {
-                tokensOnCell.push(token);
+                tokensOnThisCell.push(token);
             }
         } else if (token.position === playerStartConfig.pathStartIndex) {
             let expectedStartCellGridIndex = -1;
@@ -436,12 +472,12 @@ export default function LudoPage() {
             else if (token.color === 'blue')   expectedStartCellGridIndex = (13 * BOARD_GRID_SIZE + 6); 
             
             if (cellIndex === expectedStartCellGridIndex) {
-                tokensOnCell.push(token);
+                tokensOnThisCell.push(token);
             }
         }
       });
     });
-    return tokensOnCell;
+    return tokensOnThisCell;
   };
 
   const getCellBackgroundColor = (cellIndex: number): string => {
@@ -499,7 +535,7 @@ export default function LudoPage() {
       <>
         <title>Setup Ludo Game | Shravya Playhouse</title>
         <meta name="description" content="Set up your Ludo game: choose mode and number of players." />
-        <Card className="w-full max-w-md mx-auto shadow-xl">
+        <Card className="w-full max-w-lg mx-auto shadow-xl">
           <CardHeader className="bg-primary/10">
             <CardTitle className="text-2xl font-bold text-center text-primary">Setup Ludo Game</CardTitle>
           </CardHeader>
@@ -518,21 +554,28 @@ export default function LudoPage() {
                   <RadioGroupItem value="ai" id="ai" className="peer sr-only" />
                   <Label htmlFor="ai" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer">
                     <Cpu className="mb-2 h-8 w-8" />
-                    Play with AI
+                    Play with Shravya AI
                   </Label>
                 </div>
               </RadioGroup>
             </div>
 
-            {selectedMode === 'offline' && (
+            {selectedMode && (
               <div>
-                <Label className="text-lg font-medium">Number of Players</Label>
-                <RadioGroup value={selectedNumPlayers?.toString() || ""} onValueChange={(value) => setSelectedNumPlayers(parseInt(value))} className="mt-2 grid grid-cols-3 gap-4">
-                  {[2, 3, 4].map(num => (
+                <Label className="text-lg font-medium">Number of Players {selectedMode === 'ai' ? '(includes you)' : ''}</Label>
+                 <RadioGroup 
+                    value={selectedNumPlayers?.toString() || ""} 
+                    onValueChange={(value) => setSelectedNumPlayers(parseInt(value))} 
+                    className="mt-2 grid grid-cols-3 gap-4"
+                 >
+                  {(selectedMode === 'offline' ? [2, 3, 4] : [2, 4]).map(num => (
                     <div key={num}>
-                      <RadioGroupItem value={num.toString()} id={`offline-${num}`} className="peer sr-only" />
-                      <Label htmlFor={`offline-${num}`} className="flex items-center justify-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer text-lg">
-                        {num}
+                      <RadioGroupItem value={num.toString()} id={`${selectedMode}-${num}`} className="peer sr-only" />
+                      <Label htmlFor={`${selectedMode}-${num}`} className="flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer">
+                        <span className="text-lg">{num}</span>
+                        {selectedMode === 'ai' && (
+                           <span className="text-xs text-center">{num === 2 ? "(You vs 1 Shravya AI)" : `(You vs ${num-1} Shravya AI)`}</span>
+                        )}
                       </Label>
                     </div>
                   ))}
@@ -540,22 +583,35 @@ export default function LudoPage() {
               </div>
             )}
 
-            {selectedMode === 'ai' && (
-              <div>
-                <Label className="text-lg font-medium">Number of Players (includes you)</Label>
-                <RadioGroup value={selectedNumPlayers?.toString() || ""} onValueChange={(value) => setSelectedNumPlayers(parseInt(value))} className="mt-2 grid grid-cols-2 gap-4">
-                  {[2, 4].map(num => ( 
-                    <div key={num}>
-                      <RadioGroupItem value={num.toString()} id={`ai-${num}`} className="peer sr-only" />
-                      <Label htmlFor={`ai-${num}`} className="flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer">
-                        <span className="text-lg">{num}</span>
-                        <span className="text-xs">{num === 2 ? "(You vs 1 Shravya AI)" : `(You vs ${num-1} Shravya AI)`}</span>
-                      </Label>
-                    </div>
-                  ))}
-                </RadioGroup>
-              </div>
+            {selectedMode === 'ai' && selectedNumPlayers && (
+                <div className="space-y-2">
+                    <Label htmlFor="humanPlayerName" className="text-lg font-medium">Your Name</Label>
+                    <Input 
+                        id="humanPlayerName" 
+                        value={humanPlayerName} 
+                        onChange={(e) => setHumanPlayerName(e.target.value)}
+                        placeholder="Enter your name"
+                    />
+                </div>
             )}
+
+            {selectedMode === 'offline' && selectedNumPlayers && offlinePlayerNames.length > 0 && (
+                <div className="space-y-4">
+                    <Label className="text-lg font-medium">Player Names</Label>
+                    {offlinePlayerNames.map((name, index) => (
+                        <div key={index} className="space-y-1">
+                            <Label htmlFor={`offlinePlayerName-${index}`}>Player {index + 1} Name ({PLAYER_CONFIG[PLAYER_COLORS[index]].name})</Label>
+                            <Input 
+                                id={`offlinePlayerName-${index}`}
+                                value={name}
+                                onChange={(e) => handleOfflinePlayerNameChange(index, e.target.value)}
+                                placeholder={`Enter name for Player ${index + 1}`}
+                            />
+                        </div>
+                    ))}
+                </div>
+            )}
+
 
             <Button onClick={handleStartGame} disabled={!selectedMode || !selectedNumPlayers} className="w-full text-lg py-3">
               Start Game
@@ -664,19 +720,19 @@ export default function LudoPage() {
                   const isCurrentPlayerTurn = currentPlayerIndex === playerListIndex;
                   const playerSpecificConfig = PLAYER_CONFIG[p.color];
                   
-                  let DiceIconElement = Dice6; 
+                  let DiceIconToRender = Dice6; 
                   let diceButtonStyling = "text-muted-foreground opacity-50"; 
                   let isDiceButtonClickable = false;
 
                   if (isCurrentPlayerTurn) {
                     if (isRolling && diceValue) { 
-                      DiceIconElement = DICE_ICONS[diceValue - 1] || Dice6;
+                      DiceIconToRender = DICE_ICONS[diceValue - 1] || Dice6;
                       diceButtonStyling = "text-muted-foreground animate-spin";
                     } else if (diceValue) { 
-                      DiceIconElement = DICE_ICONS[diceValue - 1] || Dice6;
+                      DiceIconToRender = DICE_ICONS[diceValue - 1] || Dice6;
                       diceButtonStyling = cn("animate-gentle-bounce", playerSpecificConfig.textClass);
                     } else { 
-                      DiceIconElement = Dice6; 
+                      DiceIconToRender = Dice6; 
                       diceButtonStyling = cn("cursor-pointer hover:opacity-75", playerSpecificConfig.textClass);
                     }
                     
@@ -686,7 +742,7 @@ export default function LudoPage() {
                         }
                     }
                   } else { 
-                     DiceIconElement = Dice6; 
+                     DiceIconToRender = Dice6; 
                      diceButtonStyling = "text-muted-foreground opacity-30";
                   }
                   
@@ -694,7 +750,7 @@ export default function LudoPage() {
                     <div key={p.color} className={cn("p-3 rounded-lg border-2", isCurrentPlayerTurn ? "border-accent bg-accent/10 shadow-lg" : "border-muted")}>
                       <div className="flex items-center justify-between mb-2">
                           <span className={cn("font-semibold text-lg", playerSpecificConfig.textClass)}>{p.name}</span>
-                          {p.isAI && <Cpu size={20} className="text-muted-foreground" title="AI Player"/>}
+                          {p.isAI && <Cpu size={20} className="text-muted-foreground" title="Shravya AI Player"/>}
                       </div>
                       <div className="flex items-center justify-between">
                           <Button
@@ -702,7 +758,7 @@ export default function LudoPage() {
                               size="icon"
                               className={cn(
                                 "border-2 border-dashed rounded-lg shadow-sm",
-                                isCurrentPlayerTurn && !p.isAI ? "h-14 w-14" : "h-10 w-10", // Larger for active human player
+                                isCurrentPlayerTurn && !p.isAI ? "h-14 w-14" : "h-10 w-10",
                                 isDiceButtonClickable 
                                     ? cn("cursor-pointer", playerSpecificConfig.baseClass + "/30", `hover:${playerSpecificConfig.baseClass}/50`) 
                                     : "border-muted-foreground/30 cursor-not-allowed opacity-70"
@@ -713,7 +769,7 @@ export default function LudoPage() {
                               disabled={!isDiceButtonClickable}
                               aria-label={`Roll dice for ${p.name}`}
                           >
-                              <DiceIconElement size={isCurrentPlayerTurn && !p.isAI ? 36 : 24} className={diceButtonStyling} />
+                              <DiceIconToRender size={isCurrentPlayerTurn && !p.isAI ? 36 : 24} className={diceButtonStyling} />
                           </Button>
                           
                           <div className="flex gap-1.5">
@@ -760,5 +816,3 @@ export default function LudoPage() {
     </>
   );
 }
-
-    
