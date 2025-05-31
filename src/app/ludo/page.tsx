@@ -1,6 +1,7 @@
 
 "use client";
 
+import React from 'react'; // Ensure React is imported
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -76,8 +77,7 @@ export default function LudoPage() {
   const handleDiceRoll = () => {
     if (isRolling) return;
     
-    setSelectedToken(null); // Deselect token on new roll
-    // Set an initial dice value for the animation to start immediately
+    setSelectedToken(null); 
     setDiceValue(Math.floor(Math.random() * 6) + 1); 
     setIsRolling(true);
 
@@ -85,7 +85,7 @@ export default function LudoPage() {
     const rollInterval = setInterval(() => {
       setDiceValue(Math.floor(Math.random() * 6) + 1);
       rollAttempts++;
-      if (rollAttempts > 10) { // Animate for ~1 second
+      if (rollAttempts > 10) { 
         clearInterval(rollInterval);
         const finalRoll = Math.floor(Math.random() * 6) + 1;
         setDiceValue(finalRoll);
@@ -183,12 +183,15 @@ export default function LudoPage() {
       for (const token of player.tokens) {
         if (token.position === -1) {
             const playerIdx = PLAYER_COLORS.indexOf(player.color);
-            if (playerIdx === 0 && cellIndex === 0 + token.id) return token; 
-            if (playerIdx === 1 && cellIndex === (BOARD_GRID_SIZE - 4) + token.id) return token; 
-            if (playerIdx === 2 && cellIndex === (BOARD_GRID_SIZE * (BOARD_GRID_SIZE-1) - 4) + token.id) return token; 
-            if (playerIdx === 3 && cellIndex === (BOARD_GRID_SIZE * BOARD_GRID_SIZE - 4) + token.id ) return token; 
+            // Simplified base rendering, needs to be accurate for specific base cells
+            if (playerIdx === 0 && cellIndex >= 0 && cellIndex < NUM_TOKENS_PER_PLAYER && token.id === cellIndex % NUM_TOKENS_PER_PLAYER) return token; 
+            if (playerIdx === 1 && cellIndex >= (BOARD_GRID_SIZE - 4) && cellIndex < BOARD_GRID_SIZE && token.id === cellIndex % NUM_TOKENS_PER_PLAYER) return token; 
+            if (playerIdx === 2 && cellIndex >= (BOARD_GRID_SIZE * (BOARD_GRID_SIZE - 4)) && cellIndex < (BOARD_GRID_SIZE * (BOARD_GRID_SIZE - 4) + 4) && token.id === cellIndex % NUM_TOKENS_PER_PLAYER) return token; 
+            if (playerIdx === 3 && cellIndex >= (BOARD_GRID_SIZE * BOARD_GRID_SIZE - 4) && cellIndex < (BOARD_GRID_SIZE * BOARD_GRID_SIZE) && token.id === cellIndex % NUM_TOKENS_PER_PLAYER ) return token; 
         }
-        if (token.position !== -1 && token.position !== 200 && token.position === cellIndex) {
+        // This part needs to map Ludo path indices to board cell indices
+        // For now, just a placeholder if token.position matches cellIndex
+        if (token.position !== -1 && token.position !== 200 && token.position === cellIndex) { // Example
             return token;
         }
       }
@@ -200,19 +203,38 @@ export default function LudoPage() {
     const row = Math.floor(cellIndex / BOARD_GRID_SIZE);
     const col = cellIndex % BOARD_GRID_SIZE;
 
-    if ((col === 6 && row >=1 && row <=5) || (row === 6 && col >=1 && col <=5)) return PLAYER_CONFIG.red.baseClass + "/30";
-    if ((row === 6 && col >=9 && col <=13) || (col === 8 && row >=1 && row <=5)) return PLAYER_CONFIG.green.baseClass + "/30";
-    if ((col === 8 && row >=9 && row <=13) || (row === 8 && col >=9 && col <=13)) return PLAYER_CONFIG.yellow.baseClass + "/30"; // This line had a slight duplication, corrected
-    if ((row === 8 && col >=1 && col <=5) || (col === 6 && row >=9 && row <=13)) return PLAYER_CONFIG.blue.baseClass + "/30";
-
-    if (row >= 6 && row <= 8 && col >= 6 && col <= 8) return "bg-gray-300";
+    // Home stretches (example for red and green, needs to be precise)
+    if (col === 6 && row >=1 && row <=5) return PLAYER_CONFIG.red.baseClass + "/30"; // Red home stretch (vertical part)
+    if (row === 1 && col >= 6 && col <= 8 && col < 6+HOME_STRETCH_LENGTH-1) return PLAYER_CONFIG.red.baseClass + "/30"; // Red home entry
     
-    if (row < 2 && col < 2) return PLAYER_CONFIG.red.baseClass; 
-    if (row < 2 && col > BOARD_GRID_SIZE - 3) return PLAYER_CONFIG.green.baseClass; 
-    if (row > BOARD_GRID_SIZE - 3 && col < 2) return PLAYER_CONFIG.blue.baseClass; 
-    if (row > BOARD_GRID_SIZE - 3 && col > BOARD_GRID_SIZE - 3) return PLAYER_CONFIG.yellow.baseClass; 
+    if (row === 6 && col >=9 && col <=13) return PLAYER_CONFIG.green.baseClass + "/30"; // Green home stretch (horizontal part)
+    if (col === BOARD_GRID_SIZE-2 && row >=6 && row <=8 && row < 6+HOME_STRETCH_LENGTH-1) return PLAYER_CONFIG.green.baseClass + "/30"; // Green home entry
 
-    return (row + col) % 2 === 0 ? "bg-slate-100" : "bg-slate-200"; 
+    if (col === 8 && row >=9 && row <=13) return PLAYER_CONFIG.yellow.baseClass + "/30"; // Yellow home stretch
+    if (row === BOARD_GRID_SIZE-2 && col <=8 && col >=6 && col > 8-(HOME_STRETCH_LENGTH-1)) return PLAYER_CONFIG.yellow.baseClass + "/30"; // Yellow home entry
+
+    if (row === 8 && col >=1 && col <=5) return PLAYER_CONFIG.blue.baseClass + "/30"; // Blue home stretch
+    if (col === 1 && row <=8 && row >=6 && row > 8-(HOME_STRETCH_LENGTH-1)) return PLAYER_CONFIG.blue.baseClass + "/30"; // Blue home entry
+
+
+    // Center home area
+    if (row >= 6 && row <= 8 && col >= 6 && col <= 8) return "bg-gray-300"; // Center (Home triangle area)
+    
+    // Player base areas (simplified corners)
+    if (row < 6 && col < 6) return PLAYER_CONFIG.red.baseClass; 
+    if (row < 6 && col > BOARD_GRID_SIZE - 7) return PLAYER_CONFIG.green.baseClass; 
+    if (row > BOARD_GRID_SIZE - 7 && col < 6) return PLAYER_CONFIG.blue.baseClass; 
+    if (row > BOARD_GRID_SIZE - 7 && col > BOARD_GRID_SIZE - 7) return PLAYER_CONFIG.yellow.baseClass; 
+
+    // Path cells (alternating colors)
+    const isPathRow = (row >= 6 && row <=8);
+    const isPathCol = (col >= 6 && col <=8);
+    if (!isPathRow && !isPathCol && (row <6 || row >8) && (col <6 || col >8) ) { // outer path
+        // This logic needs to be more specific to actual Ludo path cells
+    }
+
+
+    return (row + col) % 2 === 0 ? "bg-slate-100" : "bg-slate-200"; // Default path cell colors
   };
 
 
@@ -237,6 +259,8 @@ export default function LudoPage() {
                 {boardCells.map((_, cellIndex) => {
                 const tokenOnCell = getTokenForCell(cellIndex);
                 const cellBg = getCellBackgroundColor(cellIndex);
+                const DiceIconComponent = DICE_ICONS[diceValue ? diceValue - 1 : 5]; // Fallback to Dice6 if no diceValue
+
                 return (
                     <div
                     key={cellIndex}
@@ -269,7 +293,7 @@ export default function LudoPage() {
                 })}
             </div>
             <p className="mt-2 text-center text-xs text-muted-foreground">
-                Board rendering and token paths are highly simplified for this initial version. Full Ludo paths coming soon!
+                Board rendering and token paths are highly simplified. Accurate Ludo paths coming soon!
             </p>
           </div>
 
@@ -282,11 +306,19 @@ export default function LudoPage() {
               </CardHeader>
               <CardContent className="text-center space-y-4">
                 <div className="flex justify-center items-center h-20 w-20 mx-auto border-4 border-dashed border-accent rounded-lg bg-background shadow-inner">
-                  {isRolling && diceValue ? ( 
-                    React.createElement(DICE_ICONS[diceValue - 1], { size: 60, className: "text-muted-foreground animate-spin" })
-                  ) : !isRolling && diceValue ? ( 
-                    React.createElement(DICE_ICONS[diceValue - 1], { size: 60, className: "text-accent animate-gentle-bounce" })
-                  ) : ( 
+                  {isRolling && diceValue ? (
+                    (() => {
+                      const DiceIconComponent = DICE_ICONS[diceValue - 1];
+                      if (!DiceIconComponent) return <Dice6 size={60} className="text-muted-foreground opacity-50" />; // Fallback
+                      return <DiceIconComponent size={60} className="text-muted-foreground animate-spin" />;
+                    })()
+                  ) : !isRolling && diceValue ? (
+                    (() => {
+                      const DiceIconComponent = DICE_ICONS[diceValue - 1];
+                       if (!DiceIconComponent) return <Dice6 size={60} className="text-muted-foreground opacity-50" />; // Fallback
+                      return <DiceIconComponent size={60} className="text-accent animate-gentle-bounce" />;
+                    })()
+                  ) : (
                     <Dice6 size={60} className="text-muted-foreground opacity-50" />
                   )}
                 </div>
@@ -295,7 +327,9 @@ export default function LudoPage() {
                   disabled={isRolling || (!!diceValue && diceValue !== 6)} 
                   className="w-full bg-accent text-accent-foreground hover:bg-accent/90 text-lg py-3 shadow-lg"
                 >
-                  {isRolling ? "Rolling..." : (diceValue && roll !==6 ? `Rolled ${diceValue}! Select Token` : (diceValue && roll === 6 ? `Rolled ${diceValue}! Roll Again` : "Roll Dice"))}
+                  {isRolling ? "Rolling..." : 
+                   (diceValue && diceValue !== 6 ? `Rolled ${diceValue}! Select Token` : 
+                   (diceValue && diceValue === 6 ? `Rolled ${diceValue}! Roll Again` : "Roll Dice"))}
                 </Button>
                 <p className="text-sm text-foreground/90 min-h-[40px]">{gameMessage}</p>
               </CardContent>
@@ -336,5 +370,3 @@ export default function LudoPage() {
     </>
   );
 }
-
-    
