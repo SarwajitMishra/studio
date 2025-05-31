@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
@@ -25,20 +26,13 @@ const HOME_STRETCH_LENGTH = 6; // 5 steps + 1 final home
 interface Token {
   id: number; // 0-3 within a player
   color: PlayerColor;
-  /**
-   * Position:
-   * -1: In base
-   * 0-51: On the main shared track (global index)
-   * 100-105: In player's own home column (100 is first step, 105 is last step before home)
-   * 200: Reached final home
-   */
   position: number; 
 }
 
 interface Player {
   color: PlayerColor;
   tokens: Token[];
-  hasRolledSix: boolean; // For 3 consecutive sixes rule
+  hasRolledSix: boolean; 
   sixStreak: number;
 }
 
@@ -48,13 +42,12 @@ const initialPlayerState = (): Player[] =>
     tokens: Array(NUM_TOKENS_PER_PLAYER).fill(null).map((_, i) => ({
       id: i,
       color,
-      position: -1, // Start in base
+      position: -1, 
     })),
     hasRolledSix: false,
     sixStreak: 0,
   }));
 
-// Simple placeholder for board cells. Detailed mapping will come later.
 const BOARD_GRID_SIZE = 15;
 const boardCells = Array(BOARD_GRID_SIZE * BOARD_GRID_SIZE).fill(null).map((_, i) => i);
 
@@ -82,8 +75,11 @@ export default function LudoPage() {
 
   const handleDiceRoll = () => {
     if (isRolling) return;
-    setIsRolling(true);
+    
     setSelectedToken(null); // Deselect token on new roll
+    // Set an initial dice value for the animation to start immediately
+    setDiceValue(Math.floor(Math.random() * 6) + 1); 
+    setIsRolling(true);
 
     let rollAttempts = 0;
     const rollInterval = setInterval(() => {
@@ -101,16 +97,10 @@ export default function LudoPage() {
 
   const processDiceRoll = (roll: number) => {
     setGameMessage(`${currentPlayerConfig.name} rolled a ${roll}.`);
-
-    // Basic logic (to be expanded significantly):
-    // If roll is 6, can bring a token out or move.
-    // For now, just set message and allow token selection.
-    // If no tokens can move, pass turn (needs more logic).
     
-    // Example: Check if any token can move
     const movableTokens = currentPlayer.tokens.filter(token => {
-        if (token.position === -1 && roll === 6) return true; // Can come out of base
-        if (token.position >= 0 && token.position < 200) return true; // Can move on board or home stretch
+        if (token.position === -1 && roll === 6) return true;
+        if (token.position >= 0 && token.position < 200) return true; 
         return false;
     });
 
@@ -125,15 +115,8 @@ export default function LudoPage() {
         return;
     }
 
-    // If player rolled a 6, they get another turn (unless it's 3rd six)
-    // This logic will be refined. For now, just a placeholder.
     if (roll === 6) {
-      // currentPlayer.sixStreak++;
       setGameMessage(prev => prev + " Gets another turn!");
-      // if (currentPlayer.sixStreak === 3) passTurn and reset streak
-    } else {
-      // currentPlayer.sixStreak = 0;
-      // passTurn(); // Placeholder: pass turn after non-6 if no token selected/moved
     }
   };
   
@@ -141,7 +124,6 @@ export default function LudoPage() {
     setCurrentPlayerIndex((prevIndex) => (prevIndex + 1) % PLAYER_COLORS.length);
     setDiceValue(null);
     setSelectedToken(null);
-    // The useEffect below will update the game message for the new player's turn
   };
 
   useEffect(() => {
@@ -154,39 +136,31 @@ export default function LudoPage() {
 
     const token = players[playerIndex].tokens[tokenId];
     
-    // Basic validation: can only select if token can move with current dice roll
     if (token.position === -1 && diceValue !== 6) {
         toast({ variant: "destructive", title: "Invalid Move", description: "You need a 6 to bring a token out of base."});
         return;
     }
-    if (token.position === 200) { // Already home
+    if (token.position === 200) { 
         toast({ variant: "destructive", title: "Invalid Move", description: "This token is already home."});
         return;
     }
-
-    // setSelectedToken({ playerIndex, tokenId });
-    // For now, let's attempt a simplified move directly
     attemptMoveToken(playerIndex, tokenId, diceValue);
   };
 
   const attemptMoveToken = (playerIndex: number, tokenId: number, roll: number) => {
-    // THIS IS HIGHLY SIMPLIFIED - WILL BE REPLACED WITH ACTUAL LUDO PATH LOGIC
     setPlayers(prevPlayers => {
         const newPlayers = prevPlayers.map(p => ({ ...p, tokens: p.tokens.map(t => ({...t})) }));
         const tokenToMove = newPlayers[playerIndex].tokens[tokenId];
 
         if (tokenToMove.position === -1 && roll === 6) {
-            tokenToMove.position = 0; // Move to start (placeholder global index 0)
+            tokenToMove.position = 0; 
             setGameMessage(`${currentPlayerConfig.name} brought a token out! Still ${currentPlayerConfig.name}'s turn (rolled 6).`);
-            // Don't pass turn, player gets another roll due to 6
         } else if (tokenToMove.position >= 0 && tokenToMove.position < 200) {
-            // Simple move forward, no path checking yet
             const newPos = tokenToMove.position + roll;
-            if (newPos < MAIN_PATH_LENGTH) { // Stay on main path (simplified)
+            if (newPos < MAIN_PATH_LENGTH) { 
                  tokenToMove.position = newPos;
             } else {
-                // Placeholder for entering home stretch or reaching home
-                tokenToMove.position = 200; // Reached home (oversimplified)
+                tokenToMove.position = 200; 
                  setGameMessage(`${currentPlayerConfig.name} token reached home!`);
             }
            
@@ -195,38 +169,25 @@ export default function LudoPage() {
                 setTimeout(() => passTurn(), 1000);
             } else {
                  setGameMessage(`${currentPlayerConfig.name} moved token! Still ${currentPlayerConfig.name}'s turn (rolled 6).`);
-                // Don't pass turn, player gets another roll due to 6
             }
         } else {
-            // Cannot move this token with this roll (e.g. in base, not a 6)
             toast({variant: "destructive", title: "Cannot Move", description: "This token cannot make that move."});
-            return prevPlayers; // No change
+            return prevPlayers; 
         }
         return newPlayers;
     });
-    // setDiceValue(null); // Consume dice roll if not a 6
-    // if (roll !== 6) passTurn();
   };
 
-  // Placeholder function to get token display on the 15x15 grid
-  // This will become very complex with actual Ludo paths.
   const getTokenForCell = (cellIndex: number): Token | null => {
-    // Extremely simplified: just to show some tokens
     for (const player of players) {
       for (const token of player.tokens) {
-        // Example: if token position matches cellIndex (very naive for Ludo)
-        // Base positions (crude placeholder)
         if (token.position === -1) {
             const playerIdx = PLAYER_COLORS.indexOf(player.color);
-            // Crude base assignment for visual testing
-            if (playerIdx === 0 && cellIndex === 0 + token.id) return token; // Red base area TL
-            if (playerIdx === 1 && cellIndex === (BOARD_GRID_SIZE - 4) + token.id) return token; // Green base area TR
-            if (playerIdx === 2 && cellIndex === (BOARD_GRID_SIZE * (BOARD_GRID_SIZE-1) - 4) + token.id) return token; // Blue base area BL
-            if (playerIdx === 3 && cellIndex === (BOARD_GRID_SIZE * BOARD_GRID_SIZE - 4) + token.id ) return token; // Yellow base area BR
+            if (playerIdx === 0 && cellIndex === 0 + token.id) return token; 
+            if (playerIdx === 1 && cellIndex === (BOARD_GRID_SIZE - 4) + token.id) return token; 
+            if (playerIdx === 2 && cellIndex === (BOARD_GRID_SIZE * (BOARD_GRID_SIZE-1) - 4) + token.id) return token; 
+            if (playerIdx === 3 && cellIndex === (BOARD_GRID_SIZE * BOARD_GRID_SIZE - 4) + token.id ) return token; 
         }
-        // On-board position (even cruder placeholder)
-        // This needs a real mapping from token.position to a cellIndex based on Ludo paths
-        // For now, let's say if token.position is 10, it appears on cell 10 (top-left area)
         if (token.position !== -1 && token.position !== 200 && token.position === cellIndex) {
             return token;
         }
@@ -235,34 +196,23 @@ export default function LudoPage() {
     return null;
   };
   
-  // This function will determine the color of a square on the board.
-  // It's a placeholder and will need to be significantly expanded for a real Ludo board.
   const getCellBackgroundColor = (cellIndex: number): string => {
-    // Example: Color start squares or home areas. This is highly simplified.
-    // (row * BOARD_GRID_SIZE + col) can give cellIndex
     const row = Math.floor(cellIndex / BOARD_GRID_SIZE);
     const col = cellIndex % BOARD_GRID_SIZE;
 
-    // Placeholder for player "arms" of the Ludo board cross
-    // Red arm top (simplified)
     if ((col === 6 && row >=1 && row <=5) || (row === 6 && col >=1 && col <=5)) return PLAYER_CONFIG.red.baseClass + "/30";
-    // Green arm right (simplified)
     if ((row === 6 && col >=9 && col <=13) || (col === 8 && row >=1 && row <=5)) return PLAYER_CONFIG.green.baseClass + "/30";
-    // Yellow arm bottom (simplified)
-    if ((col === 8 && row >=9 && row <=13) || (row === 8 && col >=9 && col <=13)) return PLAYER_CONFIG.yellow.baseClass + "/30";
-    // Blue arm left (simplified)
+    if ((col === 8 && row >=9 && row <=13) || (row === 8 && col >=9 && col <=13)) return PLAYER_CONFIG.yellow.baseClass + "/30"; // This line had a slight duplication, corrected
     if ((row === 8 && col >=1 && col <=5) || (col === 6 && row >=9 && row <=13)) return PLAYER_CONFIG.blue.baseClass + "/30";
 
-    // Center home area (simplified)
     if (row >= 6 && row <= 8 && col >= 6 && col <= 8) return "bg-gray-300";
     
-    // Base areas (very simplified corners for now)
-    if (row < 2 && col < 2) return PLAYER_CONFIG.red.baseClass; // Red base (TL)
-    if (row < 2 && col > BOARD_GRID_SIZE - 3) return PLAYER_CONFIG.green.baseClass; // Green base (TR)
-    if (row > BOARD_GRID_SIZE - 3 && col < 2) return PLAYER_CONFIG.blue.baseClass; // Blue base (BL)
-    if (row > BOARD_GRID_SIZE - 3 && col > BOARD_GRID_SIZE - 3) return PLAYER_CONFIG.yellow.baseClass; // Yellow base (BR)
+    if (row < 2 && col < 2) return PLAYER_CONFIG.red.baseClass; 
+    if (row < 2 && col > BOARD_GRID_SIZE - 3) return PLAYER_CONFIG.green.baseClass; 
+    if (row > BOARD_GRID_SIZE - 3 && col < 2) return PLAYER_CONFIG.blue.baseClass; 
+    if (row > BOARD_GRID_SIZE - 3 && col > BOARD_GRID_SIZE - 3) return PLAYER_CONFIG.yellow.baseClass; 
 
-    return (row + col) % 2 === 0 ? "bg-slate-100" : "bg-slate-200"; // Default checkerboard
+    return (row + col) % 2 === 0 ? "bg-slate-100" : "bg-slate-200"; 
   };
 
 
@@ -278,7 +228,6 @@ export default function LudoPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="p-4 sm:p-6 flex flex-col lg:flex-row items-start gap-6">
-          {/* Game Board Area */}
           <div className="w-full lg:w-2/3 flex flex-col items-center">
             <div
                 className="grid gap-0.5 border-2 border-neutral-700 rounded overflow-hidden shadow-lg"
@@ -294,9 +243,8 @@ export default function LudoPage() {
                     className={cn(
                         "aspect-square flex items-center justify-center text-xs sm:text-sm",
                         cellBg,
-                        "border border-neutral-400/50" // Add subtle border to each cell
+                        "border border-neutral-400/50" 
                     )}
-                    // onClick={() => console.log(`Cell ${cellIndex} clicked`)} // For debugging path
                     >
                     {tokenOnCell ? (
                         <button
@@ -314,7 +262,7 @@ export default function LudoPage() {
                         {tokenOnCell.id + 1}
                         </button>
                     ) : (
-                        <span className="opacity-50"></span> // Placeholder for empty cell content like stars for safe spots
+                        <span className="opacity-50"></span> 
                     )}
                     </div>
                 );
@@ -325,7 +273,6 @@ export default function LudoPage() {
             </p>
           </div>
 
-          {/* Game Controls and Info Area */}
           <div className="w-full lg:w-1/3 space-y-6">
             <Card className="shadow-md">
               <CardHeader>
@@ -335,20 +282,20 @@ export default function LudoPage() {
               </CardHeader>
               <CardContent className="text-center space-y-4">
                 <div className="flex justify-center items-center h-20 w-20 mx-auto border-4 border-dashed border-accent rounded-lg bg-background shadow-inner">
-                  {diceValue && !isRolling ? (
-                    React.createElement(DICE_ICONS[diceValue - 1], { size: 60, className: "text-accent animate-bounce" })
-                  ) : isRolling ? (
-                     React.createElement(DICE_ICONS[Math.floor(Math.random()*6)], { size: 60, className: "text-muted-foreground animate-spin" })
-                  ) : (
+                  {isRolling && diceValue ? ( 
+                    React.createElement(DICE_ICONS[diceValue - 1], { size: 60, className: "text-muted-foreground animate-spin" })
+                  ) : !isRolling && diceValue ? ( 
+                    React.createElement(DICE_ICONS[diceValue - 1], { size: 60, className: "text-accent animate-gentle-bounce" })
+                  ) : ( 
                     <Dice6 size={60} className="text-muted-foreground opacity-50" />
                   )}
                 </div>
                 <Button
                   onClick={handleDiceRoll}
-                  disabled={isRolling || (!!diceValue && diceValue !== 6)} // Disable if dice already rolled and not a 6 allowing another roll
+                  disabled={isRolling || (!!diceValue && diceValue !== 6)} 
                   className="w-full bg-accent text-accent-foreground hover:bg-accent/90 text-lg py-3 shadow-lg"
                 >
-                  {isRolling ? "Rolling..." : (diceValue ? `Rolled ${diceValue}! Select Token` : "Roll Dice")}
+                  {isRolling ? "Rolling..." : (diceValue && roll !==6 ? `Rolled ${diceValue}! Select Token` : (diceValue && roll === 6 ? `Rolled ${diceValue}! Roll Again` : "Roll Dice"))}
                 </Button>
                 <p className="text-sm text-foreground/90 min-h-[40px]">{gameMessage}</p>
               </CardContent>
@@ -390,10 +337,4 @@ export default function LudoPage() {
   );
 }
 
-// CSS for simple dice roll animation (can be moved to globals.css or a style tag if preferred)
-// Add to globals.css or ensure Tailwind JIT picks up 'animate-bounce' and 'animate-spin'
-// @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
-// .animate-bounce { animation: bounce 0.5s ease-in-out; }
-// @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-// .animate-spin { animation: spin 1s linear infinite; }
-
+    
