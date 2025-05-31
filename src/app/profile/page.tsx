@@ -9,8 +9,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AVATARS } from "@/lib/constants";
-import { UserCircle, BarChart3, Settings, CheckCircle, LogIn, LogOut, UploadCloud, Edit3, User as UserIcon } from 'lucide-react';
+import { UserCircle, BarChart3, Settings, CheckCircle, LogIn, LogOut, UploadCloud, Edit3, User as UserIcon, Palette, Sun, Moon } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { 
@@ -26,6 +28,23 @@ import {
 } from '@/lib/firebase';
 import { ref as storageRef, uploadString, getDownloadURL } from 'firebase/storage';
 
+const THEME_OPTIONS = [
+  { value: 'light', label: 'Light Mode', Icon: Sun },
+  { value: 'dark', label: 'Dark Mode', Icon: Moon },
+];
+
+const FAVORITE_COLOR_OPTIONS = [
+  { value: 'default', label: 'Default Theme Accent' },
+  { value: 'red', label: 'Red' },
+  { value: 'green', label: 'Green' },
+  { value: 'blue', label: 'Blue' },
+  { value: 'yellow', label: 'Yellow' },
+  { value: 'pink', label: 'Pink' },
+  { value: 'purple', label: 'Purple' },
+  { value: 'orange', label: 'Orange' },
+  { value: 'teal', label: 'Teal' },
+];
+
 export default function ProfilePage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [editingUserName, setEditingUserName] = useState<string>("Kiddo");
@@ -34,12 +53,33 @@ export default function ProfilePage() {
   const { toast } = useToast();
   const [isUploading, setIsUploading] = useState(false);
 
+  const [theme, setTheme] = useState<string>('light');
+  const [favoriteColor, setFavoriteColor] = useState<string>('default');
+
+  useEffect(() => {
+    // Load theme from localStorage
+    const storedTheme = localStorage.getItem('theme');
+    if (storedTheme && (storedTheme === 'light' || storedTheme === 'dark')) {
+      setTheme(storedTheme);
+      if (storedTheme === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    }
+
+    // Load favorite color from localStorage
+    const storedColor = localStorage.getItem('favoriteColor');
+    if (storedColor) {
+      setFavoriteColor(storedColor);
+    }
+  }, []);
+
   useEffect(() => {
     const handleRedirectResult = async () => {
       try {
         const result = await getRedirectResult(auth);
         if (result) {
-          // User successfully signed in with redirect
           const user = result.user;
           toast({ title: "Logged In!", description: `Welcome back, ${user.displayName || 'User'}!` });
         }
@@ -64,7 +104,7 @@ export default function ProfilePage() {
     handleRedirectResult(); 
 
     return () => unsubscribe(); 
-  }, [toast]); // Added toast to dependency array
+  }, [toast]);
 
   const handleGoogleLogin = async () => {
     try {
@@ -79,7 +119,7 @@ export default function ProfilePage() {
     try {
       await firebaseSignOut(auth);
       toast({ title: "Logged Out", description: "You have been successfully logged out." });
-    } catch (error: any) { // Added missing opening brace
+    } catch (error: any) {
       console.error("Error during sign-out:", error);
       toast({ variant: "destructive", title: "Logout Failed", description: error.message || "Could not sign out. Please try again." });
     }
@@ -159,6 +199,24 @@ export default function ProfilePage() {
     }
   };
 
+  const handleThemeChange = (newTheme: string) => {
+    setTheme(newTheme);
+    localStorage.setItem('theme', newTheme);
+    if (newTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    toast({ title: "Theme Changed", description: `Switched to ${newTheme === 'dark' ? 'Dark' : 'Light'} Mode.` });
+  };
+
+  const handleFavoriteColorChange = (newColor: string) => {
+    setFavoriteColor(newColor);
+    localStorage.setItem('favoriteColor', newColor);
+    toast({ title: "Favorite Color Set", description: `Your favorite color is now ${FAVORITE_COLOR_OPTIONS.find(c => c.value === newColor)?.label || newColor}.` });
+  };
+
+
   const userNameDisplay = currentUser?.displayName || editingUserName || "Kiddo";
   const avatarDisplayUrl = selectedAvatar || currentUser?.photoURL || AVATARS[0]?.src || 'https://placehold.co/100x100.png';
 
@@ -201,7 +259,7 @@ export default function ProfilePage() {
         </CardContent>
         <CardFooter>
             <p className="text-xs text-muted-foreground">
-                User login is managed by Firebase. Avatars and display names are saved to your Firebase profile.
+                User login is managed by Firebase. Avatars and display names are saved to your Firebase profile. Theme and color preferences are saved locally.
             </p>
         </CardFooter>
       </Card>
@@ -231,7 +289,7 @@ export default function ProfilePage() {
           <TabsTrigger value="progress" className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground" disabled={!currentUser}>
             <BarChart3 className="mr-2 h-5 w-5" /> Progress
           </TabsTrigger>
-          <TabsTrigger value="settings" className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground" disabled={!currentUser}>
+          <TabsTrigger value="settings" className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
             <Settings className="mr-2 h-5 w-5" /> Preferences
           </TabsTrigger>
         </TabsList>
@@ -323,10 +381,60 @@ export default function ProfilePage() {
               <CardTitle>Preferences</CardTitle>
               <CardDescription>Customize your Shravya Playhouse experience.</CardDescription>
             </CardHeader>
-            <CardContent className="text-center py-12">
-              <Settings size={64} className="mx-auto text-primary/50 mb-4" />
-              <p className="text-lg text-muted-foreground">Preference settings are under development.</p>
-              <p className="text-sm text-muted-foreground">Soon you'll be able to adjust sound, themes, and more!</p>
+            <CardContent className="space-y-8 pt-6">
+              {/* Theme Selection */}
+              <div className="space-y-3">
+                <Label className="text-lg font-medium flex items-center">
+                  <Palette className="mr-2 h-5 w-5 text-primary" /> App Theme
+                </Label>
+                <RadioGroup
+                  value={theme}
+                  onValueChange={handleThemeChange}
+                  className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+                >
+                  {THEME_OPTIONS.map((option) => (
+                    <Label
+                      key={option.value}
+                      htmlFor={`theme-${option.value}`}
+                      className={cn(
+                        "flex items-center space-x-2 rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground cursor-pointer",
+                        theme === option.value && "border-primary ring-2 ring-primary"
+                      )}
+                    >
+                      <RadioGroupItem value={option.value} id={`theme-${option.value}`} className="sr-only peer" />
+                      <option.Icon className="h-6 w-6 text-muted-foreground peer-checked:text-primary" />
+                      <span className="font-medium peer-checked:text-primary">{option.label}</span>
+                    </Label>
+                  ))}
+                </RadioGroup>
+              </div>
+
+              {/* Favorite Color Selection */}
+              <div className="space-y-3">
+                <Label htmlFor="favoriteColor" className="text-lg font-medium flex items-center">
+                  <Palette className="mr-2 h-5 w-5 text-primary" /> Favorite Color
+                </Label>
+                <Select value={favoriteColor} onValueChange={handleFavoriteColorChange}>
+                  <SelectTrigger id="favoriteColor" className="w-full sm:w-[280px] text-base">
+                    <SelectValue placeholder="Select a color" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {FAVORITE_COLOR_OPTIONS.map((colorOption) => (
+                      <SelectItem key={colorOption.value} value={colorOption.value} className="text-base">
+                        <div className="flex items-center">
+                          {colorOption.value !== 'default' && (
+                            <span className="w-4 h-4 rounded-full mr-2" style={{ backgroundColor: colorOption.value === 'sky' ? '#87CEEB' : colorOption.value }}></span>
+                          )}
+                          {colorOption.label}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  This color preference is saved locally. It might be used for UI highlights in the future.
+                </p>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -335,3 +443,5 @@ export default function ProfilePage() {
   );
 }
 
+
+    
