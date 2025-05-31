@@ -28,7 +28,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head><meta name="theme-color" content="#87CEEB" /></head>
-      <body className={`${inter.variable} font-sans antialiased`}>
+      <body className={`${inter.variable} font-sans antialiased`} suppressHydrationWarning={true}>
         <MainLayout>
           {children}
         </MainLayout>
