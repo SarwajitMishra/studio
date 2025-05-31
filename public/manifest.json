@@ -1,8 +1,8 @@
 
 {
   "name": "Shravya Playhouse",
-  "short_name": "Playhouse",
-  "description": "Fun and educational games for kids at Shravya Playhouse!",
+  "short_name": "ShravyaPlay",
+  "description": "A collection of fun and educational games designed specifically for children, including strategy games like Chess, engaging Jigsaw Puzzles, Memory Match games to boost recall, and interactive Number Puzzles for learning math.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#E0F0FB",

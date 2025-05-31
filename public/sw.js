@@ -3,8 +3,10 @@
 const CACHE_NAME = 'shravya-playhouse-cache-v1';
 const urlsToCache = [
   '/',
+  '/index.html',
+  '/css/style.css', // Note: This is a placeholder, replace with actual CSS path if different
+  '/js/main.js', // Note: This is a placeholder, replace with actual JS path if different
   // Add paths to essential static assets that are not versioned by Next.js in their names
-  // For a robust PWA with Next.js, consider using a package like next-pwa
   // which handles caching of Next.js's build outputs (hashed JS/CSS files) automatically.
 ];
 

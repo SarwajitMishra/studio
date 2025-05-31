@@ -1,6 +1,5 @@
-
 import type { LucideIcon } from 'lucide-react';
-import { HomeIcon, LayoutGrid, Puzzle, BookOpen, UserCircle, Settings, BarChart3, Zap, Apple, Banana, Cherry, Grape, Carrot, Pizza, CakeSlice, IceCream2 } from 'lucide-react';
+import { HomeIcon, LayoutGrid, Puzzle, BookOpen, UserCircle, Settings, BarChart3, Zap, Apple, Banana, Cherry, Grape, Carrot, Pizza, CakeSlice, IceCream2, Swords } from 'lucide-react';
 
 export type GameCategory = 'Strategy' | 'Puzzles' | 'Learning';
 
@@ -12,6 +11,7 @@ export interface Game {
   description: string;
   href: string;
   color?: string; // Optional color for the card or icon
+  imageUrl?: string; // Optional image URL for the icon
 }
 
 export const GAMES: Game[] = [
@@ -19,10 +19,20 @@ export const GAMES: Game[] = [
     id: 'chess',
     title: 'Chess',
     category: 'Strategy',
-    Icon: LayoutGrid,
+    Icon: LayoutGrid, // Using a generic board game icon for Chess
     description: 'Classic strategy board game. Sharpen your mind!',
     href: '/chess',
-    color: 'text-sky-600', // Example color
+    color: 'text-sky-600', 
+  },
+  {
+    id: 'ludo',
+    title: 'Ludo',
+    category: 'Strategy',
+    Icon: Swords, // Using Swords as a generic game icon, LayoutGrid might be better if more generic board needed
+    description: 'Classic board game for 2-4 players. Roll the dice and race your tokens home!',
+    href: '/ludo',
+    color: 'text-emerald-600',
+    // imageUrl: '/icons/ludo-icon.png', // If you have this image, place in public/icons/
   },
   {
     id: 'jigsaw',
@@ -30,16 +40,16 @@ export const GAMES: Game[] = [
     category: 'Puzzles',
     Icon: Puzzle,
     description: 'Piece together beautiful images. Fun for all ages!',
-    href: '/puzzles#jigsaw', // Link to section within puzzles page
+    href: '/puzzles#jigsaw', 
     color: 'text-purple-600',
   },
   {
     id: 'memory-match',
     title: 'Memory Match',
     category: 'Puzzles',
-    Icon: Zap, // Using Zap for quick thinking / memory
+    Icon: Zap, 
     description: 'Test your memory by matching pairs of cards.',
-    href: '/puzzles/memory', // Updated link
+    href: '/puzzles/memory', 
     color: 'text-pink-600',
   },
   {
@@ -59,7 +69,7 @@ export interface PuzzleType {
   Icon: LucideIcon;
   description: string;
   color?: string;
-  href?: string; // Make href optional or ensure all puzzles have one if linked
+  href?: string; 
   disabled?: boolean;
 }
 
@@ -70,7 +80,7 @@ export const PUZZLE_TYPES: PuzzleType[] = [
     Icon: Puzzle, 
     description: 'Assemble pieces to form a picture. Drag and drop to solve!',
     color: 'text-purple-600',
-    href: '/puzzles/jigsaw', // Assuming a future page
+    href: '/puzzles/jigsaw', 
     disabled: true,
   },
   { 
@@ -80,7 +90,7 @@ export const PUZZLE_TYPES: PuzzleType[] = [
     description: 'Find matching pairs of cards. Click to reveal!',
     color: 'text-pink-600',
     href: '/puzzles/memory',
-    disabled: false, // Enable this puzzle
+    disabled: false, 
   },
   { 
     id: 'numbers', 
@@ -88,7 +98,7 @@ export const PUZZLE_TYPES: PuzzleType[] = [
     Icon: BookOpen, 
     description: 'Solve math and logic puzzles. Learn while you play!',
     color: 'text-green-600',
-    href: '/puzzles/numbers', // Assuming a future page
+    href: '/puzzles/numbers',
     disabled: true,
   },
 ];
@@ -111,6 +121,7 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { href: '/', label: 'Games', Icon: HomeIcon },
   { href: '/chess', label: 'Chess', Icon: LayoutGrid },
+  { href: '/ludo', label: 'Ludo', Icon: Swords }, // Added Ludo to Nav
   { href: '/puzzles', label: 'Puzzles', Icon: Puzzle },
   { href: '/profile', label: 'Profile', Icon: UserCircle },
 ];
@@ -119,3 +130,4 @@ export const NAV_ITEMS: NavItem[] = [
 export const MEMORY_ICONS: LucideIcon[] = [
   Apple, Banana, Cherry, Grape, Carrot, Pizza, CakeSlice, IceCream2
 ];
+
