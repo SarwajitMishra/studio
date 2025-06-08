@@ -17,16 +17,16 @@ import { AVATARS, GAMES, type GameCategory } from "@/lib/constants";
 import { UserCircle, BarChart3, Settings, CheckCircle, LogIn, LogOut, UploadCloud, Edit3, User as UserIcon, Palette, Sun, Moon, Brain, ToyBrick, BookOpen, Trophy } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { 
-  auth, 
-  storage, 
+import {
+  auth,
+  storage,
   getRedirectResult,
-  googleProvider, 
+  googleProvider,
   signInWithRedirect,
-  signOut as firebaseSignOut, 
-  onAuthStateChanged, 
+  signOut as firebaseSignOut,
+  onAuthStateChanged,
   updateProfile,
-  type User 
+  type User
 } from '@/lib/firebase';
 import type { LucideIcon } from 'lucide-react';
 import { ref as storageRef, uploadString, getDownloadURL } from 'firebase/storage';
@@ -54,14 +54,26 @@ const LOCAL_STORAGE_PROGRESS_DATA_KEY = 'shravyaPlayhouse_progressData';
 const DEFAULT_AVATAR_SRC = AVATARS[0]?.src || '/images/avatars/modern_girl.png';
 const DEFAULT_USER_NAME = "Kiddo";
 
-const getProgressData = (): Array<{name: GameCategory; value: number; Icon: LucideIcon}> => {
+const categoryIconsMap: Record<GameCategory, LucideIcon> = {
+  'Strategy': Brain,
+  'Puzzles': ToyBrick,
+  'Learning': BookOpen,
+};
+
+interface ProgressDataItem {
+  name: GameCategory;
+  value: number;
+  iconKey: GameCategory; // Store a key instead of the component itself
+}
+
+const getProgressData = (): ProgressDataItem[] => {
   const categories: GameCategory[] = ['Strategy', 'Puzzles', 'Learning'];
   const progressValues: Record<GameCategory, number> = {
     'Strategy': 0,
     'Puzzles': 0,
     'Learning': 0,
   };
-  
+
   const gamesByCategory = GAMES.reduce((acc, game) => {
     if (!acc[game.category]) acc[game.category] = [];
     acc[game.category].push(game.id);
@@ -75,7 +87,7 @@ const getProgressData = (): Array<{name: GameCategory; value: number; Icon: Luci
   return categories.map(category => ({
     name: category,
     value: progressValues[category],
-    Icon: category === 'Strategy' ? Brain : category === 'Puzzles' ? ToyBrick : BookOpen,
+    iconKey: category, // Use category name as the key to lookup the icon later
   }));
 };
 
@@ -90,7 +102,7 @@ export default function ProfilePage() {
 
   const [theme, setTheme] = useState<string>('light');
   const [favoriteColor, setFavoriteColor] = useState<string>('default');
-  const [progressData, setProgressData] = useState(getProgressData()); // Initialize with default
+  const [progressData, setProgressData] = useState<ProgressDataItem[]>([]);
   const [showLoginWarningDialog, setShowLoginWarningDialog] = useState(false);
 
 
@@ -120,8 +132,8 @@ export default function ProfilePage() {
     const storedProgress = localStorage.getItem(LOCAL_STORAGE_PROGRESS_DATA_KEY);
     if (storedProgress) {
       try {
-        const parsedProgress = JSON.parse(storedProgress);
-        if (Array.isArray(parsedProgress) && parsedProgress.length > 0 && parsedProgress[0]?.name && parsedProgress[0]?.Icon) {
+        const parsedProgress = JSON.parse(storedProgress) as ProgressDataItem[];
+        if (Array.isArray(parsedProgress) && parsedProgress.length > 0 && parsedProgress[0]?.name && parsedProgress[0]?.iconKey) {
             setProgressData(parsedProgress);
         } else {
             throw new Error("Invalid stored progress format");
@@ -149,18 +161,18 @@ export default function ProfilePage() {
 
       if (user) { // User is LOGGED IN
         setCurrentUser(user);
-        const firebaseDisplayName = user.displayName || editingUserName;
+        const firebaseDisplayName = user.displayName || localStorage.getItem(LOCAL_STORAGE_USER_NAME_KEY) || DEFAULT_USER_NAME;
         setEditingUserName(firebaseDisplayName);
         localStorage.setItem(LOCAL_STORAGE_USER_NAME_KEY, firebaseDisplayName);
 
-        const firebasePhotoURL = user.photoURL || selectedAvatar;
+        const firebasePhotoURL = user.photoURL || localStorage.getItem(LOCAL_STORAGE_AVATAR_KEY) || DEFAULT_AVATAR_SRC;
         setSelectedAvatar(firebasePhotoURL);
         localStorage.setItem(LOCAL_STORAGE_AVATAR_KEY, firebasePhotoURL);
-        
+
         const onlineProgress = getProgressData(); // Simulate fetching/generating "online" progress
         setProgressData(onlineProgress);
         localStorage.setItem(LOCAL_STORAGE_PROGRESS_DATA_KEY, JSON.stringify(onlineProgress));
-        
+
         if (isNewLoginEvent) {
           toast({ title: "Logged In!", description: `Welcome back, ${user.displayName || 'User'}!` });
         }
@@ -171,8 +183,8 @@ export default function ProfilePage() {
         const storedProgress = localStorage.getItem(LOCAL_STORAGE_PROGRESS_DATA_KEY);
         if (storedProgress) {
           try {
-            const parsedProgress = JSON.parse(storedProgress);
-             if (Array.isArray(parsedProgress) && parsedProgress.length > 0 && parsedProgress[0]?.name && parsedProgress[0]?.Icon) {
+            const parsedProgress = JSON.parse(storedProgress) as ProgressDataItem[];
+             if (Array.isArray(parsedProgress) && parsedProgress.length > 0 && parsedProgress[0]?.name && parsedProgress[0]?.iconKey) {
                 setProgressData(parsedProgress);
             } else { throw new Error("Invalid stored progress format on logout"); }
           } catch (e) {
@@ -182,7 +194,6 @@ export default function ProfilePage() {
             localStorage.setItem(LOCAL_STORAGE_PROGRESS_DATA_KEY, JSON.stringify(newProgress));
           }
         } else {
-          // Should ideally not happen if initial useEffect ran, but as a fallback:
           const newProgress = getProgressData();
           setProgressData(newProgress);
           localStorage.setItem(LOCAL_STORAGE_PROGRESS_DATA_KEY, JSON.stringify(newProgress));
@@ -193,12 +204,15 @@ export default function ProfilePage() {
     const processRedirect = async () => {
         try {
             const result = await getRedirectResult(auth);
-            // `onAuthStateChanged` will handle the user update if `result.user` is present.
-            // This call mainly checks for errors or performs pre-auth-state-change logic.
-            if (result && result.user) {
-                // The actual update to currentUser and other states will be done by onAuthStateChanged
-                // to ensure a single flow. We can use this spot for a toast if needed,
-                // but handleUserUpdate in onAuthStateChanged is better for that.
+            if (result && result.user && isMounted) {
+                // Data will be handled by onAuthStateChanged.
+                // We can pre-populate here if needed for quicker UI update, but onAuthStateChanged is the source of truth.
+                const user = result.user;
+                const firebaseDisplayName = user.displayName || localStorage.getItem(LOCAL_STORAGE_USER_NAME_KEY) || DEFAULT_USER_NAME;
+                setEditingUserName(firebaseDisplayName);
+
+                const firebasePhotoURL = user.photoURL || localStorage.getItem(LOCAL_STORAGE_AVATAR_KEY) || DEFAULT_AVATAR_SRC;
+                setSelectedAvatar(firebasePhotoURL);
             }
         } catch (error: any) {
             if (isMounted) {
@@ -219,7 +233,7 @@ export default function ProfilePage() {
       isMounted = false;
       unsubscribe();
     };
-  }, [toast, currentUser, editingUserName, selectedAvatar]); // Added editingUserName and selectedAvatar to ensure they are latest when used as fallback
+  }, [toast, currentUser]);
 
 
   const handleUserNameChange = (name: string) => {
@@ -238,7 +252,6 @@ export default function ProfilePage() {
   const actualSignInWithGoogle = async () => {
     try {
       await signInWithRedirect(auth, googleProvider);
-      // Post-login state updates (name, avatar, progress) are handled by onAuthStateChanged
     } catch (error: any) {
       console.error("Error during Google sign-in:", error);
       toast({ variant: "destructive", title: "Login Failed", description: error.message || "Could not sign in with Google. Please try again." });
@@ -257,7 +270,6 @@ export default function ProfilePage() {
   const handleLogout = async () => {
     try {
       await firebaseSignOut(auth);
-      // currentUser will be set to null by onAuthStateChanged, triggering local data reload for progress
       toast({ title: "Logged Out", description: "You have been successfully logged out." });
     } catch (error: any)      {
       console.error("Error during sign-out:", error);
@@ -276,14 +288,14 @@ export default function ProfilePage() {
     }
     try {
       await updateProfile(currentUser, { displayName: editingUserName });
-      localStorage.setItem(LOCAL_STORAGE_USER_NAME_KEY, editingUserName); 
+      localStorage.setItem(LOCAL_STORAGE_USER_NAME_KEY, editingUserName);
       toast({ title: "Username Updated!", description: `Your display name is now ${editingUserName}.` });
     } catch (error: any) {
       console.error("Error updating username:", error);
       toast({ variant: "destructive", title: "Update Failed", description: error.message || "Could not update username." });
     }
   };
-  
+
   const handleAvatarFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -298,7 +310,7 @@ export default function ProfilePage() {
       const reader = new FileReader();
       reader.onloadend = () => {
         const newAvatarDataUrl = reader.result as string;
-        handleSelectedAvatarChange(newAvatarDataUrl); 
+        handleSelectedAvatarChange(newAvatarDataUrl);
       };
       reader.readAsDataURL(file);
     }
@@ -309,7 +321,7 @@ export default function ProfilePage() {
       toast({ variant: "destructive", title: "Not Logged In", description: "Please log in to save your avatar." });
       return;
     }
-    
+
     if (!selectedAvatar) {
         toast({ variant: "destructive", title: "No Avatar Selected", description: "Please select or upload an avatar." });
         return;
@@ -325,17 +337,17 @@ export default function ProfilePage() {
     try {
       let photoURLToSave = selectedAvatar;
 
-      if (isDataUrl) { 
+      if (isDataUrl) {
         const avatarPath = `avatars/${currentUser.uid}/profileImage.png`;
         const imageRef = storageRef(storage, avatarPath);
-        
+
         await uploadString(imageRef, selectedAvatar, 'data_url');
         photoURLToSave = await getDownloadURL(imageRef);
       }
-      
+
       await updateProfile(currentUser, { photoURL: photoURLToSave });
-      localStorage.setItem(LOCAL_STORAGE_AVATAR_KEY, photoURLToSave); 
-      setSelectedAvatar(photoURLToSave); // Ensure state reflects the saved URL
+      localStorage.setItem(LOCAL_STORAGE_AVATAR_KEY, photoURLToSave);
+      setSelectedAvatar(photoURLToSave);
       toast({ title: "Avatar Saved!", description: "Your new avatar has been saved to your profile." });
 
     } catch (error: any) {
@@ -362,7 +374,7 @@ export default function ProfilePage() {
     localStorage.setItem('favoriteColor', newColor);
     toast({ title: "Favorite Color Set", description: `Your favorite color is now ${FAVORITE_COLOR_OPTIONS.find(c => c.value === newColor)?.label || newColor}.` });
   };
-  
+
   const isSaveNameDisabled = !currentUser || isUploading || editingUserName === (currentUser?.displayName);
   const isSaveAvatarDisabled = !currentUser || isUploading || (selectedAvatar === (currentUser?.photoURL) && !selectedAvatar?.startsWith('data:image'));
 
@@ -375,7 +387,7 @@ export default function ProfilePage() {
           <CardDescription>Manage your login status and username. Changes are saved locally and can be synced to your profile when logged in.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          
+
           <div className="flex items-center gap-3">
             <Label htmlFor="username" className="text-base">Display Name:</Label>
             <Input
@@ -495,8 +507,8 @@ export default function ProfilePage() {
                   id="avatar-upload"
                   disabled={isUploading}
                 />
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={() => avatarFileInputRef.current?.click()}
                   className="w-full sm:w-auto"
                   disabled={isUploading}
@@ -505,7 +517,7 @@ export default function ProfilePage() {
                 </Button>
                 <p className="text-xs text-muted-foreground mt-2">Max file size: 2MB. PNG, JPG, GIF accepted. Avatar is saved locally.</p>
               </div>
-              
+
               <Button onClick={handleSaveAvatar} className="w-full sm:w-auto bg-accent text-accent-foreground hover:bg-accent/90 mt-4" disabled={isSaveAvatarDisabled}>
                 {isUploading ? "Saving..." : "Save to Profile"}
               </Button>
@@ -525,21 +537,24 @@ export default function ProfilePage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6 pt-4">
-              {progressData.map((categoryProgress) => (
-                <div key={categoryProgress.name}>
-                  <div className="flex justify-between items-center mb-1">
-                    <Label htmlFor={`progress-${categoryProgress.name.toLowerCase()}`} className="text-base font-medium flex items-center">
-                      <categoryProgress.Icon className="mr-2 h-5 w-5 text-muted-foreground" />
-                      {categoryProgress.name}
-                    </Label>
-                    <span className="text-sm font-semibold text-primary">{categoryProgress.value}%</span>
+              {progressData.map((categoryProgress) => {
+                const IconComponent = categoryIconsMap[categoryProgress.iconKey];
+                return (
+                  <div key={categoryProgress.name}>
+                    <div className="flex justify-between items-center mb-1">
+                      <Label htmlFor={`progress-${categoryProgress.name.toLowerCase()}`} className="text-base font-medium flex items-center">
+                        {IconComponent && <IconComponent className="mr-2 h-5 w-5 text-muted-foreground" />}
+                        {categoryProgress.name}
+                      </Label>
+                      <span className="text-sm font-semibold text-primary">{categoryProgress.value}%</span>
+                    </div>
+                    <Progress id={`progress-${categoryProgress.name.toLowerCase()}`} value={categoryProgress.value} className="w-full h-3" />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Current activity level in {categoryProgress.name.toLowerCase()} games.
+                    </p>
                   </div>
-                  <Progress id={`progress-${categoryProgress.name.toLowerCase()}`} value={categoryProgress.value} className="w-full h-3" />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Current activity level in {categoryProgress.name.toLowerCase()} games.
-                  </p>
-                </div>
-              ))}
+                );
+              })}
               <div className="text-center pt-4">
                 <BarChart3 size={48} className="mx-auto text-primary/30 mb-3" />
                 <p className="text-md text-foreground/90">
@@ -636,3 +651,5 @@ export default function ProfilePage() {
     </div>
   );
 }
+
+    
