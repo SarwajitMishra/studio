@@ -1,6 +1,6 @@
 
 import type { LucideIcon } from 'lucide-react';
-import { HomeIcon, LayoutGrid, Puzzle, BookOpen, UserCircle, Settings, BarChart3, Zap, Apple, Banana, Cherry, Grape, Carrot, Pizza, CakeSlice, IceCream2, Swords } from 'lucide-react';
+import { HomeIcon, LayoutGrid, Puzzle, BookOpen, UserCircle, Settings, BarChart3, Zap, Apple, Banana, Cherry, Grape, Carrot, Pizza, CakeSlice, IceCream2, Swords, Bot } from 'lucide-react';
 
 export type GameCategory = 'Strategy' | 'Puzzles' | 'Learning';
 
@@ -23,7 +23,7 @@ export const GAMES: Game[] = [
     Icon: LayoutGrid, // Using a generic board game icon for Chess
     description: 'Classic strategy board game. Sharpen your mind!',
     href: '/chess',
-    color: 'text-sky-600', 
+    color: 'text-sky-600',
   },
   {
     id: 'ludo',
@@ -48,9 +48,9 @@ export const GAMES: Game[] = [
     id: 'memory-match',
     title: 'Memory Match',
     category: 'Puzzles',
-    Icon: Zap, 
+    Icon: Zap,
     description: 'Test your memory by matching pairs of cards.',
-    href: '/puzzles/memory', 
+    href: '/puzzles/memory',
     color: 'text-pink-600',
   },
   {
@@ -70,33 +70,33 @@ export interface PuzzleType {
   Icon: LucideIcon;
   description: string;
   color?: string;
-  href?: string; 
+  href?: string;
   disabled?: boolean;
 }
 
 export const PUZZLE_TYPES: PuzzleType[] = [
-  { 
-    id: 'jigsaw', 
-    name: 'Jigsaw Puzzles', 
-    Icon: Puzzle, 
+  {
+    id: 'jigsaw',
+    name: 'Jigsaw Puzzles',
+    Icon: Puzzle,
     description: 'Assemble pieces to form a picture. Drag and drop to solve!',
     color: 'text-purple-600',
-    href: '/puzzles/jigsaw', 
+    href: '/puzzles/jigsaw',
     disabled: false, // Enabled
   },
-  { 
-    id: 'memory', 
-    name: 'Memory Match', 
-    Icon: Zap, 
+  {
+    id: 'memory',
+    name: 'Memory Match',
+    Icon: Zap,
     description: 'Find matching pairs of cards. Click to reveal!',
     color: 'text-pink-600',
     href: '/puzzles/memory',
-    disabled: false, 
+    disabled: false,
   },
-  { 
-    id: 'numbers', 
-    name: 'Number Puzzles', 
-    Icon: BookOpen, 
+  {
+    id: 'numbers',
+    name: 'Number Puzzles',
+    Icon: BookOpen,
     description: 'Solve math and logic puzzles. Learn while you play!',
     color: 'text-green-600',
     href: '/puzzles/numbers',
@@ -109,12 +109,12 @@ export const PUZZLE_TYPES: PuzzleType[] = [
 // 2. Place your avatar images (e.g., avatar_sun.png, avatar_robot.png) in this folder.
 // 3. Update the `src`, `alt`, and `hint` properties below to match your actual image files and desired descriptions.
 export const AVATARS: { src: string; alt: string; hint: string }[] = [
-  { src: '/images/avatars/african_girl.png', alt: 'African girl avatar', hint: 'african girl' },
-  { src: '/images/avatars/african_women.png', alt: 'African women avatar', hint: 'african women' },
-  { src: '/images/avatars/indian_boy.png', alt: 'Indian boy avatar', hint: 'indian boy' },
-  { src: '/images/avatars/indian_girl.png', alt: 'Indian girl avatar', hint: 'indian girl' },
-  { src: '/images/avatars/indian_man.png', alt: 'Indian man avatar', hint: 'indian man' },
-  { src: '/images/avatars/modern_girl.png', alt: 'Modern girl avatar', hint: 'modern girl' },
+  { src: '/images/avatars/avatar_sun.png', alt: 'Sun avatar', hint: 'sun happy' },
+  { src: '/images/avatars/avatar_robot.png', alt: 'Robot avatar', hint: 'robot friendly' },
+  { src: '/images/avatars/avatar_star.png', alt: 'Star avatar', hint: 'star cute' },
+  { src: '/images/avatars/avatar_cat.png', alt: 'Cat avatar', hint: 'cat playful' },
+  { src: '/images/avatars/avatar_dog.png', alt: 'Dog avatar', hint: 'dog loyal' },
+  { src: '/images/avatars/avatar_alien.png', alt: 'Alien avatar', hint: 'alien space' },
 ];
 
 export interface NavItem {
@@ -128,6 +128,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/chess', label: 'Chess', Icon: LayoutGrid },
   { href: '/ludo', label: 'Ludo', Icon: Swords }, // Added Ludo to Nav
   { href: '/puzzles', label: 'Puzzles', Icon: Puzzle },
+  { href: '/shravya-ai', label: 'Shravya AI', Icon: Bot },
   { href: '/profile', label: 'Profile', Icon: UserCircle },
 ];
 
