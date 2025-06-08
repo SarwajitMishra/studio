@@ -48,7 +48,7 @@ const FAVORITE_COLOR_OPTIONS = [
 export default function ProfilePage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [editingUserName, setEditingUserName] = useState<string>("Kiddo");
-  const [selectedAvatar, setSelectedAvatar] = useState<string | null>(null);
+  const [selectedAvatar, setSelectedAvatar] = useState<string | null>(AVATARS[0]?.src || 'https://placehold.co/100x100.png');
   const avatarFileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const [isUploading, setIsUploading] = useState(false);
@@ -57,7 +57,6 @@ export default function ProfilePage() {
   const [favoriteColor, setFavoriteColor] = useState<string>('default');
 
   useEffect(() => {
-    // Load theme from localStorage
     const storedTheme = localStorage.getItem('theme');
     if (storedTheme && (storedTheme === 'light' || storedTheme === 'dark')) {
       setTheme(storedTheme);
@@ -68,7 +67,6 @@ export default function ProfilePage() {
       }
     }
 
-    // Load favorite color from localStorage
     const storedColor = localStorage.getItem('favoriteColor');
     if (storedColor) {
       setFavoriteColor(storedColor);
@@ -76,11 +74,24 @@ export default function ProfilePage() {
   }, []);
 
   useEffect(() => {
+    const handleUserUpdate = (user: User | null) => {
+      if (user) {
+        setCurrentUser(user);
+        setEditingUserName(user.displayName || "Kiddo"); 
+        setSelectedAvatar(user.photoURL || AVATARS[0]?.src || 'https://placehold.co/100x100.png');
+      } else {
+        setCurrentUser(null);
+        setEditingUserName("Kiddo");
+        setSelectedAvatar(AVATARS[0]?.src || 'https://placehold.co/100x100.png');
+      }
+    };
+
     const handleRedirectResult = async () => {
       try {
         const result = await getRedirectResult(auth);
-        if (result) {
+        if (result && result.user) {
           const user = result.user;
+          handleUserUpdate(user); // Populate state from redirect result
           toast({ title: "Logged In!", description: `Welcome back, ${user.displayName || 'User'}!` });
         }
       } catch (error: any) {
@@ -89,22 +100,14 @@ export default function ProfilePage() {
       }
     };
 
+    handleRedirectResult(); // Process redirect result on mount
+
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        setCurrentUser(user);
-        setEditingUserName(user.displayName || ""); 
-        setSelectedAvatar(user.photoURL || AVATARS[0]?.src || 'https://placehold.co/100x100.png');
-      } else {
-        setCurrentUser(null);
-        setEditingUserName("Kiddo");
-        setSelectedAvatar(AVATARS[0]?.src || 'https://placehold.co/100x100.png');
-      }
+      handleUserUpdate(user); // Populate/clear state based on auth changes
     });
 
-    handleRedirectResult(); 
-
     return () => unsubscribe(); 
-  }, [toast]);
+  }, [toast]); // auth, AVATARS are stable, state setters are stable
 
   const handleGoogleLogin = async () => {
     try {
@@ -119,6 +122,7 @@ export default function ProfilePage() {
     try {
       await firebaseSignOut(auth);
       toast({ title: "Logged Out", description: "You have been successfully logged out." });
+      // State updates will be handled by onAuthStateChanged
     } catch (error: any) {
       console.error("Error during sign-out:", error);
       toast({ variant: "destructive", title: "Logout Failed", description: error.message || "Could not sign out. Please try again." });
@@ -136,7 +140,10 @@ export default function ProfilePage() {
     }
     try {
       await updateProfile(currentUser, { displayName: editingUserName });
-      setCurrentUser(auth.currentUser); 
+      // Refresh currentUser to get the latest profile from auth object
+      if (auth.currentUser) {
+         setCurrentUser(auth.currentUser); // This will trigger re-render with updated info
+      }
       toast({ title: "Username Updated!", description: `Your display name is now ${editingUserName}.` });
     } catch (error: any) {
       console.error("Error updating username:", error);
@@ -169,16 +176,29 @@ export default function ProfilePage() {
       toast({ variant: "destructive", title: "Not Logged In", description: "Please log in to save your avatar." });
       return;
     }
-    if (!selectedAvatar) {
-      toast({ variant: "destructive", title: "No Avatar", description: "No avatar selected to save." });
-      return;
+    if (!selectedAvatar || selectedAvatar === (currentUser.photoURL || AVATARS[0]?.src || 'https://placehold.co/100x100.png') && !selectedAvatar.startsWith('data:image')) {
+      // Avoid saving if selectedAvatar is the current photoURL and not a new data URI
+      // This can happen if user clicks an avatar, then clicks "Save Avatar" without changes
+      // or if selectedAvatar is just a placeholder.
+      // Allow saving if it's a data URI (new upload) or genuinely different.
+      const isDataUrl = selectedAvatar.startsWith('data:image');
+      if(!isDataUrl && selectedAvatar === currentUser.photoURL) {
+        toast({ title: "No Change", description: "Avatar is already up to date." });
+        return;
+      }
+       if(!isDataUrl && !currentUser.photoURL && selectedAvatar === (AVATARS[0]?.src || 'https://placehold.co/100x100.png')) {
+        toast({ title: "No Change", description: "Please select or upload a new avatar." });
+        return;
+      }
     }
+
 
     setIsUploading(true);
     try {
       let photoURLToSave = selectedAvatar;
 
-      if (selectedAvatar.startsWith('data:image')) { 
+      // Only upload to storage if it's a new base64 image
+      if (selectedAvatar && selectedAvatar.startsWith('data:image')) { 
         const avatarPath = `avatars/${currentUser.uid}/profileImage.png`;
         const imageRef = storageRef(storage, avatarPath);
         
@@ -187,8 +207,11 @@ export default function ProfilePage() {
       }
       
       await updateProfile(currentUser, { photoURL: photoURLToSave });
-      setCurrentUser(auth.currentUser); 
-      setSelectedAvatar(photoURLToSave); 
+      // Refresh currentUser and selectedAvatar
+      if (auth.currentUser) {
+        setCurrentUser(auth.currentUser); 
+        setSelectedAvatar(auth.currentUser.photoURL || AVATARS[0]?.src || 'https://placehold.co/100x100.png'); 
+      }
       toast({ title: "Avatar Saved!", description: "Your new avatar has been saved." });
 
     } catch (error: any) {
@@ -216,10 +239,8 @@ export default function ProfilePage() {
     toast({ title: "Favorite Color Set", description: `Your favorite color is now ${FAVORITE_COLOR_OPTIONS.find(c => c.value === newColor)?.label || newColor}.` });
   };
 
-
   const userNameDisplay = currentUser?.displayName || editingUserName || "Kiddo";
   const avatarDisplayUrl = selectedAvatar || currentUser?.photoURL || AVATARS[0]?.src || 'https://placehold.co/100x100.png';
-
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
@@ -242,7 +263,7 @@ export default function ProfilePage() {
                   className="max-w-xs text-base"
                   aria-label="Edit display name"
                 />
-                <Button onClick={handleUserNameSave} size="sm" variant="outline" disabled={!currentUser || isUploading}>
+                <Button onClick={handleUserNameSave} size="sm" variant="outline" disabled={!currentUser || isUploading || editingUserName === (currentUser.displayName || "Kiddo")}>
                   <Edit3 className="mr-2 h-4 w-4" /> Save Name
                 </Button>
               </div>
@@ -307,10 +328,14 @@ export default function ProfilePage() {
                   {AVATARS.map((avatar, index) => (
                     <button
                       key={index}
-                      onClick={() => setSelectedAvatar(avatar.src)}
+                      onClick={() => {
+                        if (currentUser) setSelectedAvatar(avatar.src);
+                        else toast({variant: "destructive", title: "Login Required", description: "Please log in to select an avatar."});
+                      }}
                       className={cn(
                         "rounded-full p-1 border-2 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-accent/50 relative",
-                        selectedAvatar === avatar.src ? "border-accent ring-2 ring-accent" : "border-transparent hover:border-primary/50"
+                        selectedAvatar === avatar.src ? "border-accent ring-2 ring-accent" : "border-transparent hover:border-primary/50",
+                        !currentUser ? "cursor-not-allowed opacity-60" : ""
                       )}
                       aria-label={`Select ${avatar.alt}`}
                       disabled={!currentUser || isUploading}
@@ -354,7 +379,7 @@ export default function ProfilePage() {
                 <p className="text-xs text-muted-foreground mt-2">Max file size: 2MB. PNG, JPG, GIF accepted.</p>
               </div>
               
-              <Button onClick={handleSaveAvatar} className="w-full sm:w-auto bg-accent text-accent-foreground hover:bg-accent/90 mt-4" disabled={!currentUser || isUploading}>
+              <Button onClick={handleSaveAvatar} className="w-full sm:w-auto bg-accent text-accent-foreground hover:bg-accent/90 mt-4" disabled={!currentUser || isUploading || selectedAvatar === (currentUser?.photoURL || AVATARS[0]?.src || 'https://placehold.co/100x100.png') && !selectedAvatar?.startsWith('data:image')}>
                 {isUploading ? "Saving..." : "Save Avatar"}
               </Button>
             </CardContent>
@@ -382,7 +407,6 @@ export default function ProfilePage() {
               <CardDescription>Customize your Shravya Playhouse experience.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-8 pt-6">
-              {/* Theme Selection */}
               <div className="space-y-3">
                 <Label className="text-lg font-medium flex items-center">
                   <Palette className="mr-2 h-5 w-5 text-primary" /> App Theme
@@ -409,7 +433,6 @@ export default function ProfilePage() {
                 </RadioGroup>
               </div>
 
-              {/* Favorite Color Selection */}
               <div className="space-y-3">
                 <Label htmlFor="favoriteColor" className="text-lg font-medium flex items-center">
                   <Palette className="mr-2 h-5 w-5 text-primary" /> Favorite Color
@@ -442,6 +465,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-
-
-    

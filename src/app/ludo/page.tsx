@@ -9,6 +9,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Dice1, Dice2, Dice3, Dice4, Dice5, Dice6, RotateCcw, Home, Users, Cpu, Info } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
 
@@ -89,6 +90,7 @@ export default function LudoPage() {
   const [humanPlayerName, setHumanPlayerName] = useState<string>("Human Player");
   const [offlinePlayerNames, setOfflinePlayerNames] = useState<string[]>([]);
 
+  const [selectedColors, setSelectedColors] = useState<PlayerColor[]>([]);
   const [players, setPlayers] = useState<Player[]>([]);
   const [currentPlayerIndex, setCurrentPlayerIndex] = useState(0);
   const [diceValue, setDiceValue] = useState<number | null>(null);
@@ -101,10 +103,16 @@ export default function LudoPage() {
   useEffect(() => {
     if (selectedMode === 'offline' && selectedNumPlayers) {
       setOfflinePlayerNames(Array(selectedNumPlayers).fill('').map((_, i) => `Player ${i + 1}`));
+ setSelectedColors(Array(selectedNumPlayers).fill(null)); // Initialize selected colors array
     } else {
       setOfflinePlayerNames([]);
+ setSelectedColors([]);
     }
   }, [selectedNumPlayers, selectedMode]);
+
+ const handleColorChange = (index: number, color: PlayerColor) => {
+    setSelectedColors(prevColors => prevColors.map((c, i) => (i === index ? color : c)));
+ };
 
   const handleOfflinePlayerNameChange = (index: number, name: string) => {
     const newNames = [...offlinePlayerNames];
@@ -119,6 +127,7 @@ export default function LudoPage() {
     setHumanPlayerName("Human Player");
     setOfflinePlayerNames([]);
     setPlayers([]);
+    setSelectedColors([]);
     setCurrentPlayerIndex(0);
     setDiceValue(null);
     setIsRolling(false);
@@ -140,7 +149,13 @@ export default function LudoPage() {
       return;
     }
 
-    const newPlayers = initialPlayerState(selectedNumPlayers, selectedMode, humanPlayerName, offlinePlayerNames);
+    if (selectedMode === 'offline' && selectedColors.slice(0, selectedNumPlayers).some(color => color === null || selectedColors.filter(c => c === color).length > 1)) {
+        toast({ variant: "destructive", title: "Color Selection Incomplete", description: "Please select a unique color for each offline player." });
+        return;
+    }
+
+    // Use selectedColors for offline mode players
+    const newPlayers = initialPlayerState(selectedNumPlayers, selectedMode, humanPlayerName, selectedMode === 'offline' ? offlinePlayerNames.slice(0, selectedNumPlayers) : undefined);
     setPlayers(newPlayers);
     setCurrentPlayerIndex(0);
     setDiceValue(null);
@@ -151,6 +166,33 @@ export default function LudoPage() {
     }
   };
 
+  const createPlayers = (mode: 'offline' | 'ai', numPlayers: number, offlineNames?: string[], humanName?: string): Player[] => {
+    let colorsToUse: PlayerColor[];
+
+    if (numPlayers === 2) {
+      // Explicitly use diagonal colors for 2 players
+ colorsToUse = ['red', 'green']; // Or ['blue', 'yellow'] depending on your board layout
+    } else {
+      colorsToUse = mode === 'offline' && selectedColors.length === numPlayers ? selectedColors : PLAYER_COLORS.slice(0, numPlayers);
+    }
+    return colorsToUse.map((color, index) => {
+        const isAIPlayer = mode === 'ai' && index > 0;
+        let playerName = PLAYER_CONFIG[color].name;
+
+        if (mode === 'ai') {
+            playerName = (index === 0) ? (humanName || "Human Player") : `Shravya AI (${PLAYER_CONFIG[color].name})`;
+        } else if (mode === 'offline') {
+            playerName = (offlineNames && offlineNames[index]) ? offlineNames[index] : `Player ${index + 1} (${PLAYER_CONFIG[color].name})`;
+        }
+
+        return {
+            color,
+            name: playerName,
+            tokens: Array(NUM_TOKENS_PER_PLAYER).fill(null).map((_, i) => ({ id: i, color, position: -1, })),
+            hasRolledSix: false, sixStreak: 0, isAI: isAIPlayer,
+        };
+    });
+  };
   const handleDiceRoll = useCallback(() => {
     if (isRolling || !currentPlayer || (currentPlayer.isAI && diceValue !== null)) return; 
     if (!currentPlayer.isAI && diceValue !== null && !currentPlayer.hasRolledSix) return;
@@ -590,14 +632,29 @@ export default function LudoPage() {
                   <div className="space-y-4">
                       <Label className="text-lg font-medium">Player Names</Label>
                       {offlinePlayerNames.slice(0, selectedNumPlayers).map((name, index) => (
-                          <div key={index} className="space-y-1">
-                              <Label htmlFor={`offlinePlayerName-${index}`}>Player {index + 1} Name ({PLAYER_CONFIG[PLAYER_COLORS[index]].name})</Label>
-                              <Input 
-                                  id={`offlinePlayerName-${index}`}
-                                  value={name}
-                                  onChange={(e) => handleOfflinePlayerNameChange(index, e.target.value)}
-                                  placeholder={`Enter name for Player ${index + 1}`}
-                              />
+                          <div key={index} className="flex items-end space-x-4">
+                              <div className="space-y-1 flex-grow">
+                                  <Label htmlFor={`offlinePlayerName-${index}`}>Player {index + 1} Name</Label>
+                                  <Input
+                                      id={`offlinePlayerName-${index}`}
+                                      value={name}
+                                      onChange={(e) => handleOfflinePlayerNameChange(index, e.target.value)}
+                                      placeholder={`Enter name for Player ${index + 1}`}
+                                  />
+                              </div>
+                              <div className="space-y-1">
+                                  <Label htmlFor={`offlinePlayerColor-${index}`}>Color</Label>
+                                   <Select value={selectedColors[index] || ''} onValueChange={(value) => handleColorChange(index, value as PlayerColor)}>
+                                      <SelectTrigger id={`offlinePlayerColor-${index}`} className="w-[130px]">
+                                          <SelectValue placeholder="Select Color" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                          {PLAYER_COLORS.map((color) => (
+                                              <SelectItem key={color} value={color} disabled={selectedColors.includes(color) && selectedColors[index] !== color}>{PLAYER_CONFIG[color].name}</SelectItem>
+                                          ))}
+                                      </SelectContent>
+                                  </Select>
+                              </div>
                           </div>
                       ))}
                   </div>
@@ -648,7 +705,18 @@ export default function LudoPage() {
           }
 
           return (
-            <div key={p.color} className={cn("absolute p-2 sm:p-3 rounded-lg shadow-xl border-2 border-primary/50 backdrop-blur-sm bg-card/80 w-32 sm:w-40", playerSpecificConfig.cornerPosition)}>
+            <div key={p.color} className={cn(
+              "absolute p-2 sm:p-3 rounded-lg shadow-xl border-2 border-primary/50 backdrop-blur-sm bg-card/80 w-32 sm:w-40",
+              players.length === 2
+                ? (p.color === 'red'
+                  ? "top-4 left-4" // Position Red top-left
+                  : p.color === 'green'
+                    ? "bottom-4 right-4" // Position Green bottom-right
+                    : playerSpecificConfig.cornerPosition // Fallback for other colors if somehow present in 2-player
+                )
+                : playerSpecificConfig.cornerPosition // Use default for other player counts
+            )}>
+
               <p className={cn("text-xs sm:text-sm font-semibold truncate text-center mb-1 sm:mb-2", playerSpecificConfig.textClass)} title={p.name}>
                 {p.name} {p.isAI && <Cpu size={14} className="inline ml-1"/>}
               </p>
