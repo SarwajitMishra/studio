@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Hash, Target, RotateCcw, Lightbulb, Award, Brain, Calculator, ListOrdered, ArrowLeft } from "lucide-react";
+import { Hash, Target, RotateCcw, Lightbulb, Award, Brain, Calculator, ListOrdered, ArrowLeft, Search, Sigma } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -55,6 +55,20 @@ const MATH_PUZZLE_TYPES: MathPuzzleType[] = [
     description: "What comes next? Figure out the pattern in the number sequence.",
     Icon: ListOrdered,
     color: "text-purple-500",
+  },
+  {
+    id: "missingNumber",
+    name: "Missing Number",
+    description: "Find the missing number in the sequence or equation.",
+    Icon: Search,
+    color: "text-orange-500",
+  },
+  {
+    id: "countTheObjects",
+    name: "Count the Objects",
+    description: "How many items can you count on the screen?",
+    Icon: Sigma,
+    color: "text-pink-500",
   },
 ];
 
@@ -283,13 +297,12 @@ export default function NumberPuzzlesPage() {
         {currentView === "guessTheNumber" && (
           <GuessTheNumberGame onBack={() => setCurrentView("selectPuzzle")} />
         )}
-        {currentView === "arithmeticChallenge" && selectedPuzzleDetails && (
-          <PlaceholderPuzzleGame puzzle={selectedPuzzleDetails} onBack={() => setCurrentView("selectPuzzle")} />
-        )}
-        {currentView === "numberSequence" && selectedPuzzleDetails && (
+        {selectedPuzzleDetails && currentView !== "guessTheNumber" && (
           <PlaceholderPuzzleGame puzzle={selectedPuzzleDetails} onBack={() => setCurrentView("selectPuzzle")} />
         )}
       </div>
     </>
   );
 }
+
+    
