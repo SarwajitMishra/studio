@@ -11,8 +11,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AVATARS } from "@/lib/constants";
-import { UserCircle, BarChart3, Settings, CheckCircle, LogIn, LogOut, UploadCloud, Edit3, User as UserIcon, Palette, Sun, Moon } from 'lucide-react';
+import { Progress } from "@/components/ui/progress";
+import { AVATARS, GAMES, type GameCategory } from "@/lib/constants";
+import { UserCircle, BarChart3, Settings, CheckCircle, LogIn, LogOut, UploadCloud, Edit3, User as UserIcon, Palette, Sun, Moon, Brain, ToyBrick, BookOpen, Trophy } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { 
@@ -47,8 +48,33 @@ const FAVORITE_COLOR_OPTIONS = [
 
 const LOCAL_STORAGE_USER_NAME_KEY = 'shravyaPlayhouse_userName';
 const LOCAL_STORAGE_AVATAR_KEY = 'shravyaPlayhouse_avatar';
-const DEFAULT_AVATAR_SRC = AVATARS[0]?.src || 'https://placehold.co/100x100.png';
+const DEFAULT_AVATAR_SRC = AVATARS[0]?.src || '/images/avatars/modern_girl.png';
 const DEFAULT_USER_NAME = "Kiddo";
+
+const getProgressData = () => {
+  const categories: GameCategory[] = ['Strategy', 'Puzzles', 'Learning'];
+  const progressValues: Record<GameCategory, number> = {
+    'Strategy': 0,
+    'Puzzles': 0,
+    'Learning': 0,
+  };
+  
+  const gamesByCategory = GAMES.reduce((acc, game) => {
+    if (!acc[game.category]) acc[game.category] = [];
+    acc[game.category].push(game.id);
+    return acc;
+  }, {} as Record<GameCategory, string[]>);
+
+  if (gamesByCategory['Strategy']?.length) progressValues['Strategy'] = Math.floor(Math.random() * 50) + 20;
+  if (gamesByCategory['Puzzles']?.length) progressValues['Puzzles'] = Math.floor(Math.random() * 60) + 30;
+  if (gamesByCategory['Learning']?.length) progressValues['Learning'] = Math.floor(Math.random() * 40) + 10;
+
+  return categories.map(category => ({
+    name: category,
+    value: progressValues[category],
+    Icon: category === 'Strategy' ? Brain : category === 'Puzzles' ? ToyBrick : BookOpen,
+  }));
+};
 
 
 export default function ProfilePage() {
@@ -61,8 +87,8 @@ export default function ProfilePage() {
 
   const [theme, setTheme] = useState<string>('light');
   const [favoriteColor, setFavoriteColor] = useState<string>('default');
+  const [progressData, setProgressData] = useState(getProgressData());
 
-  // Load theme, color, username, and avatar from localStorage on initial mount
   useEffect(() => {
     const storedTheme = localStorage.getItem('theme');
     if (storedTheme && (storedTheme === 'light' || storedTheme === 'dark')) {
@@ -82,15 +108,18 @@ export default function ProfilePage() {
     const localUserName = localStorage.getItem(LOCAL_STORAGE_USER_NAME_KEY);
     if (localUserName) {
       setEditingUserName(localUserName);
+    } else {
+      setEditingUserName(DEFAULT_USER_NAME); 
     }
 
     const localAvatar = localStorage.getItem(LOCAL_STORAGE_AVATAR_KEY);
     if (localAvatar) {
       setSelectedAvatar(localAvatar);
+    } else {
+      setSelectedAvatar(DEFAULT_AVATAR_SRC);
     }
   }, []);
 
-  // Handle Firebase auth state changes and redirect results
   useEffect(() => {
     const handleUserUpdate = (user: User | null) => {
       if (user) {
@@ -103,9 +132,10 @@ export default function ProfilePage() {
         setSelectedAvatar(firebasePhotoURL);
         localStorage.setItem(LOCAL_STORAGE_AVATAR_KEY, firebasePhotoURL);
         
+        setProgressData(getProgressData());
+
       } else {
         setCurrentUser(null);
-        // On logout, keep local storage values if they exist, otherwise use defaults
         const localUserName = localStorage.getItem(LOCAL_STORAGE_USER_NAME_KEY) || DEFAULT_USER_NAME;
         setEditingUserName(localUserName);
         const localAvatar = localStorage.getItem(LOCAL_STORAGE_AVATAR_KEY) || DEFAULT_AVATAR_SRC;
@@ -120,9 +150,7 @@ export default function ProfilePage() {
           handleUserUpdate(result.user); 
           toast({ title: "Logged In!", description: `Welcome back, ${result.user.displayName || 'User'}!` });
         } else {
-          // If no redirect result, ensure initial local storage load or defaults are respected for non-logged-in state
-          // This might be redundant if the first useEffect already covered it.
-           if (!auth.currentUser) { // ensure we only do this if truly not logged in yet
+           if (!auth.currentUser) { 
             const localUserName = localStorage.getItem(LOCAL_STORAGE_USER_NAME_KEY) || DEFAULT_USER_NAME;
             setEditingUserName(localUserName);
             const localAvatar = localStorage.getItem(LOCAL_STORAGE_AVATAR_KEY) || DEFAULT_AVATAR_SRC;
@@ -171,9 +199,9 @@ export default function ProfilePage() {
   const handleLogout = async () => {
     try {
       await firebaseSignOut(auth);
-      setCurrentUser(null); // Triggers onAuthStateChanged, which will update local state from localStorage
+      // currentUser will be set to null by onAuthStateChanged
+      // The local storage values for name/avatar will remain
       toast({ title: "Logged Out", description: "You have been successfully logged out." });
-      // editingUserName and selectedAvatar will be reset by onAuthStateChanged from localStorage or defaults
     } catch (error: any) {
       console.error("Error during sign-out:", error);
       toast({ variant: "destructive", title: "Logout Failed", description: error.message || "Could not sign out. Please try again." });
@@ -191,8 +219,7 @@ export default function ProfilePage() {
     }
     try {
       await updateProfile(currentUser, { displayName: editingUserName });
-      localStorage.setItem(LOCAL_STORAGE_USER_NAME_KEY, editingUserName); // Ensure local matches Firebase
-      // onAuthStateChanged will update currentUser, no need to call setCurrentUser directly
+      localStorage.setItem(LOCAL_STORAGE_USER_NAME_KEY, editingUserName); 
       toast({ title: "Username Updated!", description: `Your display name is now ${editingUserName}.` });
     } catch (error: any) {
       console.error("Error updating username:", error);
@@ -214,7 +241,7 @@ export default function ProfilePage() {
       const reader = new FileReader();
       reader.onloadend = () => {
         const newAvatarDataUrl = reader.result as string;
-        handleSelectedAvatarChange(newAvatarDataUrl); // This now also saves to localStorage
+        handleSelectedAvatarChange(newAvatarDataUrl); 
       };
       reader.readAsDataURL(file);
     }
@@ -231,7 +258,6 @@ export default function ProfilePage() {
         return;
     }
 
-    // Only proceed if there's a change from Firebase photoURL or if it's a new data URL
     const isDataUrl = selectedAvatar.startsWith('data:image');
     if (!isDataUrl && selectedAvatar === currentUser.photoURL) {
          toast({ title: "No Change", description: "Avatar is already up to date with your profile." });
@@ -251,8 +277,8 @@ export default function ProfilePage() {
       }
       
       await updateProfile(currentUser, { photoURL: photoURLToSave });
-      localStorage.setItem(LOCAL_STORAGE_AVATAR_KEY, photoURLToSave); // Ensure local matches Firebase
-      // onAuthStateChanged will update currentUser and thus selectedAvatar state
+      localStorage.setItem(LOCAL_STORAGE_AVATAR_KEY, photoURLToSave); 
+      setSelectedAvatar(photoURLToSave);
       toast({ title: "Avatar Saved!", description: "Your new avatar has been saved to your profile." });
 
     } catch (error: any) {
@@ -280,8 +306,8 @@ export default function ProfilePage() {
     toast({ title: "Favorite Color Set", description: `Your favorite color is now ${FAVORITE_COLOR_OPTIONS.find(c => c.value === newColor)?.label || newColor}.` });
   };
   
-  const isSaveNameDisabled = !currentUser || isUploading || editingUserName === (currentUser?.displayName || "");
-  const isSaveAvatarDisabled = !currentUser || isUploading || (selectedAvatar === (currentUser?.photoURL || "") && !selectedAvatar?.startsWith('data:image'));
+  const isSaveNameDisabled = !currentUser || isUploading || editingUserName === (currentUser?.displayName || localStorage.getItem(LOCAL_STORAGE_USER_NAME_KEY));
+  const isSaveAvatarDisabled = !currentUser || isUploading || (selectedAvatar === (currentUser?.photoURL || localStorage.getItem(LOCAL_STORAGE_AVATAR_KEY)) && !selectedAvatar?.startsWith('data:image'));
 
 
   return (
@@ -367,7 +393,7 @@ export default function ProfilePage() {
           <Card className="shadow-lg">
             <CardHeader>
               <CardTitle>Choose Your Avatar</CardTitle>
-              <CardDescription>Select a predefined avatar or upload your own (max 2MB). Changes are saved locally.</CardDescription>
+              <CardDescription>Select a predefined avatar or upload your own (max 2MB). Changes are saved locally. Log in and click "Save to Profile" to update your online profile.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div>
@@ -433,13 +459,35 @@ export default function ProfilePage() {
         <TabsContent value="progress">
           <Card className="shadow-lg">
             <CardHeader>
-              <CardTitle>Your Progress</CardTitle>
-              <CardDescription>See how much you've learned and played!</CardDescription>
+              <div className="flex items-center space-x-3">
+                <Trophy size={28} className="text-primary" />
+                <CardTitle className="text-2xl">Your Game Journey</CardTitle>
+              </div>
+              <CardDescription>A quick look at your activity across different game types. (Mock Data)</CardDescription>
             </CardHeader>
-            <CardContent className="text-center py-12">
-              <BarChart3 size={64} className="mx-auto text-primary/50 mb-4" />
-              <p className="text-lg text-muted-foreground">Game progress tracking is coming soon!</p>
-              <p className="text-sm text-muted-foreground">Check back later to see your achievements.</p>
+            <CardContent className="space-y-6 pt-4">
+              {progressData.map((categoryProgress) => (
+                <div key={categoryProgress.name}>
+                  <div className="flex justify-between items-center mb-1">
+                    <Label htmlFor={`progress-${categoryProgress.name.toLowerCase()}`} className="text-base font-medium flex items-center">
+                      <categoryProgress.Icon className="mr-2 h-5 w-5 text-muted-foreground" />
+                      {categoryProgress.name}
+                    </Label>
+                    <span className="text-sm font-semibold text-primary">{categoryProgress.value}%</span>
+                  </div>
+                  <Progress id={`progress-${categoryProgress.name.toLowerCase()}`} value={categoryProgress.value} className="w-full h-3" />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Current activity level in {categoryProgress.name.toLowerCase()} games.
+                  </p>
+                </div>
+              ))}
+              <div className="text-center pt-4">
+                <BarChart3 size={48} className="mx-auto text-primary/30 mb-3" />
+                <p className="text-md text-foreground/90">
+                  Detailed stats for each game and achievements are on their way!
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">Keep playing to see your progress grow.</p>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -509,3 +557,4 @@ export default function ProfilePage() {
     </div>
   );
 }
+
