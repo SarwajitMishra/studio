@@ -1,3 +1,4 @@
+
 import type { LucideIcon } from 'lucide-react';
 import { HomeIcon, LayoutGrid, Puzzle, BookOpen, UserCircle, Settings, BarChart3, Zap, Apple, Banana, Cherry, Grape, Carrot, Pizza, CakeSlice, IceCream2, Swords } from 'lucide-react';
 
@@ -103,13 +104,20 @@ export const PUZZLE_TYPES: PuzzleType[] = [
   },
 ];
 
+// **IMPORTANT**:
+// 1. Create a folder structure: public/images/avatars/
+// 2. Place your avatar images (e.g., avatar_sun.png, avatar_robot.png) in this folder.
+// 3. Update the `src`, `alt`, and `hint` properties below to match your actual image files and desired descriptions.
 export const AVATARS: { src: string; alt: string; hint: string }[] = [
-  { src: 'https://placehold.co/100x100/FFD700/4A4A4A.png', alt: 'Avatar 1 - Cheerful Sun', hint: 'sun character' },
-  { src: 'https://placehold.co/100x100/87CEEB/4A4A4A.png', alt: 'Avatar 2 - Friendly Cloud', hint: 'cloud character' },
-  { src: 'https://placehold.co/100x100/90EE90/4A4A4A.png', alt: 'Avatar 3 - Smart Sprout', hint: 'plant character' },
-  { src: 'https://placehold.co/100x100/FFB6C1/4A4A4A.png', alt: 'Avatar 4 - Playful Star', hint: 'star character' },
-  { src: 'https://placehold.co/100x100/FFA07A/4A4A4A.png', alt: 'Avatar 5 - Brave Fox', hint: 'fox character' },
-  { src: 'https://placehold.co/100x100/ADD8E6/4A4A4A.png', alt: 'Avatar 6 - Curious Owl', hint: 'owl character' },
+  { src: '/images/avatars/avatar_sun.png', alt: 'Smiling Sun Avatar', hint: 'sun character' },
+  { src: '/images/avatars/avatar_robot.png', alt: 'Friendly Robot Avatar', hint: 'robot character' },
+  { src: '/images/avatars/avatar_cat.png', alt: 'Playful Cat Avatar', hint: 'cat animal' },
+  { src: '/images/avatars/avatar_star.png', alt: 'Sparkling Star Avatar', hint: 'star space' },
+  { src: '/images/avatars/avatar_tree.png', alt: 'Wise Tree Avatar', hint: 'tree nature' },
+  { src: '/images/avatars/avatar_rocket.png', alt: 'Space Rocket Avatar', hint: 'rocket space' },
+  // Add more entries here if you have more avatar images.
+  // Example:
+  // { src: '/images/avatars/your_image_name.png', alt: 'Description of your image', hint: 'keyword1 keyword2' },
 ];
 
 export interface NavItem {
@@ -130,4 +138,3 @@ export const NAV_ITEMS: NavItem[] = [
 export const MEMORY_ICONS: LucideIcon[] = [
   Apple, Banana, Cherry, Grape, Carrot, Pizza, CakeSlice, IceCream2
 ];
-
