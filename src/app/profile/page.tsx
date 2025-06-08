@@ -48,7 +48,7 @@ const FAVORITE_COLOR_OPTIONS = [
 export default function ProfilePage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [editingUserName, setEditingUserName] = useState<string>("Kiddo");
-  const [selectedAvatar, setSelectedAvatar] = useState<string | null>(AVATARS[0]?.src || 'https://placehold.co/100x100.png');
+  const [selectedAvatar, setSelectedAvatar] = useState<string>(AVATARS[0]?.src || 'https://placehold.co/100x100.png');
   const avatarFileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const [isUploading, setIsUploading] = useState(false);
@@ -81,8 +81,8 @@ export default function ProfilePage() {
         setSelectedAvatar(user.photoURL || AVATARS[0]?.src || 'https://placehold.co/100x100.png');
       } else {
         setCurrentUser(null);
-        setEditingUserName("Kiddo");
-        setSelectedAvatar(AVATARS[0]?.src || 'https://placehold.co/100x100.png');
+        // Keep local edits if any, or reset to defaults if desired.
+        // For now, editingUserName and selectedAvatar retain their current pre-logout values or defaults.
       }
     };
 
@@ -91,7 +91,7 @@ export default function ProfilePage() {
         const result = await getRedirectResult(auth);
         if (result && result.user) {
           const user = result.user;
-          handleUserUpdate(user); // Populate state from redirect result
+          handleUserUpdate(user); 
           toast({ title: "Logged In!", description: `Welcome back, ${user.displayName || 'User'}!` });
         }
       } catch (error: any) {
@@ -100,14 +100,14 @@ export default function ProfilePage() {
       }
     };
 
-    handleRedirectResult(); // Process redirect result on mount
+    handleRedirectResult(); 
 
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      handleUserUpdate(user); // Populate/clear state based on auth changes
+      handleUserUpdate(user); 
     });
 
     return () => unsubscribe(); 
-  }, [toast]); // auth, AVATARS are stable, state setters are stable
+  }, [toast]); 
 
   const handleGoogleLogin = async () => {
     try {
@@ -122,7 +122,9 @@ export default function ProfilePage() {
     try {
       await firebaseSignOut(auth);
       toast({ title: "Logged Out", description: "You have been successfully logged out." });
-      // State updates will be handled by onAuthStateChanged
+      // Resetting to defaults after logout
+      setEditingUserName("Kiddo");
+      setSelectedAvatar(AVATARS[0]?.src || 'https://placehold.co/100x100.png');
     } catch (error: any) {
       console.error("Error during sign-out:", error);
       toast({ variant: "destructive", title: "Logout Failed", description: error.message || "Could not sign out. Please try again." });
@@ -140,9 +142,8 @@ export default function ProfilePage() {
     }
     try {
       await updateProfile(currentUser, { displayName: editingUserName });
-      // Refresh currentUser to get the latest profile from auth object
       if (auth.currentUser) {
-         setCurrentUser(auth.currentUser); // This will trigger re-render with updated info
+         setCurrentUser(auth.currentUser); 
       }
       toast({ title: "Username Updated!", description: `Your display name is now ${editingUserName}.` });
     } catch (error: any) {
@@ -165,7 +166,11 @@ export default function ProfilePage() {
       const reader = new FileReader();
       reader.onloadend = () => {
         setSelectedAvatar(reader.result as string);
-        toast({ title: "Avatar Preview Updated", description: "Click 'Save Avatar' to apply." });
+        if (!currentUser) {
+          toast({ title: "Avatar Preview Updated", description: "Log in to save your custom avatar." });
+        } else {
+          toast({ title: "Avatar Preview Updated", description: "Click 'Save Avatar' to apply." });
+        }
       };
       reader.readAsDataURL(file);
     }
@@ -176,20 +181,17 @@ export default function ProfilePage() {
       toast({ variant: "destructive", title: "Not Logged In", description: "Please log in to save your avatar." });
       return;
     }
-    if (!selectedAvatar || selectedAvatar === (currentUser.photoURL || AVATARS[0]?.src || 'https://placehold.co/100x100.png') && !selectedAvatar.startsWith('data:image')) {
-      // Avoid saving if selectedAvatar is the current photoURL and not a new data URI
-      // This can happen if user clicks an avatar, then clicks "Save Avatar" without changes
-      // or if selectedAvatar is just a placeholder.
-      // Allow saving if it's a data URI (new upload) or genuinely different.
-      const isDataUrl = selectedAvatar.startsWith('data:image');
-      if(!isDataUrl && selectedAvatar === currentUser.photoURL) {
-        toast({ title: "No Change", description: "Avatar is already up to date." });
+    
+    // Check if selectedAvatar is different from current photoURL or is a new data URI
+    const isDataUrl = selectedAvatar?.startsWith('data:image');
+    const currentPhoto = currentUser.photoURL || AVATARS[0]?.src || 'https://placehold.co/100x100.png';
+    if (!isDataUrl && selectedAvatar === currentPhoto) {
+         toast({ title: "No Change", description: "Avatar is already up to date or no new avatar selected." });
+         return;
+    }
+    if (!selectedAvatar) {
+        toast({ variant: "destructive", title: "No Avatar Selected", description: "Please select or upload an avatar." });
         return;
-      }
-       if(!isDataUrl && !currentUser.photoURL && selectedAvatar === (AVATARS[0]?.src || 'https://placehold.co/100x100.png')) {
-        toast({ title: "No Change", description: "Please select or upload a new avatar." });
-        return;
-      }
     }
 
 
@@ -197,8 +199,7 @@ export default function ProfilePage() {
     try {
       let photoURLToSave = selectedAvatar;
 
-      // Only upload to storage if it's a new base64 image
-      if (selectedAvatar && selectedAvatar.startsWith('data:image')) { 
+      if (selectedAvatar.startsWith('data:image')) { 
         const avatarPath = `avatars/${currentUser.uid}/profileImage.png`;
         const imageRef = storageRef(storage, avatarPath);
         
@@ -207,7 +208,6 @@ export default function ProfilePage() {
       }
       
       await updateProfile(currentUser, { photoURL: photoURLToSave });
-      // Refresh currentUser and selectedAvatar
       if (auth.currentUser) {
         setCurrentUser(auth.currentUser); 
         setSelectedAvatar(auth.currentUser.photoURL || AVATARS[0]?.src || 'https://placehold.co/100x100.png'); 
@@ -241,6 +241,10 @@ export default function ProfilePage() {
 
   const userNameDisplay = currentUser?.displayName || editingUserName || "Kiddo";
   const avatarDisplayUrl = selectedAvatar || currentUser?.photoURL || AVATARS[0]?.src || 'https://placehold.co/100x100.png';
+  
+  const isSaveNameDisabled = !currentUser || isUploading || editingUserName === (currentUser?.displayName || "Kiddo");
+  const isSaveAvatarDisabled = !currentUser || isUploading || (selectedAvatar === (currentUser?.photoURL || AVATARS[0]?.src || 'https://placehold.co/100x100.png') && !selectedAvatar?.startsWith('data:image'));
+
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
@@ -263,7 +267,7 @@ export default function ProfilePage() {
                   className="max-w-xs text-base"
                   aria-label="Edit display name"
                 />
-                <Button onClick={handleUserNameSave} size="sm" variant="outline" disabled={!currentUser || isUploading || editingUserName === (currentUser.displayName || "Kiddo")}>
+                <Button onClick={handleUserNameSave} size="sm" variant="outline" disabled={isSaveNameDisabled}>
                   <Edit3 className="mr-2 h-4 w-4" /> Save Name
                 </Button>
               </div>
@@ -272,10 +276,28 @@ export default function ProfilePage() {
               </Button>
             </div>
           ) : (
-            <Button onClick={handleGoogleLogin} className="w-full sm:w-auto bg-accent text-accent-foreground hover:bg-accent/90">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2"><path d="M15.3 18.09C14.54 18.89 13.56 19.5 12.45 19.83C11.34 20.16 10.17 20.26 9 20.12C5.79 19.43 3.51 16.68 3.12 13.4C3.03 12.51 3.15 11.61 3.48 10.77C3.81 9.93 4.32 9.18 4.98 8.57C6.26 7.36 7.97 6.66 9.78 6.54C11.72 6.42 13.66 6.93 15.24 7.99L16.99 6.28C15.01 4.88 12.73 4.08 10.36 4.01C8.05 3.91 5.81 4.62 3.98 5.99C2.15 7.36 0.810001 9.32 0.200001 11.58C-0.419999 13.84 0.0300012 16.24 1.13 18.25C2.23 20.26 3.92 21.77 5.99 22.56C8.06 23.35 10.36 23.37 12.48 22.62C14.6 21.87 16.44 20.41 17.67 18.51L15.3 18.09Z"/><path d="M22.94 12.14C22.98 11.74 23 11.33 23 10.91C23 10.32 22.92 9.73 22.77 9.16H12V12.83H18.24C18.03 13.71 17.55 14.5 16.86 15.08L16.82 15.11L19.28 16.91L19.45 17.06C21.58 15.22 22.94 12.14 22.94 12.14Z"/><path d="M12 23C14.47 23 16.56 22.19 18.05 20.96L15.24 17.99C14.48 18.59 13.53 18.98 12.52 18.98C10.92 18.98 9.48001 18.13 8.82001 16.76L8.78001 16.72L6.21001 18.58L6.15001 18.7C7.02001 20.39 8.68001 21.83 10.62 22.48C11.09 22.64 11.56 22.77 12 22.81V23Z"/><path d="M12.01 3.00997C13.37 2.94997 14.7 3.43997 15.73 4.40997L17.97 2.21997C16.31 0.799971 14.21 -0.0600291 12.01 0.0099709C7.37001 0.0099709 3.44001 3.36997 2.02001 7.49997L4.98001 8.56997C5.60001 6.33997 7.72001 4.00997 10.22 4.00997C10.86 3.99997 11.49 4.12997 12.01 4.36997V3.00997Z"/></svg>
-              Sign In with Google
-            </Button>
+            <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                    <Label htmlFor="username" className="text-base">Display Name:</Label>
+                    <Input
+                    id="username"
+                    type="text"
+                    value={editingUserName}
+                    onChange={(e) => setEditingUserName(e.target.value)}
+                    className="max-w-xs text-base"
+                    aria-label="Edit display name"
+                    placeholder="Enter your display name"
+                    />
+                    <Button onClick={handleUserNameSave} size="sm" variant="outline" disabled={isSaveNameDisabled}>
+                        <Edit3 className="mr-2 h-4 w-4" /> Save Name
+                    </Button>
+                </div>
+                 <p className="text-xs text-muted-foreground">Log in to save your display name permanently.</p>
+                <Button onClick={handleGoogleLogin} className="w-full sm:w-auto bg-accent text-accent-foreground hover:bg-accent/90">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2"><path d="M15.3 18.09C14.54 18.89 13.56 19.5 12.45 19.83C11.34 20.16 10.17 20.26 9 20.12C5.79 19.43 3.51 16.68 3.12 13.4C3.03 12.51 3.15 11.61 3.48 10.77C3.81 9.93 4.32 9.18 4.98 8.57C6.26 7.36 7.97 6.66 9.78 6.54C11.72 6.42 13.66 6.93 15.24 7.99L16.99 6.28C15.01 4.88 12.73 4.08 10.36 4.01C8.05 3.91 5.81 4.62 3.98 5.99C2.15 7.36 0.810001 9.32 0.200001 11.58C-0.419999 13.84 0.0300012 16.24 1.13 18.25C2.23 20.26 3.92 21.77 5.99 22.56C8.06 23.35 10.36 23.37 12.48 22.62C14.6 21.87 16.44 20.41 17.67 18.51L15.3 18.09Z"/><path d="M22.94 12.14C22.98 11.74 23 11.33 23 10.91C23 10.32 22.92 9.73 22.77 9.16H12V12.83H18.24C18.03 13.71 17.55 14.5 16.86 15.08L16.82 15.11L19.28 16.91L19.45 17.06C21.58 15.22 22.94 12.14 22.94 12.14Z"/><path d="M12 23C14.47 23 16.56 22.19 18.05 20.96L15.24 17.99C14.48 18.59 13.53 18.98 12.52 18.98C10.92 18.98 9.48001 18.13 8.82001 16.76L8.78001 16.72L6.21001 18.58L6.15001 18.7C7.02001 20.39 8.68001 21.83 10.62 22.48C11.09 22.64 11.56 22.77 12 22.81V23Z"/><path d="M12.01 3.00997C13.37 2.94997 14.7 3.43997 15.73 4.40997L17.97 2.21997C16.31 0.799971 14.21 -0.0600291 12.01 0.0099709C7.37001 0.0099709 3.44001 3.36997 2.02001 7.49997L4.98001 8.56997C5.60001 6.33997 7.72001 4.00997 10.22 4.00997C10.86 3.99997 11.49 4.12997 12.01 4.36997V3.00997Z"/></svg>
+                Sign In with Google
+                </Button>
+            </div>
           )}
         </CardContent>
         <CardFooter>
@@ -329,16 +351,18 @@ export default function ProfilePage() {
                     <button
                       key={index}
                       onClick={() => {
-                        if (currentUser) setSelectedAvatar(avatar.src);
-                        else toast({variant: "destructive", title: "Login Required", description: "Please log in to select an avatar."});
+                        setSelectedAvatar(avatar.src);
+                        if (!currentUser) {
+                            toast({ title: "Avatar Preview Changed", description: "Log in to save this avatar." });
+                        }
                       }}
                       className={cn(
                         "rounded-full p-1 border-2 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-accent/50 relative",
                         selectedAvatar === avatar.src ? "border-accent ring-2 ring-accent" : "border-transparent hover:border-primary/50",
-                        !currentUser ? "cursor-not-allowed opacity-60" : ""
+                        isUploading ? "cursor-not-allowed opacity-60" : "cursor-pointer" // Disable only if uploading
                       )}
                       aria-label={`Select ${avatar.alt}`}
-                      disabled={!currentUser || isUploading}
+                      disabled={isUploading} // Disable only if uploading
                     >
                       <Image
                         src={avatar.src}
@@ -365,21 +389,21 @@ export default function ProfilePage() {
                   ref={avatarFileInputRef}
                   className="hidden"
                   id="avatar-upload"
-                  disabled={!currentUser || isUploading}
+                  disabled={isUploading} // Disable only if uploading
                 />
                 <Button 
                   variant="outline" 
                   onClick={() => avatarFileInputRef.current?.click()}
                   className="w-full sm:w-auto"
-                  disabled={!currentUser || isUploading}
+                  disabled={isUploading} // Disable only if uploading
                 >
                   <UploadCloud className="mr-2 h-5 w-5" /> Upload Image
                 </Button>
-                {!currentUser && <p className="text-xs text-muted-foreground mt-1">Login to upload a custom avatar.</p>}
+                 {!currentUser && <p className="text-xs text-muted-foreground mt-1">Log in to save your custom avatar.</p>}
                 <p className="text-xs text-muted-foreground mt-2">Max file size: 2MB. PNG, JPG, GIF accepted.</p>
               </div>
               
-              <Button onClick={handleSaveAvatar} className="w-full sm:w-auto bg-accent text-accent-foreground hover:bg-accent/90 mt-4" disabled={!currentUser || isUploading || selectedAvatar === (currentUser?.photoURL || AVATARS[0]?.src || 'https://placehold.co/100x100.png') && !selectedAvatar?.startsWith('data:image')}>
+              <Button onClick={handleSaveAvatar} className="w-full sm:w-auto bg-accent text-accent-foreground hover:bg-accent/90 mt-4" disabled={isSaveAvatarDisabled}>
                 {isUploading ? "Saving..." : "Save Avatar"}
               </Button>
             </CardContent>
@@ -465,3 +489,5 @@ export default function ProfilePage() {
     </div>
   );
 }
+
+    
