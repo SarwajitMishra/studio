@@ -45,10 +45,16 @@ const FAVORITE_COLOR_OPTIONS = [
   { value: 'teal', label: 'Teal' },
 ];
 
+const LOCAL_STORAGE_USER_NAME_KEY = 'shravyaPlayhouse_userName';
+const LOCAL_STORAGE_AVATAR_KEY = 'shravyaPlayhouse_avatar';
+const DEFAULT_AVATAR_SRC = AVATARS[0]?.src || 'https://placehold.co/100x100.png';
+const DEFAULT_USER_NAME = "Kiddo";
+
+
 export default function ProfilePage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [editingUserName, setEditingUserName] = useState<string>("Kiddo");
-  const [selectedAvatar, setSelectedAvatar] = useState<string>(AVATARS[0]?.src || 'https://placehold.co/100x100.png');
+  const [editingUserName, setEditingUserName] = useState<string>(DEFAULT_USER_NAME);
+  const [selectedAvatar, setSelectedAvatar] = useState<string>(DEFAULT_AVATAR_SRC);
   const avatarFileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const [isUploading, setIsUploading] = useState(false);
@@ -56,6 +62,7 @@ export default function ProfilePage() {
   const [theme, setTheme] = useState<string>('light');
   const [favoriteColor, setFavoriteColor] = useState<string>('default');
 
+  // Load theme, color, username, and avatar from localStorage on initial mount
   useEffect(() => {
     const storedTheme = localStorage.getItem('theme');
     if (storedTheme && (storedTheme === 'light' || storedTheme === 'dark')) {
@@ -71,28 +78,56 @@ export default function ProfilePage() {
     if (storedColor) {
       setFavoriteColor(storedColor);
     }
+
+    const localUserName = localStorage.getItem(LOCAL_STORAGE_USER_NAME_KEY);
+    if (localUserName) {
+      setEditingUserName(localUserName);
+    }
+
+    const localAvatar = localStorage.getItem(LOCAL_STORAGE_AVATAR_KEY);
+    if (localAvatar) {
+      setSelectedAvatar(localAvatar);
+    }
   }, []);
 
+  // Handle Firebase auth state changes and redirect results
   useEffect(() => {
     const handleUserUpdate = (user: User | null) => {
       if (user) {
         setCurrentUser(user);
-        setEditingUserName(user.displayName || "Kiddo"); 
-        setSelectedAvatar(user.photoURL || AVATARS[0]?.src || 'https://placehold.co/100x100.png');
+        const firebaseDisplayName = user.displayName || localStorage.getItem(LOCAL_STORAGE_USER_NAME_KEY) || DEFAULT_USER_NAME;
+        setEditingUserName(firebaseDisplayName);
+        localStorage.setItem(LOCAL_STORAGE_USER_NAME_KEY, firebaseDisplayName);
+
+        const firebasePhotoURL = user.photoURL || localStorage.getItem(LOCAL_STORAGE_AVATAR_KEY) || DEFAULT_AVATAR_SRC;
+        setSelectedAvatar(firebasePhotoURL);
+        localStorage.setItem(LOCAL_STORAGE_AVATAR_KEY, firebasePhotoURL);
+        
       } else {
         setCurrentUser(null);
-        // Keep local edits if any, or reset to defaults if desired.
-        // For now, editingUserName and selectedAvatar retain their current pre-logout values or defaults.
+        // On logout, keep local storage values if they exist, otherwise use defaults
+        const localUserName = localStorage.getItem(LOCAL_STORAGE_USER_NAME_KEY) || DEFAULT_USER_NAME;
+        setEditingUserName(localUserName);
+        const localAvatar = localStorage.getItem(LOCAL_STORAGE_AVATAR_KEY) || DEFAULT_AVATAR_SRC;
+        setSelectedAvatar(localAvatar);
       }
     };
 
-    const handleRedirectResult = async () => {
+    const processRedirectResult = async () => {
       try {
         const result = await getRedirectResult(auth);
         if (result && result.user) {
-          const user = result.user;
-          handleUserUpdate(user); 
-          toast({ title: "Logged In!", description: `Welcome back, ${user.displayName || 'User'}!` });
+          handleUserUpdate(result.user); 
+          toast({ title: "Logged In!", description: `Welcome back, ${result.user.displayName || 'User'}!` });
+        } else {
+          // If no redirect result, ensure initial local storage load or defaults are respected for non-logged-in state
+          // This might be redundant if the first useEffect already covered it.
+           if (!auth.currentUser) { // ensure we only do this if truly not logged in yet
+            const localUserName = localStorage.getItem(LOCAL_STORAGE_USER_NAME_KEY) || DEFAULT_USER_NAME;
+            setEditingUserName(localUserName);
+            const localAvatar = localStorage.getItem(LOCAL_STORAGE_AVATAR_KEY) || DEFAULT_AVATAR_SRC;
+            setSelectedAvatar(localAvatar);
+          }
         }
       } catch (error: any) {
         console.error("Error during Google sign-in redirect result:", error);
@@ -100,7 +135,7 @@ export default function ProfilePage() {
       }
     };
 
-    handleRedirectResult(); 
+    processRedirectResult(); 
 
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       handleUserUpdate(user); 
@@ -108,6 +143,21 @@ export default function ProfilePage() {
 
     return () => unsubscribe(); 
   }, [toast]); 
+
+
+  const handleUserNameChange = (name: string) => {
+    setEditingUserName(name);
+    localStorage.setItem(LOCAL_STORAGE_USER_NAME_KEY, name);
+  }
+
+  const handleSelectedAvatarChange = (avatarSrc: string) => {
+    setSelectedAvatar(avatarSrc);
+    localStorage.setItem(LOCAL_STORAGE_AVATAR_KEY, avatarSrc);
+     if (!currentUser) {
+        toast({ title: "Avatar Preview Changed", description: "Log in to save this avatar to your profile." });
+    }
+  }
+
 
   const handleGoogleLogin = async () => {
     try {
@@ -121,10 +171,9 @@ export default function ProfilePage() {
   const handleLogout = async () => {
     try {
       await firebaseSignOut(auth);
+      setCurrentUser(null); // Triggers onAuthStateChanged, which will update local state from localStorage
       toast({ title: "Logged Out", description: "You have been successfully logged out." });
-      // Resetting to defaults after logout
-      setEditingUserName("Kiddo");
-      setSelectedAvatar(AVATARS[0]?.src || 'https://placehold.co/100x100.png');
+      // editingUserName and selectedAvatar will be reset by onAuthStateChanged from localStorage or defaults
     } catch (error: any) {
       console.error("Error during sign-out:", error);
       toast({ variant: "destructive", title: "Logout Failed", description: error.message || "Could not sign out. Please try again." });
@@ -142,9 +191,8 @@ export default function ProfilePage() {
     }
     try {
       await updateProfile(currentUser, { displayName: editingUserName });
-      if (auth.currentUser) {
-         setCurrentUser(auth.currentUser); 
-      }
+      localStorage.setItem(LOCAL_STORAGE_USER_NAME_KEY, editingUserName); // Ensure local matches Firebase
+      // onAuthStateChanged will update currentUser, no need to call setCurrentUser directly
       toast({ title: "Username Updated!", description: `Your display name is now ${editingUserName}.` });
     } catch (error: any) {
       console.error("Error updating username:", error);
@@ -165,12 +213,8 @@ export default function ProfilePage() {
       }
       const reader = new FileReader();
       reader.onloadend = () => {
-        setSelectedAvatar(reader.result as string);
-        if (!currentUser) {
-          toast({ title: "Avatar Preview Updated", description: "Log in to save your custom avatar." });
-        } else {
-          toast({ title: "Avatar Preview Updated", description: "Click 'Save Avatar' to apply." });
-        }
+        const newAvatarDataUrl = reader.result as string;
+        handleSelectedAvatarChange(newAvatarDataUrl); // This now also saves to localStorage
       };
       reader.readAsDataURL(file);
     }
@@ -182,24 +226,23 @@ export default function ProfilePage() {
       return;
     }
     
-    // Check if selectedAvatar is different from current photoURL or is a new data URI
-    const isDataUrl = selectedAvatar?.startsWith('data:image');
-    const currentPhoto = currentUser.photoURL || AVATARS[0]?.src || 'https://placehold.co/100x100.png';
-    if (!isDataUrl && selectedAvatar === currentPhoto) {
-         toast({ title: "No Change", description: "Avatar is already up to date or no new avatar selected." });
-         return;
-    }
     if (!selectedAvatar) {
         toast({ variant: "destructive", title: "No Avatar Selected", description: "Please select or upload an avatar." });
         return;
     }
 
+    // Only proceed if there's a change from Firebase photoURL or if it's a new data URL
+    const isDataUrl = selectedAvatar.startsWith('data:image');
+    if (!isDataUrl && selectedAvatar === currentUser.photoURL) {
+         toast({ title: "No Change", description: "Avatar is already up to date with your profile." });
+         return;
+    }
 
     setIsUploading(true);
     try {
       let photoURLToSave = selectedAvatar;
 
-      if (selectedAvatar.startsWith('data:image')) { 
+      if (isDataUrl) { 
         const avatarPath = `avatars/${currentUser.uid}/profileImage.png`;
         const imageRef = storageRef(storage, avatarPath);
         
@@ -208,11 +251,9 @@ export default function ProfilePage() {
       }
       
       await updateProfile(currentUser, { photoURL: photoURLToSave });
-      if (auth.currentUser) {
-        setCurrentUser(auth.currentUser); 
-        setSelectedAvatar(auth.currentUser.photoURL || AVATARS[0]?.src || 'https://placehold.co/100x100.png'); 
-      }
-      toast({ title: "Avatar Saved!", description: "Your new avatar has been saved." });
+      localStorage.setItem(LOCAL_STORAGE_AVATAR_KEY, photoURLToSave); // Ensure local matches Firebase
+      // onAuthStateChanged will update currentUser and thus selectedAvatar state
+      toast({ title: "Avatar Saved!", description: "Your new avatar has been saved to your profile." });
 
     } catch (error: any) {
       console.error("Error saving avatar:", error);
@@ -238,12 +279,9 @@ export default function ProfilePage() {
     localStorage.setItem('favoriteColor', newColor);
     toast({ title: "Favorite Color Set", description: `Your favorite color is now ${FAVORITE_COLOR_OPTIONS.find(c => c.value === newColor)?.label || newColor}.` });
   };
-
-  const userNameDisplay = currentUser?.displayName || editingUserName || "Kiddo";
-  const avatarDisplayUrl = selectedAvatar || currentUser?.photoURL || AVATARS[0]?.src || 'https://placehold.co/100x100.png';
   
-  const isSaveNameDisabled = !currentUser || isUploading || editingUserName === (currentUser?.displayName || "Kiddo");
-  const isSaveAvatarDisabled = !currentUser || isUploading || (selectedAvatar === (currentUser?.photoURL || AVATARS[0]?.src || 'https://placehold.co/100x100.png') && !selectedAvatar?.startsWith('data:image'));
+  const isSaveNameDisabled = !currentUser || isUploading || editingUserName === (currentUser?.displayName || "");
+  const isSaveAvatarDisabled = !currentUser || isUploading || (selectedAvatar === (currentUser?.photoURL || "") && !selectedAvatar?.startsWith('data:image'));
 
 
   return (
@@ -251,48 +289,36 @@ export default function ProfilePage() {
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle className="text-2xl font-bold">Account Information</CardTitle>
-          <CardDescription>Manage your login status and username.</CardDescription>
+          <CardDescription>Manage your login status and username. Changes are saved locally and can be synced to your profile when logged in.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          
+          <div className="flex items-center gap-3">
+            <Label htmlFor="username" className="text-base">Display Name:</Label>
+            <Input
+              id="username"
+              type="text"
+              value={editingUserName}
+              onChange={(e) => handleUserNameChange(e.target.value)}
+              className="max-w-xs text-base"
+              aria-label="Edit display name"
+              placeholder="Enter your display name"
+            />
+            <Button onClick={handleUserNameSave} size="sm" variant="outline" disabled={isSaveNameDisabled}>
+              <Edit3 className="mr-2 h-4 w-4" /> Save to Profile
+            </Button>
+          </div>
+
           {currentUser ? (
             <div className="space-y-3">
               <p className="text-foreground">Logged in as: <span className="font-semibold">{currentUser.email}</span></p>
-              <div className="flex items-center gap-3">
-                <Label htmlFor="username" className="text-base">Display Name:</Label>
-                <Input
-                  id="username"
-                  type="text"
-                  value={editingUserName}
-                  onChange={(e) => setEditingUserName(e.target.value)}
-                  className="max-w-xs text-base"
-                  aria-label="Edit display name"
-                />
-                <Button onClick={handleUserNameSave} size="sm" variant="outline" disabled={isSaveNameDisabled}>
-                  <Edit3 className="mr-2 h-4 w-4" /> Save Name
-                </Button>
-              </div>
               <Button onClick={handleLogout} variant="destructive" className="w-full sm:w-auto">
                 <LogOut className="mr-2 h-5 w-5" /> Logout
               </Button>
             </div>
           ) : (
             <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                    <Label htmlFor="username" className="text-base">Display Name:</Label>
-                    <Input
-                    id="username"
-                    type="text"
-                    value={editingUserName}
-                    onChange={(e) => setEditingUserName(e.target.value)}
-                    className="max-w-xs text-base"
-                    aria-label="Edit display name"
-                    placeholder="Enter your display name"
-                    />
-                    <Button onClick={handleUserNameSave} size="sm" variant="outline" disabled={isSaveNameDisabled}>
-                        <Edit3 className="mr-2 h-4 w-4" /> Save Name
-                    </Button>
-                </div>
-                 <p className="text-xs text-muted-foreground">Log in to save your display name permanently.</p>
+                <p className="text-xs text-muted-foreground">Log in to save your display name and avatar to your online profile.</p>
                 <Button onClick={handleGoogleLogin} className="w-full sm:w-auto bg-accent text-accent-foreground hover:bg-accent/90">
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2"><path d="M15.3 18.09C14.54 18.89 13.56 19.5 12.45 19.83C11.34 20.16 10.17 20.26 9 20.12C5.79 19.43 3.51 16.68 3.12 13.4C3.03 12.51 3.15 11.61 3.48 10.77C3.81 9.93 4.32 9.18 4.98 8.57C6.26 7.36 7.97 6.66 9.78 6.54C11.72 6.42 13.66 6.93 15.24 7.99L16.99 6.28C15.01 4.88 12.73 4.08 10.36 4.01C8.05 3.91 5.81 4.62 3.98 5.99C2.15 7.36 0.810001 9.32 0.200001 11.58C-0.419999 13.84 0.0300012 16.24 1.13 18.25C2.23 20.26 3.92 21.77 5.99 22.56C8.06 23.35 10.36 23.37 12.48 22.62C14.6 21.87 16.44 20.41 17.67 18.51L15.3 18.09Z"/><path d="M22.94 12.14C22.98 11.74 23 11.33 23 10.91C23 10.32 22.92 9.73 22.77 9.16H12V12.83H18.24C18.03 13.71 17.55 14.5 16.86 15.08L16.82 15.11L19.28 16.91L19.45 17.06C21.58 15.22 22.94 12.14 22.94 12.14Z"/><path d="M12 23C14.47 23 16.56 22.19 18.05 20.96L15.24 17.99C14.48 18.59 13.53 18.98 12.52 18.98C10.92 18.98 9.48001 18.13 8.82001 16.76L8.78001 16.72L6.21001 18.58L6.15001 18.7C7.02001 20.39 8.68001 21.83 10.62 22.48C11.09 22.64 11.56 22.77 12 22.81V23Z"/><path d="M12.01 3.00997C13.37 2.94997 14.7 3.43997 15.73 4.40997L17.97 2.21997C16.31 0.799971 14.21 -0.0600291 12.01 0.0099709C7.37001 0.0099709 3.44001 3.36997 2.02001 7.49997L4.98001 8.56997C5.60001 6.33997 7.72001 4.00997 10.22 4.00997C10.86 3.99997 11.49 4.12997 12.01 4.36997V3.00997Z"/></svg>
                 Sign In with Google
@@ -302,17 +328,17 @@ export default function ProfilePage() {
         </CardContent>
         <CardFooter>
             <p className="text-xs text-muted-foreground">
-                User login is managed by Firebase. Avatars and display names are saved to your Firebase profile. Theme and color preferences are saved locally.
+                Your display name and avatar are saved in your browser. Log in to sync them with your Shravya Playhouse online profile.
             </p>
         </CardFooter>
       </Card>
 
       <header className="flex items-center space-x-4 p-6 bg-primary/10 rounded-lg shadow">
-        {avatarDisplayUrl ? (
+        {selectedAvatar ? (
           <Avatar className="h-24 w-24 border-4 border-accent shadow-md">
-            <AvatarImage src={avatarDisplayUrl} alt={`${userNameDisplay}'s Avatar`} data-ai-hint="avatar character" />
+            <AvatarImage src={selectedAvatar} alt={`${editingUserName}'s Avatar`} data-ai-hint="avatar character" />
             <AvatarFallback className="text-3xl bg-muted text-muted-foreground">
-              {userNameDisplay.substring(0, 2).toUpperCase()}
+              {editingUserName.substring(0, 2).toUpperCase()}
             </AvatarFallback>
           </Avatar>
         ) : (
@@ -320,7 +346,7 @@ export default function ProfilePage() {
         )}
         <div>
           <h1 className="text-3xl font-bold text-foreground">My Profile</h1>
-          <p className="text-lg text-muted-foreground">Welcome back, {userNameDisplay}!</p>
+          <p className="text-lg text-muted-foreground">Welcome back, {editingUserName}!</p>
         </div>
       </header>
 
@@ -341,7 +367,7 @@ export default function ProfilePage() {
           <Card className="shadow-lg">
             <CardHeader>
               <CardTitle>Choose Your Avatar</CardTitle>
-              <CardDescription>Select a predefined avatar or upload your own (max 2MB).</CardDescription>
+              <CardDescription>Select a predefined avatar or upload your own (max 2MB). Changes are saved locally.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div>
@@ -350,19 +376,14 @@ export default function ProfilePage() {
                   {AVATARS.map((avatar, index) => (
                     <button
                       key={index}
-                      onClick={() => {
-                        setSelectedAvatar(avatar.src);
-                        if (!currentUser) {
-                            toast({ title: "Avatar Preview Changed", description: "Log in to save this avatar." });
-                        }
-                      }}
+                      onClick={() => handleSelectedAvatarChange(avatar.src)}
                       className={cn(
                         "rounded-full p-1 border-2 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-accent/50 relative",
                         selectedAvatar === avatar.src ? "border-accent ring-2 ring-accent" : "border-transparent hover:border-primary/50",
-                        isUploading ? "cursor-not-allowed opacity-60" : "cursor-pointer" // Disable only if uploading
+                        isUploading ? "cursor-not-allowed opacity-60" : "cursor-pointer"
                       )}
                       aria-label={`Select ${avatar.alt}`}
-                      disabled={isUploading} // Disable only if uploading
+                      disabled={isUploading}
                     >
                       <Image
                         src={avatar.src}
@@ -389,22 +410,21 @@ export default function ProfilePage() {
                   ref={avatarFileInputRef}
                   className="hidden"
                   id="avatar-upload"
-                  disabled={isUploading} // Disable only if uploading
+                  disabled={isUploading}
                 />
                 <Button 
                   variant="outline" 
                   onClick={() => avatarFileInputRef.current?.click()}
                   className="w-full sm:w-auto"
-                  disabled={isUploading} // Disable only if uploading
+                  disabled={isUploading}
                 >
                   <UploadCloud className="mr-2 h-5 w-5" /> Upload Image
                 </Button>
-                 {!currentUser && <p className="text-xs text-muted-foreground mt-1">Log in to save your custom avatar.</p>}
-                <p className="text-xs text-muted-foreground mt-2">Max file size: 2MB. PNG, JPG, GIF accepted.</p>
+                <p className="text-xs text-muted-foreground mt-2">Max file size: 2MB. PNG, JPG, GIF accepted. Avatar is saved locally.</p>
               </div>
               
               <Button onClick={handleSaveAvatar} className="w-full sm:w-auto bg-accent text-accent-foreground hover:bg-accent/90 mt-4" disabled={isSaveAvatarDisabled}>
-                {isUploading ? "Saving..." : "Save Avatar"}
+                {isUploading ? "Saving..." : "Save to Profile"}
               </Button>
             </CardContent>
           </Card>
@@ -428,7 +448,7 @@ export default function ProfilePage() {
           <Card className="shadow-lg">
             <CardHeader>
               <CardTitle>Preferences</CardTitle>
-              <CardDescription>Customize your Shravya Playhouse experience.</CardDescription>
+              <CardDescription>Customize your Shravya Playhouse experience. These settings are saved locally.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-8 pt-6">
               <div className="space-y-3">
@@ -489,5 +509,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-
-    

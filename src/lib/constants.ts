@@ -109,15 +109,12 @@ export const PUZZLE_TYPES: PuzzleType[] = [
 // 2. Place your avatar images (e.g., avatar_sun.png, avatar_robot.png) in this folder.
 // 3. Update the `src`, `alt`, and `hint` properties below to match your actual image files and desired descriptions.
 export const AVATARS: { src: string; alt: string; hint: string }[] = [
-  { src: '/images/avatars/avatar_sun.png', alt: 'Smiling Sun Avatar', hint: 'sun character' },
-  { src: '/images/avatars/avatar_robot.png', alt: 'Friendly Robot Avatar', hint: 'robot character' },
-  { src: '/images/avatars/avatar_cat.png', alt: 'Playful Cat Avatar', hint: 'cat animal' },
-  { src: '/images/avatars/avatar_star.png', alt: 'Sparkling Star Avatar', hint: 'star space' },
-  { src: '/images/avatars/avatar_tree.png', alt: 'Wise Tree Avatar', hint: 'tree nature' },
-  { src: '/images/avatars/avatar_rocket.png', alt: 'Space Rocket Avatar', hint: 'rocket space' },
-  // Add more entries here if you have more avatar images.
-  // Example:
-  // { src: '/images/avatars/your_image_name.png', alt: 'Description of your image', hint: 'keyword1 keyword2' },
+  { src: '/images/avatars/african_girl.png', alt: 'African girl avatar', hint: 'african girl' },
+  { src: '/images/avatars/african_women.png', alt: 'African women avatar', hint: 'african women' },
+  { src: '/images/avatars/indian_boy.png', alt: 'Indian boy avatar', hint: 'indian boy' },
+  { src: '/images/avatars/indian_girl.png', alt: 'Indian girl avatar', hint: 'indian girl' },
+  { src: '/images/avatars/indian_man.png', alt: 'Indian man avatar', hint: 'indian man' },
+  { src: '/images/avatars/modern_girl.png', alt: 'Modern girl avatar', hint: 'modern girl' },
 ];
 
 export interface NavItem {
