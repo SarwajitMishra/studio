@@ -41,7 +41,7 @@ export const GAMES: Game[] = [
     category: 'Puzzles',
     Icon: Puzzle,
     description: 'Piece together beautiful images. Fun for all ages!',
-    href: '/puzzles#jigsaw', 
+    href: '/puzzles/jigsaw', // Updated to point to dedicated page
     color: 'text-purple-600',
   },
   {
@@ -59,7 +59,7 @@ export const GAMES: Game[] = [
     category: 'Learning',
     Icon: BookOpen,
     description: 'Fun with numbers! Solve engaging math puzzles.',
-    href: '/puzzles#numbers',
+    href: '/puzzles/numbers', // Updated to point to dedicated page
     color: 'text-green-600',
   },
 ];
@@ -82,7 +82,7 @@ export const PUZZLE_TYPES: PuzzleType[] = [
     description: 'Assemble pieces to form a picture. Drag and drop to solve!',
     color: 'text-purple-600',
     href: '/puzzles/jigsaw', 
-    disabled: true,
+    disabled: false, // Enabled
   },
   { 
     id: 'memory', 
@@ -100,7 +100,7 @@ export const PUZZLE_TYPES: PuzzleType[] = [
     description: 'Solve math and logic puzzles. Learn while you play!',
     color: 'text-green-600',
     href: '/puzzles/numbers',
-    disabled: true,
+    disabled: false, // Enabled
   },
 ];
 
