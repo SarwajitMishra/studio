@@ -1,6 +1,6 @@
 
 import type { LucideIcon } from 'lucide-react';
-import { HomeIcon, LayoutGrid, Puzzle, BookOpen, UserCircle, Settings, BarChart3, Zap, Apple, Banana, Cherry, Grape, Carrot, Pizza, CakeSlice, IceCream2, Swords, Bot } from 'lucide-react';
+import { HomeIcon, LayoutGrid, Puzzle, BookOpen, UserCircle, Settings, BarChart3, Zap, Apple, Banana, Cherry, Grape, Carrot, Pizza, CakeSlice, IceCream2, Swords, Bot, Search, Sigma, Brain, ToyBrick } from 'lucide-react';
 
 export type GameCategory = 'Strategy' | 'Puzzles' | 'Learning';
 
@@ -29,11 +29,10 @@ export const GAMES: Game[] = [
     id: 'ludo',
     title: 'Ludo',
     category: 'Strategy',
-    Icon: Swords, // Using Swords as a generic game icon, LayoutGrid might be better if more generic board needed
+    Icon: Swords, 
     description: 'Classic board game for 2-4 players. Roll the dice and race your tokens home!',
     href: '/ludo',
     color: 'text-emerald-600',
-    // imageUrl: '/icons/ludo-icon.png', // If you have this image, place in public/icons/
   },
   {
     id: 'jigsaw',
@@ -41,14 +40,14 @@ export const GAMES: Game[] = [
     category: 'Puzzles',
     Icon: Puzzle,
     description: 'Piece together beautiful images. Fun for all ages!',
-    href: '/puzzles/jigsaw', // Updated to point to dedicated page
+    href: '/puzzles/jigsaw', 
     color: 'text-purple-600',
   },
   {
     id: 'memory-match',
     title: 'Memory Match',
     category: 'Puzzles',
-    Icon: Zap,
+    Icon: Zap, // Brain might be better if Zap is too generic
     description: 'Test your memory by matching pairs of cards.',
     href: '/puzzles/memory',
     color: 'text-pink-600',
@@ -57,9 +56,9 @@ export const GAMES: Game[] = [
     id: 'number-puzzles',
     title: 'Number Puzzles',
     category: 'Learning',
-    Icon: BookOpen,
+    Icon: BookOpen, // Or Calculator icon
     description: 'Fun with numbers! Solve engaging math puzzles.',
-    href: '/puzzles/numbers', // Updated to point to dedicated page
+    href: '/puzzles/numbers', 
     color: 'text-green-600',
   },
 ];
@@ -82,12 +81,12 @@ export const PUZZLE_TYPES: PuzzleType[] = [
     description: 'Assemble pieces to form a picture. Drag and drop to solve!',
     color: 'text-purple-600',
     href: '/puzzles/jigsaw',
-    disabled: false, // Enabled
+    disabled: false, 
   },
   {
     id: 'memory',
     name: 'Memory Match',
-    Icon: Zap,
+    Icon: Zap, // Consider Brain icon from lucide-react
     description: 'Find matching pairs of cards. Click to reveal!',
     color: 'text-pink-600',
     href: '/puzzles/memory',
@@ -96,18 +95,14 @@ export const PUZZLE_TYPES: PuzzleType[] = [
   {
     id: 'numbers',
     name: 'Number Puzzles',
-    Icon: BookOpen,
+    Icon: BookOpen, // Or Calculator
     description: 'Solve math and logic puzzles. Learn while you play!',
     color: 'text-green-600',
     href: '/puzzles/numbers',
-    disabled: false, // Enabled
+    disabled: false,
   },
 ];
 
-// **IMPORTANT**:
-// 1. Create a folder structure: public/images/avatars/
-// 2. Place your avatar images (e.g., avatar_sun.png, avatar_robot.png) in this folder.
-// 3. Update the `src`, `alt`, and `hint` properties below to match your actual image files and desired descriptions.
 export const AVATARS: { src: string; alt: string; hint: string }[] = [
   { src: '/images/avatars/avatar_sun.png', alt: 'Sun avatar', hint: 'sun happy' },
   { src: '/images/avatars/avatar_robot.png', alt: 'Robot avatar', hint: 'robot friendly' },
@@ -115,6 +110,9 @@ export const AVATARS: { src: string; alt: string; hint: string }[] = [
   { src: '/images/avatars/avatar_cat.png', alt: 'Cat avatar', hint: 'cat playful' },
   { src: '/images/avatars/avatar_dog.png', alt: 'Dog avatar', hint: 'dog loyal' },
   { src: '/images/avatars/avatar_alien.png', alt: 'Alien avatar', hint: 'alien space' },
+  // Add more diverse avatars if available, e.g., different characters
+  { src: '/images/avatars/modern_boy.png', alt: 'Modern Boy Avatar', hint: 'boy modern' },
+  { src: '/images/avatars/modern_girl.png', alt: 'Modern Girl Avatar', hint: 'girl modern' },
 ];
 
 export interface NavItem {
@@ -125,10 +123,8 @@ export interface NavItem {
 
 export const NAV_ITEMS: NavItem[] = [
   { href: '/', label: 'Games', Icon: HomeIcon },
-  { href: '/chess', label: 'Chess', Icon: LayoutGrid },
-  { href: '/ludo', label: 'Ludo', Icon: Swords }, // Added Ludo to Nav
   { href: '/puzzles', label: 'Puzzles', Icon: Puzzle },
-  { href: '/shravya-ai', label: 'Shravya AI', Icon: Bot },
+  // Shravya AI is now a floating button, not a nav item
   { href: '/profile', label: 'Profile', Icon: UserCircle },
 ];
 
@@ -136,3 +132,10 @@ export const NAV_ITEMS: NavItem[] = [
 export const MEMORY_ICONS: LucideIcon[] = [
   Apple, Banana, Cherry, Grape, Carrot, Pizza, CakeSlice, IceCream2
 ];
+
+// For Profile Progress Tab (Placeholder Icons)
+export const CATEGORY_ICONS_MAP: Record<GameCategory, LucideIcon> = {
+    Strategy: Brain,
+    Puzzles: ToyBrick, // Puzzle icon is already used in nav, ToyBrick for variety
+    Learning: BookOpen,
+};
