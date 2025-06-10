@@ -121,15 +121,18 @@ export const PUZZLE_TYPES: PuzzleType[] = [
   },
 ];
 
+// Define your avatar image paths here, relative to the /public directory
+// For example, if your image is in public/images/avatars/avatar_sun.png,
+// the src should be "/images/avatars/avatar_sun.png"
 export const AVATARS: { src: string; alt: string; hint: string }[] = [
-  { src: 'https://placehold.co/100x100.png', alt: 'Sun avatar', hint: 'sun happy' },
-  { src: 'https://placehold.co/100x100.png', alt: 'Robot avatar', hint: 'robot friendly' },
-  { src: 'https://placehold.co/100x100.png', alt: 'Star avatar', hint: 'star cute' },
-  { src: 'https://placehold.co/100x100.png', alt: 'Cat avatar', hint: 'cat playful' },
-  { src: 'https://placehold.co/100x100.png', alt: 'Dog avatar', hint: 'dog loyal' },
-  { src: 'https://placehold.co/100x100.png', alt: 'Alien avatar', hint: 'alien space' },
-  { src: 'https://placehold.co/100x100.png', alt: 'Modern Boy Avatar', hint: 'boy modern' },
-  { src: 'https://placehold.co/100x100.png', alt: 'Modern Girl Avatar', hint: 'girl modern' },
+  { src: '/images/avatars/avatar_sun.png', alt: 'Sun avatar', hint: 'sun happy' },
+  { src: '/images/avatars/avatar_robot.png', alt: 'Robot avatar', hint: 'robot friendly' },
+  { src: '/images/avatars/avatar_star.png', alt: 'Star avatar', hint: 'star cute' },
+  { src: '/images/avatars/avatar_cat_playful.png', alt: 'Playful Cat avatar', hint: 'cat playful' },
+  { src: '/images/avatars/avatar_dog_loyal.png', alt: 'Loyal Dog avatar', hint: 'dog loyal' },
+  { src: '/images/avatars/avatar_alien_friendly.png', alt: 'Friendly Alien avatar', hint: 'alien space' },
+  { src: '/images/avatars/avatar_boy_modern.png', alt: 'Modern Boy avatar', hint: 'boy modern' },
+  { src: '/images/avatars/avatar_girl_modern.png', alt: 'Modern Girl avatar', hint: 'girl modern' },
 ];
 
 export interface NavItem {
@@ -162,3 +165,4 @@ export const S_POINTS_ICON = StarIcon;
 export const S_COINS_ICON = CoinsIcon;
 export const LOCAL_STORAGE_S_POINTS_KEY = 'shravyaPlayhouse_sPoints';
 export const LOCAL_STORAGE_S_COINS_KEY = 'shravyaPlayhouse_sCoins';
+
