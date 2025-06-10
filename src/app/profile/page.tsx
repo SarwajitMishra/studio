@@ -149,6 +149,14 @@ export default function ProfilePage() {
   useEffect(() => {
     let isMounted = true; 
 
+    // Log Firebase config being used by the SDK for diagnostics
+    if (auth && auth.app && auth.app.options) {
+      console.log("DIAGNOSTIC: Firebase Auth Domain (from SDK):", auth.app.options.authDomain);
+      console.log("DIAGNOSTIC: Firebase Project ID (from SDK):", auth.app.options.projectId);
+    } else {
+      console.log("DIAGNOSTIC: Firebase auth object or options not yet available for logging.");
+    }
+
     const handleUserUpdate = (user: User | null, isNewLoginEvent: boolean = false) => {
       if (!isMounted) return;
 
@@ -199,10 +207,17 @@ export default function ProfilePage() {
         try {
             const result = await getRedirectResult(auth);
             // User data handling will be managed by onAuthStateChanged
+            // If result is not null, a sign-in just completed.
+            if (result && result.user && isMounted) {
+                 console.log("DIAGNOSTIC: Google sign-in redirect successful.", result.user.displayName);
+            }
         } catch (error: any) {
             if (isMounted) {
-                console.error("Error during Google sign-in redirect result:", error);
-                toast({ variant: "destructive", title: "Login Failed", description: error.message || "Could not sign in with Google. Please try again." });
+                console.error("Error during Google sign-in redirect result processing:", error);
+                // Log more details if available
+                if (error.code) console.error("Firebase error code:", error.code);
+                if (error.message) console.error("Firebase error message:", error.message);
+                toast({ variant: "destructive", title: "Login Failed After Redirect", description: error.message || "Could not process sign-in with Google after redirect. Please try again." });
             }
         }
     };
@@ -210,7 +225,7 @@ export default function ProfilePage() {
     processRedirect();
 
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-        const isNewLogin = !!user && (!currentUser || currentUser.uid !== user.uid); // Check if it's a NEW login
+        const isNewLogin = !!user && (!currentUser || currentUser.uid !== user.uid); 
         handleUserUpdate(user, isNewLogin);
     });
 
@@ -238,8 +253,10 @@ export default function ProfilePage() {
     try {
       await signInWithRedirect(auth, googleProvider);
     } catch (error: any) {
-      console.error("Error during Google sign-in:", error);
-      toast({ variant: "destructive", title: "Login Failed", description: error.message || "Could not sign in with Google. Please try again." });
+      console.error("Error during Google sign-in initiation:", error);
+      if (error.code) console.error("Firebase error code (initiation):", error.code);
+      if (error.message) console.error("Firebase error message (initiation):", error.message);
+      toast({ variant: "destructive", title: "Login Initiation Failed", description: error.message || "Could not start sign in with Google. Please try again." });
     }
   };
 
@@ -667,4 +684,6 @@ export default function ProfilePage() {
     </div>
   );
 }
+    
+
     
