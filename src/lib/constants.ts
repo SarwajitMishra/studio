@@ -1,6 +1,6 @@
 
 import type { LucideIcon } from 'lucide-react';
-import { HomeIcon, LayoutGrid, Puzzle, BookOpen, UserCircle, Settings, BarChart3, Zap, Apple, Banana, Cherry, Grape, Carrot, Pizza, CakeSlice, IceCream2, Swords, Bot, Search, Sigma, Brain, ToyBrick, Star as StarIcon, Coins as CoinsIcon } from 'lucide-react';
+import { HomeIcon, LayoutGrid, Puzzle, BookOpen, UserCircle, Settings, BarChart3, Zap, Apple, Banana, Cherry, Grape, Carrot, Pizza, CakeSlice, IceCream2, Swords, Bot, Search, Sigma, Brain, ToyBrick, Star as StarIcon, Coins as CoinsIcon, BookMarked } from 'lucide-react';
 
 export type GameCategory = 'Strategy' | 'Puzzles' | 'Learning';
 
@@ -61,6 +61,15 @@ export const GAMES: Game[] = [
     href: '/puzzles/numbers', 
     color: 'text-green-600',
   },
+  {
+    id: 'easy-english',
+    title: 'Easy English Fun',
+    category: 'Learning',
+    Icon: BookMarked,
+    description: 'Learn basic English words and concepts in a fun, interactive way!',
+    href: '/puzzles/easy-english',
+    color: 'text-indigo-500',
+  },
 ];
 
 export interface PuzzleType {
@@ -99,6 +108,15 @@ export const PUZZLE_TYPES: PuzzleType[] = [
     description: 'Solve math and logic puzzles. Learn while you play!',
     color: 'text-green-600',
     href: '/puzzles/numbers',
+    disabled: false,
+  },
+  {
+    id: 'easy-english',
+    name: 'Easy English Fun',
+    Icon: BookMarked,
+    description: 'Learn basic English words through simple and fun puzzles.',
+    color: 'text-indigo-500',
+    href: '/puzzles/easy-english',
     disabled: false,
   },
 ];
