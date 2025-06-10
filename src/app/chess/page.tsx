@@ -4,13 +4,13 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useState, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast"; // For feedback
-import { Crown, Shield } from "lucide-react"; // Example icons for player turn
-import { Button } from "@/components/ui/button"; // Added this import
+import { useToast } from "@/hooks/use-toast";
+import { Crown, Shield, AlertTriangle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface Piece {
-  type: "K" | "Q" | "R" | "B" | "N" | "P"; // King, Queen, Rook, Bishop, Knight, Pawn
-  color: "w" | "b"; // White or Black
+  type: "K" | "Q" | "R" | "B" | "N" | "P";
+  color: "w" | "b";
 }
 
 interface SquarePosition {
@@ -18,38 +18,38 @@ interface SquarePosition {
   col: number;
 }
 
-const PIECE_UNICODE: Record<"w" | "b", Record<Piece["type"], string>> = {
+type PlayerColor = "w" | "b";
+
+const PIECE_UNICODE: Record<PlayerColor, Record<Piece["type"], string>> = {
   w: { K: "♔", Q: "♕", R: "♖", B: "♗", N: "♘", P: "♙" },
   b: { K: "♚", Q: "♛", R: "♜", B: "♝", N: "♞", P: "♟" },
 };
 
-const initialBoardSetup = (): (Piece | null)[][] => {
-  const board: (Piece | null)[][] = Array(8)
-    .fill(null)
-    .map(() => Array(8).fill(null));
+const initialBoardSetup = (): { board: (Piece | null)[][], kings: Record<PlayerColor, SquarePosition> } => {
+  const board: (Piece | null)[][] = Array(8).fill(null).map(() => Array(8).fill(null));
+  const kings: Record<PlayerColor, SquarePosition> = { w: {row: -1, col: -1}, b: {row: -1, col: -1}};
 
-  const placePiece = (piece: Piece, r: number, c: number) => { board[r][c] = piece; };
+  const placePiece = (piece: Piece, r: number, c: number) => {
+    board[r][c] = piece;
+    if (piece.type === "K") {
+      kings[piece.color] = { row: r, col: c };
+    }
+  };
 
-  // Pawns
   for (let i = 0; i < 8; i++) {
     placePiece({ type: "P", color: "b" }, 1, i);
     placePiece({ type: "P", color: "w" }, 6, i);
   }
-  // Rooks
   placePiece({ type: "R", color: "b" }, 0, 0); placePiece({ type: "R", color: "b" }, 0, 7);
   placePiece({ type: "R", color: "w" }, 7, 0); placePiece({ type: "R", color: "w" }, 7, 7);
-  // Knights
   placePiece({ type: "N", color: "b" }, 0, 1); placePiece({ type: "N", color: "b" }, 0, 6);
   placePiece({ type: "N", color: "w" }, 7, 1); placePiece({ type: "N", color: "w" }, 7, 6);
-  // Bishops
   placePiece({ type: "B", color: "b" }, 0, 2); placePiece({ type: "B", color: "b" }, 0, 5);
   placePiece({ type: "B", color: "w" }, 7, 2); placePiece({ type: "B", color: "w" }, 7, 5);
-  // Queens
   placePiece({ type: "Q", color: "b" }, 0, 3); placePiece({ type: "Q", color: "w" }, 7, 3);
-  // Kings
   placePiece({ type: "K", color: "b" }, 0, 4); placePiece({ type: "K", color: "w" }, 7, 4);
 
-  return board;
+  return { board, kings };
 };
 
 const ChessSquare = ({
@@ -58,7 +58,7 @@ const ChessSquare = ({
   onClick,
   isSelected,
   isPossibleMove,
-  isInCheck, // For future king highlighting
+  isInCheck,
 }: {
   piece: Piece | null;
   isLight: boolean;
@@ -74,10 +74,10 @@ const ChessSquare = ({
         isLight ? "bg-primary/20" : "bg-primary/60",
         isSelected ? "ring-2 ring-yellow-400 ring-inset" : "",
         isPossibleMove ? "bg-green-500/40 hover:bg-green-500/50" : "",
-        isInCheck && piece?.type === 'K' ? "bg-red-500/50" : ""
+        isInCheck && piece?.type === 'K' ? "bg-red-500/60 animate-pulse" : "" // Highlight king in check
       )}
       onClick={onClick}
-      aria-label={`Square ${isLight ? 'light' : 'dark'}${piece ? `, containing ${piece.color === 'w' ? 'white' : 'black'} ${piece.type}` : ''}`}
+      aria-label={`Square ${isLight ? 'light' : 'dark'}${piece ? `, containing ${piece.color === 'w' ? 'white' : 'black'} ${piece.type}` : ''}${isInCheck ? ', King in Check' : ''}`}
     >
       {piece && (
         <span
@@ -99,25 +99,27 @@ const ChessSquare = ({
 };
 
 export default function ChessPage() {
-  const [board, setBoard] = useState<(Piece | null)[][]>(initialBoardSetup());
+  const initialSetup = initialBoardSetup();
+  const [board, setBoard] = useState<(Piece | null)[][]>(initialSetup.board);
+  const [kingPositions, setKingPositions] = useState<Record<PlayerColor, SquarePosition>>(initialSetup.kings);
   const [selectedPiece, setSelectedPiece] = useState<SquarePosition | null>(null);
-  const [currentPlayer, setCurrentPlayer] = useState<'w' | 'b'>('w');
+  const [currentPlayer, setCurrentPlayer] = useState<PlayerColor>('w');
   const [possibleMoves, setPossibleMoves] = useState<SquarePosition[]>([]);
   const [gameStatusMessage, setGameStatusMessage] = useState<string>("White's turn to move.");
   const [gameOver, setGameOver] = useState<boolean>(false);
-  const [winner, setWinner] = useState<'w' | 'b' | 'draw' | null>(null);
-  // const [isCheck, setIsCheck] = useState<boolean>(false); // For future check detection
+  const [winner, setWinner] = useState<PlayerColor | 'draw' | null>(null);
+  const [kingUnderAttack, setKingUnderAttack] = useState<PlayerColor | null>(null);
 
   const { toast } = useToast();
 
-  const isSquareOnBoard = (row: number, col: number) => row >= 0 && row < 8 && col >= 0 && col < 8;
+  const isSquareOnBoard = (row: number, col: number): boolean => row >= 0 && row < 8 && col >= 0 && col < 8;
 
-  const getPieceAt = (currentBoard: (Piece | null)[][], row: number, col: number) => {
+  const getPieceAt = (currentBoard: (Piece | null)[][], row: number, col: number): Piece | null => {
     if (!isSquareOnBoard(row, col)) return null;
     return currentBoard[row][col];
   };
 
-  const calculatePossibleMoves = useCallback((
+  const _calculateRawPossibleMoves = useCallback((
     currentBoard: (Piece | null)[][],
     piece: Piece,
     r: number,
@@ -127,12 +129,12 @@ export default function ChessPage() {
     const playerColor = piece.color;
     const opponentColor = playerColor === 'w' ? 'b' : 'w';
 
-    const addMove = (targetRow: number, targetCol: number) => {
+    const addMove = (targetRow: number, targetCol: number, isSlide: boolean = false): boolean => {
       if (!isSquareOnBoard(targetRow, targetCol)) return false;
       const targetPiece = getPieceAt(currentBoard, targetRow, targetCol);
       if (targetPiece === null) {
         moves.push({ row: targetRow, col: targetCol });
-        return true; // Can continue sliding
+        return true; // Can continue sliding if it's a slide move
       }
       if (targetPiece.color === opponentColor) {
         moves.push({ row: targetRow, col: targetCol });
@@ -143,16 +145,13 @@ export default function ChessPage() {
 
     if (piece.type === 'P') {
       const direction = playerColor === 'w' ? -1 : 1;
-      // Single step forward
       if (isSquareOnBoard(r + direction, c) && !getPieceAt(currentBoard, r + direction, c)) {
         addMove(r + direction, c);
-        // Double step forward (initial move)
         const initialRow = playerColor === 'w' ? 6 : 1;
         if (r === initialRow && isSquareOnBoard(r + 2 * direction, c) && !getPieceAt(currentBoard, r + 2 * direction, c)) {
           addMove(r + 2 * direction, c);
         }
       }
-      // Captures
       [-1, 1].forEach(colOffset => {
         if (isSquareOnBoard(r + direction, c + colOffset)) {
           const targetPiece = getPieceAt(currentBoard, r + direction, c + colOffset);
@@ -161,42 +160,97 @@ export default function ChessPage() {
           }
         }
       });
-      // En Passant & Promotion: TODO
     } else if (piece.type === 'N') {
-      const knightMoves = [
-        [1, 2], [1, -2], [-1, 2], [-1, -2],
-        [2, 1], [2, -1], [-2, 1], [-2, -1],
-      ];
+      const knightMoves = [[1, 2], [1, -2], [-1, 2], [-1, -2], [2, 1], [2, -1], [-2, 1], [-2, -1]];
       knightMoves.forEach(([dr, dc]) => addMove(r + dr, c + dc));
     } else if (piece.type === 'K') {
-      const kingMoves = [
-        [0, 1], [0, -1], [1, 0], [-1, 0],
-        [1, 1], [1, -1], [-1, 1], [-1, -1],
-      ];
+      const kingMoves = [[0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [1, -1], [-1, 1], [-1, -1]];
       kingMoves.forEach(([dr, dc]) => addMove(r + dr, c + dc));
-      // Castling: TODO
     } else { // Sliding pieces: R, B, Q
       let directions: number[][] = [];
-      if (piece.type === 'R' || piece.type === 'Q') {
-        directions.push(...[[0, 1], [0, -1], [1, 0], [-1, 0]]);
-      }
-      if (piece.type === 'B' || piece.type === 'Q') {
-        directions.push(...[[1, 1], [1, -1], [-1, 1], [-1, -1]]);
-      }
+      if (piece.type === 'R' || piece.type === 'Q') directions.push(...[[0, 1], [0, -1], [1, 0], [-1, 0]]);
+      if (piece.type === 'B' || piece.type === 'Q') directions.push(...[[1, 1], [1, -1], [-1, 1], [-1, -1]]);
       directions.forEach(([dr, dc]) => {
         for (let i = 1; i < 8; i++) {
-          if (!addMove(r + i * dr, c + i * dc)) break;
+          if (!addMove(r + i * dr, c + i * dc, true)) break;
         }
       });
     }
-    // Filter out moves that would put own king in check: TODO
     return moves;
   }, []);
+
+  const isSquareAttacked = useCallback((
+    currentBoard: (Piece | null)[][],
+    targetRow: number,
+    targetCol: number,
+    attackerColor: PlayerColor
+  ): boolean => {
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        const piece = getPieceAt(currentBoard, r, c);
+        if (piece && piece.color === attackerColor) {
+          const rawMoves = _calculateRawPossibleMoves(currentBoard, piece, r, c);
+          if (rawMoves.some(move => move.row === targetRow && move.col === targetCol)) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }, [_calculateRawPossibleMoves]);
+
+  const calculateLegalMoves = useCallback((
+    currentBoard: (Piece | null)[][],
+    piece: Piece,
+    r: number,
+    c: number,
+    playerColor: PlayerColor,
+    currentKingPositions: Record<PlayerColor, SquarePosition>
+  ): SquarePosition[] => {
+    const rawMoves = _calculateRawPossibleMoves(currentBoard, piece, r, c);
+    const legalMoves: SquarePosition[] = [];
+
+    for (const move of rawMoves) {
+      const tempBoard = currentBoard.map(rowArr => rowArr.map(p => p ? { ...p } : null));
+      tempBoard[move.row][move.col] = piece;
+      tempBoard[r][c] = null;
+
+      let kingPos = currentKingPositions[playerColor];
+      if (piece.type === 'K') {
+        kingPos = { row: move.row, col: move.col };
+      }
+
+      if (kingPos.row === -1) continue; // Should not happen with valid kingPositions
+
+      if (!isSquareAttacked(tempBoard, kingPos.row, kingPos.col, playerColor === 'w' ? 'b' : 'w')) {
+        legalMoves.push(move);
+      }
+    }
+    return legalMoves;
+  }, [_calculateRawPossibleMoves, isSquareAttacked]);
+  
+  const getAllLegalMovesForPlayer = useCallback((
+    currentBoard: (Piece | null)[][],
+    playerColor: PlayerColor,
+    currentKingPositions: Record<PlayerColor, SquarePosition>
+  ): SquarePosition[] => {
+    let allMoves: SquarePosition[] = [];
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        const piece = getPieceAt(currentBoard, r, c);
+        if (piece && piece.color === playerColor) {
+          const legalMoves = calculateLegalMoves(currentBoard, piece, r, c, playerColor, currentKingPositions);
+          allMoves = [...allMoves, ...legalMoves.map(move => ({fromRow: r, fromCol: c, ...move}))]; // Store origin for checkmate logic
+        }
+      }
+    }
+    return allMoves;
+  }, [calculateLegalMoves]);
 
 
   const handleSquareClick = (row: number, col: number) => {
     if (gameOver) {
-      toast({ title: "Game Over", description: `Winner: ${winner === 'draw' ? 'Draw' : (winner === 'w' ? 'White' : 'Black')}. Please reset.`});
+      toast({ title: "Game Over", description: `${winner === 'draw' ? 'Draw by Stalemate' : (winner === 'w' ? 'White Wins by Checkmate!' : 'Black Wins by Checkmate!')} Please reset.` });
       return;
     }
 
@@ -206,55 +260,65 @@ export default function ChessPage() {
       const { row: fromRow, col: fromCol } = selectedPiece;
       const pieceToMove = getPieceAt(board, fromRow, fromCol);
 
-      if (!pieceToMove) { // Should not happen if selectedPiece is valid
+      if (!pieceToMove) {
         setSelectedPiece(null);
         setPossibleMoves([]);
         return;
       }
 
-      // Check if the clicked square is a valid move for the selected piece
       const isMovePossible = possibleMoves.some(m => m.row === row && m.col === col);
 
       if (isMovePossible) {
         const newBoard = board.map(r => r.map(p => p ? { ...p } : null));
-        // const capturedPiece = newBoard[row][col]; // For display, if needed
         newBoard[row][col] = pieceToMove;
         newBoard[fromRow][fromCol] = null;
         setBoard(newBoard);
 
-        // Pawn Promotion Check: TODO
-        // if (pieceToMove.type === 'P' && ( (pieceToMove.color === 'w' && row === 0) || (pieceToMove.color === 'b' && row === 7) ) ) {
-        // Trigger promotion logic
-        // }
+        const newKingPositions = { ...kingPositions };
+        if (pieceToMove.type === 'K') {
+          newKingPositions[pieceToMove.color] = { row, col };
+        }
+        setKingPositions(newKingPositions);
 
-        const nextPlayer = currentPlayer === 'w' ? 'b' : 'w';
-        setCurrentPlayer(nextPlayer);
+        const opponentColor = currentPlayer === 'w' ? 'b' : 'w';
+        
+        const opponentKingPos = newKingPositions[opponentColor];
+        const isOpponentInCheck = opponentKingPos.row !== -1 && isSquareAttacked(newBoard, opponentKingPos.row, opponentKingPos.col, currentPlayer);
+
+        setKingUnderAttack(isOpponentInCheck ? opponentColor : null);
+
+        const opponentHasLegalMoves = getAllLegalMovesForPlayer(newBoard, opponentColor, newKingPositions).length > 0;
+
+        if (isOpponentInCheck && !opponentHasLegalMoves) {
+          setGameOver(true);
+          setWinner(currentPlayer);
+          setGameStatusMessage(`Checkmate! ${currentPlayer === 'w' ? 'White' : 'Black'} wins!`);
+          toast({ title: "Checkmate!", description: `${currentPlayer === 'w' ? 'White' : 'Black'} wins!` });
+        } else if (!isOpponentInCheck && !opponentHasLegalMoves) {
+          setGameOver(true);
+          setWinner('draw');
+          setGameStatusMessage("Stalemate! It's a draw.");
+          toast({ title: "Stalemate!", description: "The game is a draw." });
+        } else {
+          setCurrentPlayer(opponentColor);
+          setGameStatusMessage(`${isOpponentInCheck ? "Check! " : ""}${opponentColor === 'w' ? "White" : "Black"}'s turn.`);
+        }
         setSelectedPiece(null);
         setPossibleMoves([]);
-        setGameStatusMessage(`${nextPlayer === 'w' ? "White" : "Black"}'s turn.`);
-
-        // Check for Check, Checkmate, Stalemate: TODO
-        // const { isCheck, isCheckmate, isStalemate } = checkGameStatus(newBoard, nextPlayer);
-        // if (isCheckmate) { setGameOver(true); setWinner(currentPlayer); setGameStatusMessage(`Checkmate! ${currentPlayer === 'w' ? 'White' : 'Black'} wins.`); }
-        // else if (isStalemate) { setGameOver(true); setWinner('draw'); setGameStatusMessage("Stalemate! It's a draw."); }
-        // else if (isCheck) { setGameStatusMessage(`${nextPlayer === 'w' ? "White" : "Black"} is in Check!`); }
-
       } else {
-        // Clicked on another piece of the current player? Then select that.
         if (clickedSquarePiece && clickedSquarePiece.color === currentPlayer) {
           setSelectedPiece({ row, col });
-          setPossibleMoves(calculatePossibleMoves(board, clickedSquarePiece, row, col));
+          setPossibleMoves(calculateLegalMoves(board, clickedSquarePiece, row, col, currentPlayer, kingPositions));
         } else {
-          // Invalid move or clicked empty square not in possible moves
           setSelectedPiece(null);
           setPossibleMoves([]);
-           toast({ variant: "destructive", title: "Invalid Move", description: "That move is not allowed." });
+          toast({ variant: "destructive", title: "Invalid Move", description: "That move is not allowed or would put your king in check." });
         }
       }
-    } else { // No piece selected yet
+    } else {
       if (clickedSquarePiece && clickedSquarePiece.color === currentPlayer) {
         setSelectedPiece({ row, col });
-        setPossibleMoves(calculatePossibleMoves(board, clickedSquarePiece, row, col));
+        setPossibleMoves(calculateLegalMoves(board, clickedSquarePiece, row, col, currentPlayer, kingPositions));
       } else if (clickedSquarePiece && clickedSquarePiece.color !== currentPlayer) {
         toast({ variant: "default", title: "Not Your Turn", description: `It's ${currentPlayer === 'w' ? "White" : "Black"}'s turn.` });
       }
@@ -262,22 +326,23 @@ export default function ChessPage() {
   };
 
   const resetGame = () => {
-    setBoard(initialBoardSetup());
+    const newInitialSetup = initialBoardSetup();
+    setBoard(newInitialSetup.board);
+    setKingPositions(newInitialSetup.kings);
     setSelectedPiece(null);
     setCurrentPlayer('w');
     setPossibleMoves([]);
     setGameStatusMessage("White's turn to move.");
     setGameOver(false);
     setWinner(null);
-    // setIsCheck(false);
+    setKingUnderAttack(null);
     toast({ title: "Game Reset", description: "The board has been reset." });
   };
 
-  // Client component for metadata
   const ClientMetadata = () => (
     <>
       <title>Play Chess | Shravya Playhouse</title>
-      <meta name="description" content="Challenge your mind with the classic game of chess, featuring move validation and turn management." />
+      <meta name="description" content="Challenge your mind with the classic game of chess, featuring move validation, turn management, check, and checkmate." />
     </>
   );
 
@@ -288,16 +353,19 @@ export default function ChessPage() {
         <Card className="w-full max-w-3xl shadow-xl">
           <CardHeader className="bg-primary/10">
             <CardTitle className="text-3xl font-bold text-center text-primary">Interactive Chess</CardTitle>
-             <CardDescription className="text-center text-md text-foreground/80">
-                {gameOver ? `Game Over! ${winner === 'draw' ? 'Draw' : (winner === 'w' ? 'White Wins!' : 'Black Wins!')}` : gameStatusMessage}
+            <CardDescription className="text-center text-md text-foreground/80 min-h-[1.5em]">
+              {gameOver
+                ? `Game Over! ${winner === 'draw' ? 'Draw by Stalemate' : (winner === 'w' ? 'White Wins!' : 'Black Wins!')}`
+                : gameStatusMessage}
             </CardDescription>
           </CardHeader>
           <CardContent className="p-4 sm:p-6 flex flex-col items-center">
             <div className="mb-4 flex items-center space-x-2 p-2 rounded-md bg-card border shadow">
-                {currentPlayer === 'w' ? <Crown size={24} className="text-yellow-400" /> : <Shield size={24} className="text-neutral-600" />}
-                <span className={cn("font-semibold", currentPlayer === 'w' ? 'text-foreground' : 'text-foreground')}>
-                   Current Turn: {currentPlayer === 'w' ? "White" : "Black"}
-                </span>
+              {kingUnderAttack && kingUnderAttack !== currentPlayer && <AlertTriangle size={24} className="text-red-500" />}
+              {currentPlayer === 'w' ? <Crown size={24} className="text-yellow-400" /> : <Shield size={24} className="text-neutral-600" />}
+              <span className={cn("font-semibold", currentPlayer === 'w' ? 'text-foreground' : 'text-foreground')}>
+                Turn: {currentPlayer === 'w' ? "White" : "Black"}
+              </span>
             </div>
 
             <div
@@ -309,7 +377,7 @@ export default function ChessPage() {
                   const isLight = (rowIndex + colIndex) % 2 === 0;
                   const isSel = selectedPiece?.row === rowIndex && selectedPiece?.col === colIndex;
                   const isPossMove = possibleMoves.some(m => m.row === rowIndex && m.col === colIndex);
-                  // const kingInCheck = piece?.type === 'K' && piece.color === currentPlayer && isCheck; // For future check highlighting
+                  const isKingSquareInCheck = piece?.type === 'K' && piece.color === kingUnderAttack;
 
                   return (
                     <ChessSquare
@@ -319,7 +387,7 @@ export default function ChessPage() {
                       onClick={() => handleSquareClick(rowIndex, colIndex)}
                       isSelected={isSel}
                       isPossibleMove={isPossMove}
-                      // isInCheck={kingInCheck}
+                      isInCheck={isKingSquareInCheck}
                     />
                   );
                 })
@@ -332,8 +400,8 @@ export default function ChessPage() {
               Reset Game
             </Button>
             <p className="mt-4 text-xs text-muted-foreground text-center max-w-md">
-              Rules implemented: Basic piece movements, captures, turn management.
-              (En passant, promotion, castling, check/checkmate detection coming soon!)
+              Rules implemented: Basic piece movements, captures, turn management, check, checkmate, stalemate.
+              (En passant, promotion, castling coming soon!)
             </p>
           </CardContent>
         </Card>
