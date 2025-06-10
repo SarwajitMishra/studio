@@ -55,8 +55,8 @@ export default function ShravyaChatModalContent() {
     };
 
     if (typeof window !== 'undefined' && window.speechSynthesis) {
-      loadVoices(); // Initial attempt
-      window.speechSynthesis.onvoiceschanged = loadVoices; // Listen for changes
+      loadVoices(); 
+      window.speechSynthesis.onvoiceschanged = loadVoices; 
     }
 
     return () => {
@@ -66,50 +66,57 @@ export default function ShravyaChatModalContent() {
     };
   }, []);
 
-  const speakText = useCallback((text: string) => {
+  const speakText = useCallback((text: string, languageCode: string = 'en') => {
     if (typeof window !== 'undefined' && window.speechSynthesis) {
-      window.speechSynthesis.cancel(); // Cancel any ongoing speech
+      window.speechSynthesis.cancel(); 
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'en-IN'; // Prefer Indian English
+      
+      const targetLang = languageCode.toLowerCase().startsWith('hi') ? 'hi-IN' : 'en-IN';
+      utterance.lang = targetLang;
 
       let selectedVoice: SpeechSynthesisVoice | null = null;
 
       if (availableVoices.length > 0) {
-        // Try to find an Indian English female voice
-        const indianFemaleVoices = availableVoices.filter(
-          (voice) => voice.lang === 'en-IN' && (
-            voice.name.toLowerCase().includes('female') ||
-            voice.name.toLowerCase().includes('aditi') ||
-            voice.name.toLowerCase().includes('raveena') ||
-            voice.name.toLowerCase().includes('kalpana')
-            // Add other known Indian female voice names if identified
-          )
-        );
+        const langVoices = availableVoices.filter(voice => voice.lang === targetLang);
 
-        if (indianFemaleVoices.length > 0) {
-          selectedVoice = indianFemaleVoices[0];
-        } else {
-          // Fallback: try any 'en-IN' voice
-          const anyIndianVoice = availableVoices.find(voice => voice.lang === 'en-IN');
-          if (anyIndianVoice) {
-            selectedVoice = anyIndianVoice;
-          } else {
-            // Fallback: try any 'en-US' female voice if no 'en-IN' found
-            const usFemaleVoices = availableVoices.filter(
-              voice => voice.lang === 'en-US' && voice.name.toLowerCase().includes('female')
+        if (langVoices.length > 0) {
+          if (targetLang === 'hi-IN') {
+            const hindiFemaleVoices = langVoices.filter(v => 
+              v.name.toLowerCase().includes('female') || 
+              v.name.toLowerCase().includes('lekha') || 
+              v.name.toLowerCase().includes('google हिन्दी') ||
+              v.name.toLowerCase().includes('kalpana') // Another common one
             );
-            if (usFemaleVoices.length > 0) {
-              selectedVoice = usFemaleVoices[0];
-            }
+            selectedVoice = hindiFemaleVoices.length > 0 ? hindiFemaleVoices[0] : langVoices[0];
+          } else { // For 'en-IN' (English)
+            const indianFemaleVoices = langVoices.filter(
+              (voice) => voice.lang === 'en-IN' && (
+                voice.name.toLowerCase().includes('female') ||
+                voice.name.toLowerCase().includes('aditi') ||
+                voice.name.toLowerCase().includes('raveena')
+              )
+            );
+            selectedVoice = indianFemaleVoices.length > 0 ? indianFemaleVoices[0] : langVoices.length > 0 ? langVoices[0] : null;
           }
         }
-        if (selectedVoice) {
-          utterance.voice = selectedVoice;
+        
+        // Fallback for English if specific en-IN not found
+        if (!selectedVoice && targetLang.startsWith('en')) {
+          const usFemaleVoices = availableVoices.filter(
+            voice => voice.lang === 'en-US' && voice.name.toLowerCase().includes('female')
+          );
+          if (usFemaleVoices.length > 0) {
+            selectedVoice = usFemaleVoices[0];
+          } else { // Last resort: any available English voice
+             const anyEnglishVoice = availableVoices.find(voice => voice.lang.startsWith('en-'));
+             if(anyEnglishVoice) selectedVoice = anyEnglishVoice;
+          }
         }
       }
-      // If no specific voice is found, the browser will use its default for 'en-IN' or its overall default.
-      // utterance.pitch = 1.1; // Slightly higher pitch, can be adjusted (0-2, default 1)
-      // utterance.rate = 1; // Normal speed (0.1-10, default 1)
+      if (selectedVoice) {
+        utterance.voice = selectedVoice;
+      }
+      
       window.speechSynthesis.speak(utterance);
     }
   }, [availableVoices]);
@@ -129,11 +136,9 @@ export default function ShravyaChatModalContent() {
   }, [messages.length]);
 
   useEffect(() => {
-    // Speak the initial greeting once it's set and voices might be ready
     if (messages.length === 1 && messages[0].id === 'initial-greeting' && !initialMessageSpokenRef.current) {
-      // Small delay to allow voices to potentially load if speakText is called too quickly
       const timer = setTimeout(() => {
-        speakText(messages[0].content);
+        speakText(messages[0].content, 'en');
         initialMessageSpokenRef.current = true;
       }, 100);
       return () => clearTimeout(timer);
@@ -147,15 +152,13 @@ export default function ShravyaChatModalContent() {
       const recognition = new SpeechRecognition();
       recognition.continuous = false;
       recognition.interimResults = false;
-      recognition.lang = 'en-US';
+      recognition.lang = 'en-US'; // Keeping STT to English for now
 
       recognition.onresult = (event) => {
         const transcript = event.results[0][0].transcript;
         setInputValue(transcript);
         setIsListening(false);
         setSttError(null);
-        // Optional: auto-submit after STT?
-        // handleSubmit(undefined, transcript); // Pass transcript directly
       };
 
       recognition.onerror = (event) => {
@@ -195,8 +198,7 @@ export default function ShravyaChatModalContent() {
         window.speechSynthesis.cancel();
       }
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Removed isListening from dependencies as it's managed internally
+  }, [isListening]); 
 
   const handleSubmit = async (e?: React.FormEvent<HTMLFormElement>, directInput?: string) => {
     if (e) e.preventDefault();
@@ -232,7 +234,7 @@ export default function ShravyaChatModalContent() {
         content: output.response,
       };
       setMessages((prevMessages) => [...prevMessages, aiMessage]);
-      speakText(output.response);
+      speakText(output.response, output.responseLanguage);
     } catch (error) {
       console.error('Error calling Shravya AI chat flow:', error);
       const errorText = "I'm sorry, something went wrong. Please try asking again later.";
@@ -242,7 +244,7 @@ export default function ShravyaChatModalContent() {
         content: errorText,
       };
       setMessages((prevMessages) => [...prevMessages, errorMessage]);
-      speakText(errorText);
+      speakText(errorText, 'en');
       toast({
         variant: "destructive",
         title: "Chat Error",
@@ -379,7 +381,7 @@ export default function ShravyaChatModalContent() {
       </form>
        <p className="text-xs text-muted-foreground text-center mt-3">
           <Sparkles size={12} className="inline mr-1"/>
-          Shravya AI will try to use an Indian English voice. Availability depends on your browser/OS. May provide inaccurate info.
+          Shravya AI will try to use an Indian English or Hindi voice. Availability depends on your browser/OS. Responses (including translations) may sometimes be inaccurate.
       </p>
     </div>
   );
