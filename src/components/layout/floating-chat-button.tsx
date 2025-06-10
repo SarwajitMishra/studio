@@ -4,7 +4,7 @@
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Sparkles } from "lucide-react"; // Changed from Bot, MessageCircle
+import CustomChatIcon from '../icons/custom-chat-icon'; // Changed from Sparkles
 import ShravyaChatModalContent from "@/components/ai/shravya-chat-modal-content";
 import { useState } from "react";
 
@@ -23,7 +23,7 @@ export default function FloatingChatButton() {
                 className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg bg-accent hover:bg-accent/90 text-accent-foreground animate-gentle-bounce z-50"
                 aria-label="Chat with Shravya AI"
               >
-                <Sparkles size={28} /> {/* Changed icon here */}
+                <CustomChatIcon size={28} /> {/* Changed icon here */}
               </Button>
             </DialogTrigger>
           </TooltipTrigger>
@@ -35,7 +35,7 @@ export default function FloatingChatButton() {
       <DialogContent className="sm:max-w-xl md:max-w-2xl p-0 max-h-[85vh] flex flex-col">
         <DialogHeader className="p-4 sm:p-6 border-b bg-primary/10">
           <DialogTitle className="text-xl sm:text-2xl font-bold text-primary flex items-center">
-            <Sparkles size={28} className="mr-2" /> {/* Changed icon here */}
+            <CustomChatIcon size={28} className="mr-2" /> {/* Changed icon here */}
             Chat with Shravya AI
           </DialogTitle>
           <DialogDescription className="text-sm sm:text-base text-foreground/80">
