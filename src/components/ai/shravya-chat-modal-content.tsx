@@ -29,7 +29,9 @@ export default function ShravyaChatModalContent() {
   const [sttError, setSttError] = useState<string | null>(null);
   const [browserSupportsSTT, setBrowserSupportsSTT] = useState(false);
   const speechRecognitionRef = useRef<SpeechRecognition | null>(null);
+  
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [voicesReady, setVoicesReady] = useState(false); // New state for voice readiness
   const initialMessageSpokenRef = useRef(false);
 
 
@@ -47,27 +49,50 @@ export default function ShravyaChatModalContent() {
   }, [messages]);
 
   useEffect(() => {
-    const loadVoices = () => {
+    let mounted = true;
+    const updateVoices = () => {
+      if (!mounted || typeof window === 'undefined' || !window.speechSynthesis) return;
       const voices = window.speechSynthesis.getVoices();
       if (voices.length > 0) {
         setAvailableVoices(voices);
+        if(mounted) setVoicesReady(true);
       }
     };
-
+  
     if (typeof window !== 'undefined' && window.speechSynthesis) {
-      loadVoices(); 
-      window.speechSynthesis.onvoiceschanged = loadVoices; 
-    }
-
-    return () => {
-      if (typeof window !== 'undefined' && window.speechSynthesis) {
-        window.speechSynthesis.onvoiceschanged = null;
+      const initialVoices = window.speechSynthesis.getVoices();
+      if (initialVoices.length > 0) {
+        setAvailableVoices(initialVoices);
+        setVoicesReady(true);
       }
-    };
-  }, []);
+  
+      window.speechSynthesis.onvoiceschanged = updateVoices;
+      
+      const fallbackTimer = setTimeout(() => {
+          if(mounted && !voicesReady) {
+              // Attempt to get voices one last time if onvoiceschanged didn't fire or found no voices
+              const currentVoices = window.speechSynthesis.getVoices();
+              if (currentVoices.length > 0) {
+                  setAvailableVoices(currentVoices);
+              }
+              setVoicesReady(true); 
+          }
+      }, 500); 
+  
+      return () => {
+        mounted = false;
+        clearTimeout(fallbackTimer);
+        if (window.speechSynthesis) {
+          window.speechSynthesis.onvoiceschanged = null;
+        }
+      };
+    } else {
+      if(mounted) setVoicesReady(true); 
+    }
+  }, []); // Empty dependency array, runs once on mount
 
   const speakText = useCallback((text: string, languageCode: string = 'en') => {
-    if (typeof window !== 'undefined' && window.speechSynthesis) {
+    if (typeof window !== 'undefined' && window.speechSynthesis && text) {
       window.speechSynthesis.cancel(); 
       const utterance = new SpeechSynthesisUtterance(text);
       
@@ -81,7 +106,6 @@ export default function ShravyaChatModalContent() {
 
         if (langVoices.length > 0) {
           if (targetLang === 'hi-IN') {
-            // Prioritize specific known female Hindi voices
             let specificFemaleVoice = langVoices.find(v => 
               v.name.toLowerCase().includes('lekha') || 
               v.name.toLowerCase().includes('kalpana')
@@ -89,22 +113,19 @@ export default function ShravyaChatModalContent() {
             if (specificFemaleVoice) {
                 selectedVoice = specificFemaleVoice;
             } else {
-                // Then try generic "female" in name
                 let genericFemaleVoice = langVoices.find(v => v.name.toLowerCase().includes('female'));
                 if (genericFemaleVoice) {
                     selectedVoice = genericFemaleVoice;
                 } else {
-                    // Then try "Google हिन्दी" as it's often female and good quality
                     let googleHindiVoice = langVoices.find(v => v.name.toLowerCase().includes('google हिन्दी'));
                     if (googleHindiVoice) {
                         selectedVoice = googleHindiVoice;
                     } else {
-                        // Fallback to the first available Hindi voice
                         selectedVoice = langVoices[0];
                     }
                 }
             }
-          } else { // English voice selection (en-IN preference)
+          } else { 
             const indianFemaleVoices = langVoices.filter(
               (voice) => voice.lang === 'en-IN' && (
                 voice.name.toLowerCase().includes('female') ||
@@ -112,11 +133,11 @@ export default function ShravyaChatModalContent() {
                 voice.name.toLowerCase().includes('raveena')
               )
             );
-            selectedVoice = indianFemaleVoices.length > 0 ? indianFemaleVoices[0] : langVoices.length > 0 ? langVoices[0] : null;
+            // Prefer specific Indian female, then any Indian, then any for the lang
+            selectedVoice = indianFemaleVoices.length > 0 ? indianFemaleVoices[0] : langVoices.find(v => v.lang === 'en-IN') || langVoices[0];
           }
         }
         
-        // Fallback for English if no en-IN or targetLang voice found
         if (!selectedVoice && targetLang.startsWith('en')) {
           const usFemaleVoices = availableVoices.filter(
             voice => voice.lang === 'en-US' && voice.name.toLowerCase().includes('female')
@@ -133,7 +154,6 @@ export default function ShravyaChatModalContent() {
       if (selectedVoice) {
         utterance.voice = selectedVoice;
       }
-      // If no voice is selected, the browser will use its default for the utterance.lang.
       window.speechSynthesis.speak(utterance);
     }
   }, [availableVoices]);
@@ -152,15 +172,13 @@ export default function ShravyaChatModalContent() {
     }
   }, [messages.length]);
 
+  // Updated useEffect for initial greeting
   useEffect(() => {
-    if (messages.length === 1 && messages[0].id === 'initial-greeting' && !initialMessageSpokenRef.current) {
-      const timer = setTimeout(() => {
-        speakText(messages[0].content, 'en');
-        initialMessageSpokenRef.current = true;
-      }, 100);
-      return () => clearTimeout(timer);
+    if (voicesReady && messages.length === 1 && messages[0].id === 'initial-greeting' && !initialMessageSpokenRef.current) {
+      speakText(messages[0].content, 'en');
+      initialMessageSpokenRef.current = true;
     }
-  }, [messages, speakText]);
+  }, [voicesReady, messages, speakText]);
 
 
   const handleSubmit = useCallback(async (e?: React.FormEvent<HTMLFormElement>, directInput?: string) => {
@@ -198,7 +216,9 @@ export default function ShravyaChatModalContent() {
         content: output.response,
       };
       setMessages((prevMessages) => [...prevMessages, aiMessage]);
-      speakText(output.response, output.responseLanguage);
+      if (output.response) { // Ensure response is not empty before speaking
+        speakText(output.response, output.responseLanguage);
+      }
     } catch (error) {
       console.error('Error calling Shravya AI chat flow:', error);
       const errorText = "I'm sorry, something went wrong. Please try asking again later.";
@@ -230,7 +250,7 @@ export default function ShravyaChatModalContent() {
       recognition.onresult = (event) => {
         const transcript = event.results[0][0].transcript;
         handleSubmit(undefined, transcript); 
-        setIsListening(false); 
+        // setIsListening(false); // Already handled by onend or error
         setSttError(null);
       };
 
@@ -287,13 +307,24 @@ export default function ShravyaChatModalContent() {
     if (speechRecognitionRef.current) {
       if (isListening) {
         speechRecognitionRef.current.stop();
-        setIsListening(false); 
+        // setIsListening(false); // onend will handle this
       } else {
         if (typeof window !== 'undefined' && window.speechSynthesis) {
             window.speechSynthesis.cancel(); 
         }
         setInputValue(''); 
-        speechRecognitionRef.current.start();
+        try {
+          speechRecognitionRef.current.start();
+        } catch (e) {
+          console.error("Error starting speech recognition:", e);
+          // Handle specific errors like "recognition busy" if needed
+           if ((e as DOMException).name === 'InvalidStateError') {
+             setSttError("Voice recognition is busy. Please try again in a moment.");
+           } else {
+             setSttError("Could not start voice input. Please try again.");
+           }
+          setIsListening(false);
+        }
       }
     }
   };
