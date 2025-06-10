@@ -11,11 +11,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-// Progress component might not be used directly for individual stats, but keeping for potential future overview
-// import { Progress } from "@/components/ui/progress"; 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { AVATARS, GAMES, type GameCategory, type Game } from "@/lib/constants"; // Added Game type
-import { UserCircle, BarChart3, Settings, CheckCircle, LogIn, LogOut, UploadCloud, Edit3, User as UserIcon, Palette, Sun, Moon, Trophy, Gamepad2 } from 'lucide-react'; // Added Gamepad2
+import { 
+  AVATARS, 
+  GAMES, 
+  type Game, 
+  S_POINTS_ICON as SPointsIcon, 
+  S_COINS_ICON as SCoinsIcon,
+  LOCAL_STORAGE_S_POINTS_KEY,
+  LOCAL_STORAGE_S_COINS_KEY
+} from "@/lib/constants";
+import { UserCircle, BarChart3, Settings, CheckCircle, LogIn, LogOut, UploadCloud, Edit3, User as UserIcon, Palette, Sun, Moon, Trophy, Gamepad2, Star, Coins } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -29,7 +35,6 @@ import {
   updateProfile,
   type User
 } from '@/lib/firebase';
-// import type { LucideIcon } from 'lucide-react'; // Not directly used for progress icons anymore
 import { ref as storageRef, uploadString, getDownloadURL } from 'firebase/storage';
 
 const THEME_OPTIONS = [
@@ -51,18 +56,38 @@ const FAVORITE_COLOR_OPTIONS = [
 
 const LOCAL_STORAGE_USER_NAME_KEY = 'shravyaPlayhouse_userName';
 const LOCAL_STORAGE_AVATAR_KEY = 'shravyaPlayhouse_avatar';
-const LOCAL_STORAGE_PROGRESS_DATA_KEY = 'shravyaPlayhouse_gameStats'; // Renamed for clarity
 const DEFAULT_AVATAR_SRC = AVATARS[0]?.src || '/images/avatars/modern_girl.png';
 const DEFAULT_USER_NAME = "Kiddo";
 
-// This will be the structure for storing/fetching real game stats (currently placeholders)
 interface GameStat {
   gameId: string;
   gamesPlayed: number | string;
   wins: number | string;
   highScore: number | string;
-  // Add more specific stats as needed per game
 }
+
+const getStoredGameCurrency = (key: string): number => {
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem(key);
+      return stored ? parseInt(stored, 10) : 0;
+    } catch (e) {
+      console.error("Error reading from localStorage", e);
+      return 0;
+    }
+  }
+  return 0;
+};
+
+const setStoredGameCurrency = (key: string, value: number): void => {
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(key, value.toString());
+    } catch (e) {
+      console.error("Error writing to localStorage", e);
+    }
+  }
+};
 
 
 export default function ProfilePage() {
@@ -75,9 +100,11 @@ export default function ProfilePage() {
 
   const [theme, setTheme] = useState<string>('light');
   const [favoriteColor, setFavoriteColor] = useState<string>('default');
-  // GameStats will hold structured data, for now, it will be empty or have placeholders
   const [gameStats, setGameStats] = useState<GameStat[]>([]);
   const [showLoginWarningDialog, setShowLoginWarningDialog] = useState(false);
+
+  const [sPoints, setSPoints] = useState<number>(0);
+  const [sCoins, setSCoins] = useState<number>(0);
 
 
   // Effect for loading all local data on initial mount
@@ -102,10 +129,11 @@ export default function ProfilePage() {
 
     const localAvatar = localStorage.getItem(LOCAL_STORAGE_AVATAR_KEY);
     setSelectedAvatar(localAvatar || DEFAULT_AVATAR_SRC);
+    
+    // Load S-Points and S-Coins - this will be updated by auth state if user logs in
+    setSPoints(getStoredGameCurrency(LOCAL_STORAGE_S_POINTS_KEY));
+    setSCoins(getStoredGameCurrency(LOCAL_STORAGE_S_COINS_KEY));
 
-    // For "real" data, we would fetch from Firestore here if logged in.
-    // For offline, we might load locally stored "real" stats if implemented.
-    // For now, let's initialize gameStats with placeholders based on GAMES constant.
     const initialStats = GAMES.map(game => ({
         gameId: game.id,
         gamesPlayed: 'N/A',
@@ -113,8 +141,6 @@ export default function ProfilePage() {
         highScore: 'N/A',
     }));
     setGameStats(initialStats);
-    // We are not using LOCAL_STORAGE_PROGRESS_DATA_KEY for mock category progress anymore.
-    // If we were to implement local storage for detailed stats, it would be handled differently.
 
   }, []);
 
@@ -126,8 +152,9 @@ export default function ProfilePage() {
     const handleUserUpdate = (user: User | null, isNewLoginEvent: boolean = false) => {
       if (!isMounted) return;
 
+      setCurrentUser(user); // Set current user first
+
       if (user) { 
-        setCurrentUser(user);
         const firebaseDisplayName = user.displayName || localStorage.getItem(LOCAL_STORAGE_USER_NAME_KEY) || DEFAULT_USER_NAME;
         setEditingUserName(firebaseDisplayName);
         localStorage.setItem(LOCAL_STORAGE_USER_NAME_KEY, firebaseDisplayName);
@@ -136,24 +163,28 @@ export default function ProfilePage() {
         setSelectedAvatar(firebasePhotoURL);
         localStorage.setItem(LOCAL_STORAGE_AVATAR_KEY, firebasePhotoURL);
 
-        // TODO: When real data is implemented, fetch from Firestore here
-        // For now, simulate "online" stats being slightly different or just re-init
+        // Simulate fetching points for logged-in user (actual Firestore would go here)
+        setSPoints(100); // Mock S-Points for logged-in user
+        setSCoins(10);  // Mock S-Coins for logged-in user
+        // TODO: Display a message "Cloud points loaded" or similar
+
         const onlineStats = GAMES.map(game => ({
             gameId: game.id,
-            gamesPlayed: currentUser ? Math.floor(Math.random() * 10) : 'N/A', // Example: show random if logged in
-            wins: currentUser ? Math.floor(Math.random() * 5) : 'N/A',
-            highScore: currentUser ? Math.floor(Math.random() * 1000) : 'N/A',
+            gamesPlayed: Math.floor(Math.random() * 10),
+            wins: Math.floor(Math.random() * 5),
+            highScore: Math.floor(Math.random() * 1000),
         }));
         setGameStats(onlineStats);
-        // If detailed stats were stored locally, they'd be overwritten by Firestore data.
 
         if (isNewLoginEvent) {
           toast({ title: "Logged In!", description: `Welcome back, ${user.displayName || 'User'}!` });
         }
       } else { 
-        setCurrentUser(null);
-        // Username and avatar remain from localStorage.
-        // Stats would reflect an offline state (e.g., all "N/A" or load from local detailed stats if implemented)
+        // User is logged out, revert to local storage for points/coins
+        setSPoints(getStoredGameCurrency(LOCAL_STORAGE_S_POINTS_KEY));
+        setSCoins(getStoredGameCurrency(LOCAL_STORAGE_S_COINS_KEY));
+        // Username and avatar remain from localStorage (or defaults if nothing there).
+        
         const offlineStats = GAMES.map(game => ({
             gameId: game.id,
             gamesPlayed: 'N/A',
@@ -167,12 +198,7 @@ export default function ProfilePage() {
     const processRedirect = async () => {
         try {
             const result = await getRedirectResult(auth);
-            if (result && result.user && isMounted) {
-                const user = result.user;
-                setEditingUserName(user.displayName || localStorage.getItem(LOCAL_STORAGE_USER_NAME_KEY) || DEFAULT_USER_NAME);
-                setSelectedAvatar(user.photoURL || localStorage.getItem(LOCAL_STORAGE_AVATAR_KEY) || DEFAULT_AVATAR_SRC);
-                // Further handling by onAuthStateChanged
-            }
+            // User data handling will be managed by onAuthStateChanged
         } catch (error: any) {
             if (isMounted) {
                 console.error("Error during Google sign-in redirect result:", error);
@@ -184,7 +210,7 @@ export default function ProfilePage() {
     processRedirect();
 
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-        const isNewLogin = !!user && (!currentUser || currentUser.uid !== user.uid);
+        const isNewLogin = !!user && (!currentUser || currentUser.uid !== user.uid); // Check if it's a NEW login
         handleUserUpdate(user, isNewLogin);
     });
 
@@ -192,7 +218,7 @@ export default function ProfilePage() {
       isMounted = false;
       unsubscribe();
     };
-  }, [toast]); // currentUser dependency removed to avoid re-triggering on its own change, onAuthStateChanged handles it.
+  }, [toast]); // currentUser removed from dependency array.
 
 
   const handleUserNameChange = (name: string) => {
@@ -211,7 +237,6 @@ export default function ProfilePage() {
   const actualSignInWithGoogle = async () => {
     try {
       await signInWithRedirect(auth, googleProvider);
-      // onAuthStateChanged and getRedirectResult will handle UI updates.
     } catch (error: any) {
       console.error("Error during Google sign-in:", error);
       toast({ variant: "destructive", title: "Login Failed", description: error.message || "Could not sign in with Google. Please try again." });
@@ -219,13 +244,8 @@ export default function ProfilePage() {
   };
 
   const handleGoogleLoginAttempt = async () => {
-    // Check if there's any significant local *progress* data that might be overwritten.
-    // For now, we don't have true local progress storage, so the dialog could be simplified or always shown.
-    // Let's assume for now that any login attempt when offline might overwrite local settings/previewed progress.
-    const localDataMayExist = !currentUser; // Simplified: if offline, local data might be important to the user.
-                                           // A more robust check would verify if LOCAL_STORAGE_PROGRESS_DATA_KEY has meaningful data.
-
-    if (localDataMayExist) { // For now, always show if not logged in.
+    const localDataMayExist = !currentUser; 
+    if (localDataMayExist) {
       setShowLoginWarningDialog(true);
     } else {
       await actualSignInWithGoogle();
@@ -235,9 +255,7 @@ export default function ProfilePage() {
   const handleLogout = async () => {
     try {
       await firebaseSignOut(auth);
-      // User state will be set to null by onAuthStateChanged,
-      // which will then cause local data (name, avatar) to be displayed.
-      // Stats will also be reset to 'N/A' or loaded from local storage if that was implemented for detailed stats.
+      // onAuthStateChanged will handle setting user to null and reloading local S-Points/Coins.
       toast({ title: "Logged Out", description: "You have been successfully logged out." });
     } catch (error: any)      {
       console.error("Error during sign-out:", error);
@@ -256,7 +274,7 @@ export default function ProfilePage() {
     }
     try {
       await updateProfile(currentUser, { displayName: editingUserName });
-      localStorage.setItem(LOCAL_STORAGE_USER_NAME_KEY, editingUserName); // Ensure local is also synced
+      localStorage.setItem(LOCAL_STORAGE_USER_NAME_KEY, editingUserName);
       toast({ title: "Username Updated!", description: `Your display name is now ${editingUserName}.` });
     } catch (error: any) {
       console.error("Error updating username:", error);
@@ -289,38 +307,29 @@ export default function ProfilePage() {
       toast({ variant: "destructive", title: "Not Logged In", description: "Please log in to save your avatar." });
       return;
     }
-
     if (!selectedAvatar) {
         toast({ variant: "destructive", title: "No Avatar Selected", description: "Please select or upload an avatar." });
         return;
     }
-
     const isDataUrl = selectedAvatar.startsWith('data:image');
-    // Check if current selectedAvatar (which could be a data URL or a Firebase URL) is different from the user's photoURL
     const hasChangedFromProfile = selectedAvatar !== currentUser.photoURL;
-
     if (!isDataUrl && !hasChangedFromProfile) {
          toast({ title: "No Change", description: "Avatar is already up to date with your profile." });
          return;
     }
-
     setIsUploading(true);
     try {
       let photoURLToSave = selectedAvatar;
-
       if (isDataUrl) {
         const avatarPath = `avatars/${currentUser.uid}/profileImage.png`;
         const imageRef = storageRef(storage, avatarPath);
-
         await uploadString(imageRef, selectedAvatar, 'data_url');
         photoURLToSave = await getDownloadURL(imageRef);
       }
-
       await updateProfile(currentUser, { photoURL: photoURLToSave });
-      localStorage.setItem(LOCAL_STORAGE_AVATAR_KEY, photoURLToSave); // Sync local storage
-      setSelectedAvatar(photoURLToSave); // Ensure state uses the new URL
+      localStorage.setItem(LOCAL_STORAGE_AVATAR_KEY, photoURLToSave);
+      setSelectedAvatar(photoURLToSave);
       toast({ title: "Avatar Saved!", description: "Your new avatar has been saved to your profile." });
-
     } catch (error: any) {
       console.error("Error saving avatar:", error);
       toast({ variant: "destructive", title: "Avatar Save Failed", description: error.message || "Could not save avatar." });
@@ -346,9 +355,8 @@ export default function ProfilePage() {
     toast({ title: "Favorite Color Set", description: `Your favorite color is now ${FAVORITE_COLOR_OPTIONS.find(c => c.value === newColor)?.label || newColor}.` });
   };
 
-  const isSaveNameDisabled = !currentUser || isUploading || editingUserName === (currentUser?.displayName && !!currentUser.displayName); // Check if it's actually different
+  const isSaveNameDisabled = !currentUser || isUploading || editingUserName === (currentUser?.displayName);
   const isSaveAvatarDisabled = !currentUser || isUploading || (selectedAvatar === (currentUser?.photoURL) && !selectedAvatar?.startsWith('data:image'));
-
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
@@ -358,7 +366,6 @@ export default function ProfilePage() {
           <CardDescription>Manage your login status and username. Changes are saved locally and can be synced to your profile when logged in.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-
           <div className="flex items-center gap-3">
             <Label htmlFor="username" className="text-base">Display Name:</Label>
             <Input
@@ -374,7 +381,6 @@ export default function ProfilePage() {
               <Edit3 className="mr-2 h-4 w-4" /> Save to Profile
             </Button>
           </div>
-
           {currentUser ? (
             <div className="space-y-3">
               <p className="text-foreground">Logged in as: <span className="font-semibold">{currentUser.email}</span></p>
@@ -384,7 +390,7 @@ export default function ProfilePage() {
             </div>
           ) : (
             <div className="space-y-3">
-                <p className="text-xs text-muted-foreground">Log in to save your display name, avatar, and game progress to your online profile. Local settings and any offline progress preview might be overwritten upon login.</p>
+                <p className="text-xs text-muted-foreground">Log in to save your display name, avatar, and game progress to your online profile. Local S-Points/S-Coins will be replaced by online data upon login.</p>
                 <Button onClick={handleGoogleLoginAttempt} className="w-full sm:w-auto bg-accent text-accent-foreground hover:bg-accent/90">
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2"><path d="M15.3 18.09C14.54 18.89 13.56 19.5 12.45 19.83C11.34 20.16 10.17 20.26 9 20.12C5.79 19.43 3.51 16.68 3.12 13.4C3.03 12.51 3.15 11.61 3.48 10.77C3.81 9.93 4.32 9.18 4.98 8.57C6.26 7.36 7.97 6.66 9.78 6.54C11.72 6.42 13.66 6.93 15.24 7.99L16.99 6.28C15.01 4.88 12.73 4.08 10.36 4.01C8.05 3.91 5.81 4.62 3.98 5.99C2.15 7.36 0.810001 9.32 0.200001 11.58C-0.419999 13.84 0.0300012 16.24 1.13 18.25C2.23 20.26 3.92 21.77 5.99 22.56C8.06 23.35 10.36 23.37 12.48 22.62C14.6 21.87 16.44 20.41 17.67 18.51L15.3 18.09Z"/><path d="M22.94 12.14C22.98 11.74 23 11.33 23 10.91C23 10.32 22.92 9.73 22.77 9.16H12V12.83H18.24C18.03 13.71 17.55 14.5 16.86 15.08L16.82 15.11L19.28 16.91L19.45 17.06C21.58 15.22 22.94 12.14 22.94 12.14Z"/><path d="M12 23C14.47 23 16.56 22.19 18.05 20.96L15.24 17.99C14.48 18.59 13.53 18.98 12.52 18.98C10.92 18.98 9.48001 18.13 8.82001 16.76L8.78001 16.72L6.21001 18.58L6.15001 18.7C7.02001 20.39 8.68001 21.83 10.62 22.48C11.09 22.64 11.56 22.77 12 22.81V23Z"/><path d="M12.01 3.00997C13.37 2.94997 14.7 3.43997 15.73 4.40997L17.97 2.21997C16.31 0.799971 14.21 -0.0600291 12.01 0.0099709C7.37001 0.0099709 3.44001 3.36997 2.02001 7.49997L4.98001 8.56997C5.60001 6.33997 7.72001 4.00997 10.22 4.00997C10.86 3.99997 11.49 4.12997 12.01 4.36997V3.00997Z"/></svg>
                 Sign In with Google
@@ -394,12 +400,12 @@ export default function ProfilePage() {
         </CardContent>
         <CardFooter>
             <p className="text-xs text-muted-foreground">
-                Your display name, avatar, and app preferences are saved in your browser. Game progress is displayed from your online profile when logged in.
+                Your display name, avatar, and app preferences are saved in your browser. Game progress, S-Points, and S-Coins are displayed from your online profile when logged in.
             </p>
         </CardFooter>
       </Card>
 
-      <header className="flex items-center space-x-4 p-6 bg-primary/10 rounded-lg shadow">
+      <header className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-6 p-6 bg-primary/10 rounded-lg shadow">
         {selectedAvatar ? (
           <Avatar className="h-24 w-24 border-4 border-accent shadow-md">
             <AvatarImage src={selectedAvatar} alt={`${editingUserName}'s Avatar`} data-ai-hint="avatar character" />
@@ -410,9 +416,27 @@ export default function ProfilePage() {
         ) : (
           <UserIcon size={96} className="text-primary" />
         )}
-        <div>
+        <div className="text-center sm:text-left">
           <h1 className="text-3xl font-bold text-foreground">My Profile</h1>
           <p className="text-lg text-muted-foreground">Welcome back, {editingUserName}!</p>
+          <div className="mt-3 flex flex-col sm:flex-row sm:space-x-6 space-y-2 sm:space-y-0 items-center justify-center sm:justify-start">
+            <div className="flex items-center text-foreground">
+              <SPointsIcon className="mr-2 h-6 w-6 text-yellow-400" />
+              <span className="font-semibold text-lg">{sPoints}</span>
+              <span className="ml-1 text-sm text-muted-foreground">S-Points</span>
+            </div>
+            <div className="flex items-center text-foreground">
+              <SCoinsIcon className="mr-2 h-6 w-6 text-amber-500" />
+              <span className="font-semibold text-lg">{sCoins}</span>
+              <span className="ml-1 text-sm text-muted-foreground">S-Coins</span>
+            </div>
+          </div>
+           {currentUser && (
+             <p className="text-xs text-muted-foreground mt-1">(Online points shown. Actual cloud sync coming soon!)</p>
+           )}
+           {!currentUser && (
+             <p className="text-xs text-muted-foreground mt-1">(Locally stored points shown)</p>
+           )}
         </div>
       </header>
 
@@ -510,7 +534,7 @@ export default function ProfilePage() {
             <CardContent className="space-y-6 pt-4">
               {GAMES.map((game) => {
                 const stat = gameStats.find(s => s.gameId === game.id);
-                const IconComponent = game.Icon || Gamepad2; // Fallback icon
+                const IconComponent = game.Icon || Gamepad2; 
                 return (
                   <Card key={game.id} className="p-4 bg-muted/30">
                     <div className="flex items-center mb-3">
@@ -530,7 +554,6 @@ export default function ProfilePage() {
                         <p className="text-muted-foreground">High Score:</p>
                         <p className="font-medium">{currentUser && stat ? stat.highScore : '--'}</p>
                       </div>
-                      {/* Add more stats specific to games here if needed */}
                     </div>
                   </Card>
                 );
@@ -626,9 +649,9 @@ export default function ProfilePage() {
       <AlertDialog open={showLoginWarningDialog} onOpenChange={setShowLoginWarningDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Overwrite Local Settings?</AlertDialogTitle>
+            <AlertDialogTitle>Login Confirmation</AlertDialogTitle>
             <AlertDialogDescription>
-              Logging in will sync your profile with our servers. Any unsaved local changes to your name or avatar preview might be overwritten by your online profile data. Your game progress will be loaded from your online profile. Continue to login?
+              Logging in will sync your profile with our servers. Your online S-Points and S-Coins (currently mock data) will be shown, replacing any locally stored values for this session. Any unsaved local changes to your name or avatar preview might be overwritten by your online profile data. Continue to login?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

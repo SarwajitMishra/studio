@@ -1,6 +1,6 @@
 
 import type { LucideIcon } from 'lucide-react';
-import { HomeIcon, LayoutGrid, Puzzle, BookOpen, UserCircle, Settings, BarChart3, Zap, Apple, Banana, Cherry, Grape, Carrot, Pizza, CakeSlice, IceCream2, Swords, Bot, Search, Sigma, Brain, ToyBrick } from 'lucide-react';
+import { HomeIcon, LayoutGrid, Puzzle, BookOpen, UserCircle, Settings, BarChart3, Zap, Apple, Banana, Cherry, Grape, Carrot, Pizza, CakeSlice, IceCream2, Swords, Bot, Search, Sigma, Brain, ToyBrick, Star as StarIcon, Coins as CoinsIcon } from 'lucide-react';
 
 export type GameCategory = 'Strategy' | 'Puzzles' | 'Learning';
 
@@ -139,3 +139,9 @@ export const CATEGORY_ICONS_MAP: Record<GameCategory, LucideIcon> = {
     Puzzles: ToyBrick, // Puzzle icon is already used in nav, ToyBrick for variety
     Learning: BookOpen,
 };
+
+// Gamification
+export const S_POINTS_ICON = StarIcon;
+export const S_COINS_ICON = CoinsIcon;
+export const LOCAL_STORAGE_S_POINTS_KEY = 'shravyaPlayhouse_sPoints';
+export const LOCAL_STORAGE_S_COINS_KEY = 'shravyaPlayhouse_sCoins';
