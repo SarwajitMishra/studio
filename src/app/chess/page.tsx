@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast"; // For feedback
 import { Crown, Shield } from "lucide-react"; // Example icons for player turn
+import { Button } from "@/components/ui/button"; // Added this import
 
 interface Piece {
   type: "K" | "Q" | "R" | "B" | "N" | "P"; // King, Queen, Rook, Bishop, Knight, Pawn
@@ -216,7 +217,7 @@ export default function ChessPage() {
 
       if (isMovePossible) {
         const newBoard = board.map(r => r.map(p => p ? { ...p } : null));
-        const capturedPiece = newBoard[row][col]; // For display, if needed
+        // const capturedPiece = newBoard[row][col]; // For display, if needed
         newBoard[row][col] = pieceToMove;
         newBoard[fromRow][fromCol] = null;
         setBoard(newBoard);
@@ -340,5 +341,3 @@ export default function ChessPage() {
     </>
   );
 }
-
-    
