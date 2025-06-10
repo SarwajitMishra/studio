@@ -59,7 +59,7 @@ export default function ShravyaChatModalContent() {
         console.log("[ShravyaAI TTS] Voices loaded:", voices.length);
       } else {
          if(mounted && !voicesReady) {
-            setVoicesReady(true); // Still set ready if API responds, even with no voices
+            setVoicesReady(true); 
             console.log("[ShravyaAI TTS] Voices API responded, but no voices initially found.");
          }
       }
@@ -75,7 +75,6 @@ export default function ShravyaChatModalContent() {
   
       window.speechSynthesis.onvoiceschanged = updateVoices;
       
-      // Fallback: Some browsers load voices lazily. If no voices after a short delay, trigger update again.
       const fallbackTimer = setTimeout(() => {
           if(mounted && !voicesReady) {
               console.log("[ShravyaAI TTS] Fallback: trying to get voices again.");
@@ -109,26 +108,24 @@ export default function ShravyaChatModalContent() {
     if (typeof window !== 'undefined' && window.speechSynthesis && text && voicesReady) {
       console.log("[ShravyaAI TTS] Attempting to speak:", `"${text.substring(0,30)}..."`, "Language:", languageCode, "Voices available:", availableVoices.length);
       
-      window.speechSynthesis.cancel(); // Clear any previous utterances
+      window.speechSynthesis.cancel(); 
       const utterance = new SpeechSynthesisUtterance(text);
       
       let targetLang = languageCode.toLowerCase();
       let selectedVoice: SpeechSynthesisVoice | null = null;
 
       if (targetLang.startsWith('hi')) {
-        // Prioritize Hindi female voices
-        const hindiFemaleVoices = availableVoices.filter(
+        const specificHindiFemaleNames = ['lekha', 'kalpana', 'google हिन्दी'];
+        const priorityHindiVoices = availableVoices.filter(
           (voice) => voice.lang.toLowerCase().startsWith('hi-in') && 
-                      (voice.name.toLowerCase().includes('female') || 
-                       voice.name.toLowerCase().includes('google हिन्दी') || // Common Google Hindi voice
-                       voice.name.toLowerCase().includes('lekha') || // Common MS Hindi Female voice
-                       voice.name.toLowerCase().includes('kalpana')) // Another common Hindi female voice
+                      (specificHindiFemaleNames.some(name => voice.name.toLowerCase().includes(name)) ||
+                       voice.name.toLowerCase().includes('female'))
         );
-        if (hindiFemaleVoices.length > 0) {
-          selectedVoice = hindiFemaleVoices[0];
-          console.log("[ShravyaAI TTS] Selected Hindi Female Voice:", selectedVoice.name, selectedVoice.lang);
+
+        if (priorityHindiVoices.length > 0) {
+          selectedVoice = priorityHindiVoices[0]; // Preferring known female names or 'female' in name
+          console.log("[ShravyaAI TTS] Selected Priority Hindi Female Voice:", selectedVoice.name, selectedVoice.lang);
         } else {
-          // Fallback to any Hindi voice
           const anyHindiVoice = availableVoices.find(voice => voice.lang.toLowerCase().startsWith('hi-in'));
           if (anyHindiVoice) {
             selectedVoice = anyHindiVoice;
@@ -136,8 +133,7 @@ export default function ShravyaChatModalContent() {
           }
         }
         utterance.lang = 'hi-IN';
-      } else { // Default to English
-         // Prioritize Indian English female voices
+      } else { 
         const indianEnglishFemaleVoices = availableVoices.filter(
           (voice) => voice.lang.toLowerCase().startsWith('en-in') && voice.name.toLowerCase().includes('female')
         );
@@ -145,13 +141,11 @@ export default function ShravyaChatModalContent() {
           selectedVoice = indianEnglishFemaleVoices[0];
            console.log("[ShravyaAI TTS] Selected Indian English Female Voice:", selectedVoice.name, selectedVoice.lang);
         } else {
-          // Fallback to any Indian English voice
           const anyIndianEnglishVoice = availableVoices.find(voice => voice.lang.toLowerCase().startsWith('en-in'));
           if (anyIndianEnglishVoice) {
             selectedVoice = anyIndianEnglishVoice;
             console.log("[ShravyaAI TTS] Selected Fallback Indian English Voice:", selectedVoice.name, selectedVoice.lang);
           } else {
-             // Fallback to US English female voice
             const usEnglishFemaleVoices = availableVoices.filter(
                 (voice) => voice.lang.toLowerCase().startsWith('en-us') && voice.name.toLowerCase().includes('female')
             );
@@ -161,7 +155,7 @@ export default function ShravyaChatModalContent() {
             }
           }
         }
-        utterance.lang = selectedVoice?.lang || 'en-US'; // Use selected voice lang or default to en-US
+        utterance.lang = selectedVoice?.lang || 'en-US'; 
       }
 
       if (selectedVoice) {
@@ -175,11 +169,13 @@ export default function ShravyaChatModalContent() {
       utterance.onend = () => console.log("[ShravyaAI TTS] Speech ended for:", `"${text.substring(0, 30)}..."`);
       utterance.onerror = (event) => {
         console.error("[ShravyaAI TTS] Speech error:", event.error, "for text:", `"${text.substring(0,30)}..."`, "Utterance:", event.utterance);
-        toast({
-          variant: "destructive",
-          title: "Speech Error",
-          description: `Could not play audio: ${event.error}`,
-        });
+        if (event.error !== 'interrupted') {
+          toast({
+            variant: "destructive",
+            title: "Speech Error",
+            description: `Could not play audio: ${event.error}`,
+          });
+        }
       };
 
       try {
@@ -211,9 +207,8 @@ export default function ShravyaChatModalContent() {
           content: initialMessage,
         },
       ]);
-      // Don't speak here, wait for voicesReady
     }
-  }, [messages.length]); // Only depends on messages.length
+  }, [messages.length]); 
 
   useEffect(() => {
     if (voicesReady && messages.length === 1 && messages[0].id === 'initial-greeting' && !initialMessageSpokenRef.current) {
@@ -234,9 +229,9 @@ export default function ShravyaChatModalContent() {
       window.speechSynthesis.cancel();
     }
     if (isListening && speechRecognitionRef.current) {
-      speechRecognitionRef.current.stop(); // Stop listening if it was voice input
+      speechRecognitionRef.current.stop(); 
     }
-    setIsListening(false); // Ensure listening state is reset
+    setIsListening(false); 
 
 
     const userMessage: ChatMessage = {
@@ -245,7 +240,7 @@ export default function ShravyaChatModalContent() {
       content: userInput,
     };
     setMessages((prevMessages) => [...prevMessages, userMessage]);
-    if (!directInput) { // Only clear input if it wasn't a direct (voice) input
+    if (!directInput) { 
         setInputValue(''); 
     }
     setIsLoading(true);
@@ -273,7 +268,7 @@ export default function ShravyaChatModalContent() {
         content: errorText,
       };
       setMessages((prevMessages) => [...prevMessages, errorMessage]);
-      speakText(errorText, 'en'); // Default to English for error message
+      speakText(errorText, 'en'); 
       toast({
         variant: "destructive",
         title: "Chat Error",
@@ -290,14 +285,12 @@ export default function ShravyaChatModalContent() {
       const recognition = new SpeechRecognition();
       recognition.continuous = false; 
       recognition.interimResults = false; 
-      // recognition.lang will be set before starting if we add language selection
-      // For now, defaults to browser's language or en-US often.
-
+      
       recognition.onresult = (event) => {
         const transcript = event.results[event.results.length - 1][0].transcript;
         console.log("[ShravyaAI STT] Transcript:", transcript);
-        setInputValue(transcript); // Set input value with transcript
-        handleSubmit(undefined, transcript); // Automatically submit
+        setInputValue(transcript); 
+        handleSubmit(undefined, transcript); 
         setSttError(null);
       };
 
@@ -337,10 +330,9 @@ export default function ShravyaChatModalContent() {
         speechRecognitionRef.current.stop();
       }
       if (typeof window !== 'undefined' && window.speechSynthesis) {
-        window.speechSynthesis.cancel(); // Stop any ongoing speech when component unmounts
+        window.speechSynthesis.cancel(); 
       }
     };
-  // handleSubmit dependency added back to ensure it uses the latest version
   }, [isListening, handleSubmit]); 
 
   const handleToggleListen = () => {
@@ -359,18 +351,14 @@ export default function ShravyaChatModalContent() {
         speechRecognitionRef.current.stop();
       } else {
         if (typeof window !== 'undefined' && window.speechSynthesis) {
-            window.speechSynthesis.cancel(); // Stop TTS if it's speaking
+            window.speechSynthesis.cancel(); 
         }
-        setInputValue(''); // Clear input field before listening
-        // TODO: Consider adding STT language selection here if desired in future
-        // For now, it defaults (often to en-US or browser language)
-        // speechRecognitionRef.current.lang = 'en-US'; // or 'hi-IN'
+        setInputValue(''); 
         try {
           speechRecognitionRef.current.start();
         } catch (e) {
           console.error("[ShravyaAI STT] Error starting speech recognition:", e);
            if ((e as DOMException).name === 'InvalidStateError') {
-             // This can happen if start() is called too quickly after a stop() or another start()
              setSttError("Voice recognition is busy. Please try again in a moment.");
            } else {
              setSttError("Could not start voice input. Please try again.");
@@ -428,7 +416,7 @@ export default function ShravyaChatModalContent() {
               )}
             </div>
           ))}
-          {isLoading && !isListening && ( // Show typing indicator only when not listening for STT
+          {isLoading && !isListening && ( 
             <div className="flex items-start space-x-3">
               <span className="flex-shrink-0 p-2 bg-accent rounded-full text-accent-foreground shadow">
                  <Bot size={20} />
@@ -467,14 +455,13 @@ export default function ShravyaChatModalContent() {
             variant={isListening ? "destructive" : "outline"}
             size="icon"
             onClick={handleToggleListen}
-            disabled={isLoading} // Disable mic button if AI is processing
+            disabled={isLoading} 
             aria-label={isListening ? "Stop listening" : "Start listening"}
           >
             {isListening ? <MicOff size={20} /> : <Mic size={20} />}
           </Button>
         )}
         <Button type="submit" disabled={isLoading || !inputValue.trim() || isListening} className="bg-accent text-accent-foreground hover:bg-accent/90">
-          {/* Show loader only if not voice input triggered and loading */}
           {isLoading && !isListening ? ( 
             <Loader2 size={20} className="animate-spin" />
           ) : (
