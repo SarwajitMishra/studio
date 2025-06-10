@@ -30,8 +30,9 @@ export default function ShravyaChatModalContent() {
   const [browserSupportsSTT, setBrowserSupportsSTT] = useState(false);
   const speechRecognitionRef = useRef<SpeechRecognition | null>(null);
   
+  // availableVoices state is kept for future re-integration of voice selection
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
-  const [voicesReady, setVoicesReady] = useState(false); // New state for voice readiness
+  const [voicesReady, setVoicesReady] = useState(false);
   const initialMessageSpokenRef = useRef(false);
 
 
@@ -56,6 +57,8 @@ export default function ShravyaChatModalContent() {
       if (voices.length > 0) {
         setAvailableVoices(voices);
         if(mounted) setVoicesReady(true);
+      } else {
+         if(mounted && !voicesReady) setVoicesReady(true); // Still set ready if API responds, even with no voices
       }
     };
   
@@ -70,7 +73,6 @@ export default function ShravyaChatModalContent() {
       
       const fallbackTimer = setTimeout(() => {
           if(mounted && !voicesReady) {
-              // Attempt to get voices one last time if onvoiceschanged didn't fire or found no voices
               const currentVoices = window.speechSynthesis.getVoices();
               if (currentVoices.length > 0) {
                   setAvailableVoices(currentVoices);
@@ -89,75 +91,51 @@ export default function ShravyaChatModalContent() {
     } else {
       if(mounted) setVoicesReady(true); 
     }
-  }, []); // Empty dependency array, runs once on mount
+  }, [voicesReady]); // voicesReady included so effect can re-check if needed, though primarily for initial load.
 
   const speakText = useCallback((text: string, languageCode: string = 'en') => {
     if (typeof window !== 'undefined' && window.speechSynthesis && text) {
+      console.log("[ShravyaAI TTS] Attempting to speak:", `"${text}"`, "Language:", languageCode);
+      console.log("[ShravyaAI TTS] Current available voices count:", window.speechSynthesis.getVoices().length);
+
       window.speechSynthesis.cancel(); 
       const utterance = new SpeechSynthesisUtterance(text);
       
-      const targetLang = languageCode.toLowerCase().startsWith('hi') ? 'hi-IN' : 'en-IN';
+      const targetLang = languageCode.toLowerCase().startsWith('hi') ? 'hi-IN' : 'en-US'; // Default to en-US for wider compatibility
       utterance.lang = targetLang;
+      console.log("[ShravyaAI TTS] Utterance language set to:", utterance.lang);
 
-      let selectedVoice: SpeechSynthesisVoice | null = null;
+      // --- All custom voice selection logic removed for this test ---
+      // We will rely on the browser to pick a default voice for the utterance.lang
 
-      if (availableVoices.length > 0) {
-        const langVoices = availableVoices.filter(voice => voice.lang === targetLang);
+      utterance.onstart = () => console.log("[ShravyaAI TTS] Speech started for:", `"${text.substring(0, 30)}..."`);
+      utterance.onend = () => console.log("[ShravyaAI TTS] Speech ended for:", `"${text.substring(0, 30)}..."`);
+      utterance.onerror = (event) => {
+        console.error("[ShravyaAI TTS] Speech error:", event.error, "for text:", `"${text.substring(0,30)}..."`, "Utterance:", event.utterance);
+        toast({
+          variant: "destructive",
+          title: "Speech Error",
+          description: `Could not play audio: ${event.error}`,
+        });
+      };
 
-        if (langVoices.length > 0) {
-          if (targetLang === 'hi-IN') {
-            let specificFemaleVoice = langVoices.find(v => 
-              v.name.toLowerCase().includes('lekha') || 
-              v.name.toLowerCase().includes('kalpana')
-            );
-            if (specificFemaleVoice) {
-                selectedVoice = specificFemaleVoice;
-            } else {
-                let genericFemaleVoice = langVoices.find(v => v.name.toLowerCase().includes('female'));
-                if (genericFemaleVoice) {
-                    selectedVoice = genericFemaleVoice;
-                } else {
-                    let googleHindiVoice = langVoices.find(v => v.name.toLowerCase().includes('google हिन्दी'));
-                    if (googleHindiVoice) {
-                        selectedVoice = googleHindiVoice;
-                    } else {
-                        selectedVoice = langVoices[0];
-                    }
-                }
-            }
-          } else { 
-            const indianFemaleVoices = langVoices.filter(
-              (voice) => voice.lang === 'en-IN' && (
-                voice.name.toLowerCase().includes('female') ||
-                voice.name.toLowerCase().includes('aditi') ||
-                voice.name.toLowerCase().includes('raveena')
-              )
-            );
-            // Prefer specific Indian female, then any Indian, then any for the lang
-            selectedVoice = indianFemaleVoices.length > 0 ? indianFemaleVoices[0] : langVoices.find(v => v.lang === 'en-IN') || langVoices[0];
-          }
-        }
-        
-        if (!selectedVoice && targetLang.startsWith('en')) {
-          const usFemaleVoices = availableVoices.filter(
-            voice => voice.lang === 'en-US' && voice.name.toLowerCase().includes('female')
-          );
-          if (usFemaleVoices.length > 0) {
-            selectedVoice = usFemaleVoices[0];
-          } else { 
-             const anyEnglishVoice = availableVoices.find(voice => voice.lang.startsWith('en-'));
-             if(anyEnglishVoice) selectedVoice = anyEnglishVoice;
-          }
-        }
+      try {
+        window.speechSynthesis.speak(utterance);
+        console.log("[ShravyaAI TTS] Called speechSynthesis.speak() for:", `"${text.substring(0,30)}..."`);
+      } catch (e) {
+        console.error("[ShravyaAI TTS] Exception calling speechSynthesis.speak():", e);
+         toast({
+          variant: "destructive",
+          title: "Speech Synthesis Error",
+          description: "An unexpected error occurred while trying to play audio.",
+        });
       }
-      
-      if (selectedVoice) {
-        utterance.voice = selectedVoice;
-      }
-      window.speechSynthesis.speak(utterance);
+
+    } else {
+      if (!text) console.warn("[ShravyaAI TTS] SpeakText: Called with empty text.");
+      if (typeof window === 'undefined' || !window.speechSynthesis) console.warn("[ShravyaAI TTS] SpeakText: SpeechSynthesis API not available.");
     }
-  }, [availableVoices]);
-
+  }, [toast]); // Temporarily removed availableVoices from dependency as it's not used in this simplified version
 
   useEffect(() => {
     if (messages.length === 0 && !initialMessageSpokenRef.current) {
@@ -172,7 +150,6 @@ export default function ShravyaChatModalContent() {
     }
   }, [messages.length]);
 
-  // Updated useEffect for initial greeting
   useEffect(() => {
     if (voicesReady && messages.length === 1 && messages[0].id === 'initial-greeting' && !initialMessageSpokenRef.current) {
       speakText(messages[0].content, 'en');
@@ -216,7 +193,7 @@ export default function ShravyaChatModalContent() {
         content: output.response,
       };
       setMessages((prevMessages) => [...prevMessages, aiMessage]);
-      if (output.response) { // Ensure response is not empty before speaking
+      if (output.response) { 
         speakText(output.response, output.responseLanguage);
       }
     } catch (error) {
@@ -248,9 +225,8 @@ export default function ShravyaChatModalContent() {
       recognition.lang = 'en-US'; 
 
       recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
+        const transcript = event.results[event.results.length - 1][0].transcript;
         handleSubmit(undefined, transcript); 
-        // setIsListening(false); // Already handled by onend or error
         setSttError(null);
       };
 
@@ -307,7 +283,6 @@ export default function ShravyaChatModalContent() {
     if (speechRecognitionRef.current) {
       if (isListening) {
         speechRecognitionRef.current.stop();
-        // setIsListening(false); // onend will handle this
       } else {
         if (typeof window !== 'undefined' && window.speechSynthesis) {
             window.speechSynthesis.cancel(); 
@@ -317,7 +292,6 @@ export default function ShravyaChatModalContent() {
           speechRecognitionRef.current.start();
         } catch (e) {
           console.error("Error starting speech recognition:", e);
-          // Handle specific errors like "recognition busy" if needed
            if ((e as DOMException).name === 'InvalidStateError') {
              setSttError("Voice recognition is busy. Please try again in a moment.");
            } else {
@@ -437,4 +411,4 @@ export default function ShravyaChatModalContent() {
     </div>
   );
 }
-
+    
