@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { User, Send, Loader2, Mic, MicOff, AlertTriangle, PlayCircle, PauseCircle } from 'lucide-react';
-import CustomChatIcon from '../icons/custom-chat-icon';
+import CustomChatIcon from '../icons/custom-chat-icon'; // Updated to use CustomChatIcon
 import { shravyaAIChat, type ShravyaAIChatInput, type ShravyaAIChatOutput } from '@/ai/flows/shravya-ai-chat-flow';
 import { cn } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
@@ -131,7 +131,7 @@ export default function ShravyaChatModalContent() {
     if (languageCode.toLowerCase().startsWith('hi')) {
       const hindiVoices = voices.filter(v => v.lang.toLowerCase().startsWith('hi-in'));
       selectedVoice = 
-        hindiVoices.find(v => v.name.toLowerCase().includes('female')) || // Prioritize "female" in name
+        hindiVoices.find(v => v.name.toLowerCase().includes('female')) || 
         hindiVoices.find(v => v.name.toLowerCase().includes('lekha')) ||
         hindiVoices.find(v => v.name.toLowerCase().includes('kalpana')) ||
         hindiVoices.find(v => v.name.includes('Google हिन्दी')) ||
@@ -164,7 +164,7 @@ export default function ShravyaChatModalContent() {
     utterance.onend = () => console.log("[ShravyaAI TTS Client] Speech ended for:", `"${text.substring(0, 30)}..."`);
     utterance.onerror = (event) => {
       if (event.error === 'interrupted') {
-        console.log("[ShravyaAI TTS Client] Speech interrupted for:", `"${text.substring(0,30)}..."`, "Utterance:", event.utterance);
+        console.log("[ShravyaAI TTS Client] Speech error (interrupted):", event.error, "for text:", `"${text.substring(0,30)}..."`, "Utterance:", event.utterance);
       } else {
         console.error("[ShravyaAI TTS Client] Speech error:", event.error, "for text:", `"${text.substring(0,30)}..."`, "Utterance:", event.utterance);
         toast({
@@ -214,7 +214,7 @@ export default function ShravyaChatModalContent() {
       };
       streamingTimeoutRef.current = setTimeout(streamGreeting, STREAMING_SPEED_MS); 
     }
-  }, [voicesReady, speakText]); 
+  }, [voicesReady, speakText, messages.length]); // Added messages.length to dependencies
 
 
   const handleSubmit = useCallback(async (e?: React.FormEvent<HTMLFormElement>, directInput?: string) => {
@@ -263,6 +263,7 @@ export default function ShravyaChatModalContent() {
         if (currentWordIndex < words.length) {
           setMessages(prev => {
             const lastMsg = prev[prev.length -1];
+            // Ensure we are still streaming *this* specific message before updating
             if (lastMsg && lastMsg.id === assistantMessageId && lastMsg.isStreaming) {
               return prev.map(msg => 
                 msg.id === assistantMessageId 
@@ -270,7 +271,7 @@ export default function ShravyaChatModalContent() {
                 : msg
               );
             }
-            return prev;
+            return prev; // If not the current streaming message, don't update (it might have been cancelled)
           });
           currentWordIndex++;
           streamingTimeoutRef.current = setTimeout(streamWords, STREAMING_SPEED_MS);
@@ -393,9 +394,19 @@ export default function ShravyaChatModalContent() {
       }
     }
   };
+  
+  // Determine if the send button should be truly disabled
+  // It's disabled if:
+  // 1. Not currently listening AND (EITHER (isLoading AND not currently streaming an assistant response) OR no input value)
+  const sendButtonShouldBeDisabled = !isListening &&
+    ((isLoading && (!messages[messages.length - 1]?.isStreaming || messages[messages.length - 1]?.role !== 'assistant')) ||
+    !inputValue.trim());
 
-  const sendButtonDisabled = (isLoading && !isListening && messages[messages.length-1]?.role !== 'assistant' && !messages[messages.length-1]?.isStreaming) || (!inputValue.trim() && !isListening);
-  const inputDisabled = isLoading && !isListening && messages[messages.length-1]?.role !== 'assistant' && !messages[messages.length-1]?.isStreaming;
+  // Determine if the input field should be disabled
+  // It's disabled if:
+  // 1. Not currently listening AND (isLoading AND not currently streaming an assistant response)
+  const inputShouldBeDisabled = !isListening &&
+    isLoading && (!messages[messages.length - 1]?.isStreaming || messages[messages.length - 1]?.role !== 'assistant');
 
 
   return (
@@ -431,8 +442,8 @@ export default function ShravyaChatModalContent() {
             >
               {message.role === 'assistant' && (
                 <span className="flex-shrink-0 p-2 bg-accent rounded-full text-accent-foreground shadow">
-                  {/* Ensure you have your PNG at public/images/icons/custom-chat-icon.png or update path */}
-                  <CustomChatIcon src="/images/icons/custom-chat-icon.png" alt="Shravya AI Icon" size={20} />
+                  {/* Path updated to /icons/custom-chat-icon.png */}
+                  <CustomChatIcon src="/icons/custom-chat-icon.png" alt="Shravya AI Icon" size={20} />
                 </span>
               )}
               <div
@@ -452,11 +463,11 @@ export default function ShravyaChatModalContent() {
               )}
             </div>
           ))}
-          {isLoading && !isListening && messages[messages.length -1]?.role !== 'assistant' && (
+          {isLoading && !isListening && (!messages[messages.length - 1]?.isStreaming || messages[messages.length - 1]?.role !== 'assistant') && (
             <div className="flex items-start space-x-3">
               <span className="flex-shrink-0 p-2 bg-accent rounded-full text-accent-foreground shadow">
-                 {/* Ensure you have your PNG at public/images/icons/custom-chat-icon.png or update path */}
-                 <CustomChatIcon src="/images/icons/custom-chat-icon.png" alt="Shravya AI Icon" size={20} />
+                 {/* Path updated to /icons/custom-chat-icon.png */}
+                 <CustomChatIcon src="/icons/custom-chat-icon.png" alt="Shravya AI Icon" size={20} />
               </span>
               <div className="p-3 rounded-lg shadow bg-card border flex items-center space-x-2">
                 <Loader2 size={18} className="animate-spin text-muted-foreground" />
@@ -483,7 +494,7 @@ export default function ShravyaChatModalContent() {
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           className="flex-grow text-base"
-          disabled={inputDisabled}
+          disabled={inputShouldBeDisabled}
           aria-label="Your message to Shravya AI"
         />
         {browserSupportsSTT && (
@@ -492,14 +503,14 @@ export default function ShravyaChatModalContent() {
             variant={isListening ? "destructive" : "outline"}
             size="icon"
             onClick={handleToggleListen}
-            disabled={inputDisabled && !isListening} 
+            disabled={inputShouldBeDisabled && !isListening} 
             aria-label={isListening ? "Stop listening" : "Start listening"}
           >
             {isListening ? <MicOff size={20} /> : <Mic size={20} />}
           </Button>
         )}
-        <Button type="submit" disabled={sendButtonDisabled} className="bg-accent text-accent-foreground hover:bg-accent/90">
-          { (isLoading && !isListening && messages[messages.length-1]?.role !== 'assistant' && !messages[messages.length-1]?.isStreaming) ? (
+        <Button type="submit" disabled={sendButtonShouldBeDisabled} className="bg-accent text-accent-foreground hover:bg-accent/90">
+          { (isLoading && !isListening && (!messages[messages.length - 1]?.isStreaming || messages[messages.length - 1]?.role !== 'assistant')) ? (
             <Loader2 size={20} className="animate-spin" />
           ) : (
             <Send size={20} />
