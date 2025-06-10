@@ -5,7 +5,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Bot, User, Send, Loader2, Sparkles, Mic, MicOff, AlertTriangle, PlayCircle, PauseCircle } from 'lucide-react';
+import { Bot, User, Send, Loader2, Sparkles, Mic, MicOff, AlertTriangle } from 'lucide-react';
 import { shravyaAIChat, type ShravyaAIChatInput, type ShravyaAIChatOutput } from '@/ai/flows/shravya-ai-chat-flow';
 import { cn } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
@@ -14,11 +14,10 @@ interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
-  audioContent?: string | null; // For AI messages with server-side TTS
-  isPlayingAudio?: boolean;
 }
 
 const SpeechRecognition = (typeof window !== 'undefined') ? (window.SpeechRecognition || window.webkitSpeechRecognition) : null;
+const speechSynthesis = (typeof window !== 'undefined') ? window.speechSynthesis : null;
 
 export default function ShravyaChatModalContent() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -31,8 +30,9 @@ export default function ShravyaChatModalContent() {
   const [sttError, setSttError] = useState<string | null>(null);
   const [browserSupportsSTT, setBrowserSupportsSTT] = useState(false);
   const speechRecognitionRef = useRef<SpeechRecognition | null>(null);
-  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
 
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [voicesReady, setVoicesReady] = useState(false);
 
   const scrollToBottom = () => {
     if (scrollAreaRef.current) {
@@ -47,73 +47,117 @@ export default function ShravyaChatModalContent() {
     scrollToBottom();
   }, [messages]);
 
+  const loadVoices = useCallback(() => {
+    if (speechSynthesis) {
+      const availableVoices = speechSynthesis.getVoices();
+      if (availableVoices.length > 0) {
+        setVoices(availableVoices);
+        setVoicesReady(true);
+        console.log('[ShravyaAI TTS Client] Voices loaded:', availableVoices.length);
+      } else {
+        // Fallback if voices are not immediately available
+        setTimeout(() => {
+            const fallbackVoices = speechSynthesis.getVoices();
+            if (fallbackVoices.length > 0) {
+                setVoices(fallbackVoices);
+                console.log('[ShravyaAI TTS Client] Voices loaded on fallback:', fallbackVoices.length);
+            } else {
+                 console.warn('[ShravyaAI TTS Client] No voices found even on fallback.');
+            }
+            setVoicesReady(true); // Mark as ready even if no voices, to allow app to proceed
+        }, 200);
+      }
+    } else {
+      setVoicesReady(true); // Mark as ready if speechSynthesis is not supported
+    }
+  }, []);
+
   useEffect(() => {
-    if (messages.length === 0) {
-      const initialMessage = "Hello! I'm Shravya AI. Ask me anything about the games in Shravya Playhouse! You can also click the microphone to speak.";
+    if (speechSynthesis) {
+      loadVoices();
+      speechSynthesis.onvoiceschanged = loadVoices; // Listen for changes
+    } else {
+      setVoicesReady(true);
+      console.warn("[ShravyaAI TTS Client] SpeechSynthesis API not supported by this browser.");
+    }
+
+    return () => {
+      if (speechSynthesis) {
+        speechSynthesis.onvoiceschanged = null;
+        speechSynthesis.cancel();
+      }
+    };
+  }, [loadVoices]);
+  
+  const speakText = useCallback((text: string, languageCode: string) => {
+    if (!speechSynthesis || !voicesReady) {
+      console.warn('[ShravyaAI TTS Client] Speech synthesis not ready or not supported.');
+      return;
+    }
+    speechSynthesis.cancel(); // Stop any ongoing speech
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = languageCode; // e.g., 'en-US', 'hi-IN'
+
+    let selectedVoice: SpeechSynthesisVoice | null = null;
+
+    if (languageCode.toLowerCase().startsWith('hi')) { // Hindi
+      const hindiVoices = voices.filter(v => v.lang.startsWith('hi-IN'));
+      // Try specific female names first
+      selectedVoice = hindiVoices.find(v => v.name.includes('Lekha')) ||
+                      hindiVoices.find(v => v.name.includes('Kalpana')) ||
+                      hindiVoices.find(v => v.name.toLowerCase().includes('female')) ||
+                      hindiVoices.find(v => v.name.includes('Google हिन्दी')) || // Google Hindi often female
+                      hindiVoices[0]; // Fallback to first available Hindi voice
+      utterance.lang = 'hi-IN';
+    } else { // English (default to Indian English Female if available)
+      const indianEnglishVoices = voices.filter(v => v.lang.startsWith('en-IN'));
+      selectedVoice = indianEnglishVoices.find(v => v.name.toLowerCase().includes('female')) ||
+                      indianEnglishVoices[0]; // Fallback to first available Indian English
+
+      if (!selectedVoice) {
+        const usEnglishVoices = voices.filter(v => v.lang.startsWith('en-US'));
+        selectedVoice = usEnglishVoices.find(v => v.name.toLowerCase().includes('female')) || usEnglishVoices[0];
+      }
+       utterance.lang = selectedVoice ? selectedVoice.lang : 'en-US'; // Ensure lang matches selected voice or default
+    }
+    
+    if (selectedVoice) {
+      utterance.voice = selectedVoice;
+      console.log(`[ShravyaAI TTS Client] Using voice: ${selectedVoice.name} (${selectedVoice.lang}) for lang: ${languageCode}`);
+    } else {
+      console.warn(`[ShravyaAI TTS Client] No specific voice found for ${languageCode}. Using browser default for this language.`);
+    }
+
+    utterance.onstart = () => console.log("[ShravyaAI TTS Client] Speech started for:", `"${text.substring(0, 30)}..."`);
+    utterance.onend = () => console.log("[ShravyaAI TTS Client] Speech ended for:", `"${text.substring(0, 30)}..."`);
+    utterance.onerror = (event) => {
+      console.error("[ShravyaAI TTS Client] Speech error:", event.error, "for text:", `"${text.substring(0,30)}..."`, "Utterance:", event.utterance);
+      if (event.error !== 'interrupted') { // Don't show toast for intentional interruptions
+        toast({
+          variant: "destructive",
+          title: "Speech Error",
+          description: `Could not play Shravya AI's voice. Error: ${event.error}`,
+        });
+      }
+    };
+    speechSynthesis.speak(utterance);
+  }, [voices, voicesReady, toast]);
+
+
+  useEffect(() => {
+    if (messages.length === 0 && voicesReady) {
+      const initialMessageContent = "Hello! I'm Shravya AI. Ask me anything about the games in Shravya Playhouse! You can also click the microphone to speak.";
       setMessages([
         {
           id: 'initial-greeting',
           role: 'assistant',
-          content: initialMessage,
+          content: initialMessageContent,
         },
       ]);
+      speakText(initialMessageContent, 'en-US'); // Initial greeting in English
     }
-  }, [messages.length]);
-
-
-  const playAudio = useCallback((audioBase64: string, messageId: string) => {
-    if (currentAudioRef.current) {
-      currentAudioRef.current.pause();
-      currentAudioRef.current.onended = null;
-      currentAudioRef.current.onerror = null;
-    }
-
-    setMessages(prev => prev.map(msg => 
-      msg.id === messageId ? { ...msg, isPlayingAudio: true } : { ...msg, isPlayingAudio: false }
-    ));
-
-    const audio = new Audio("data:audio/mp3;base64," + audioBase64);
-    currentAudioRef.current = audio;
-
-    audio.play()
-      .then(() => console.log(`[ShravyaAI Client TTS] Playing audio for message ${messageId}`))
-      .catch(err => {
-        console.error(`[ShravyaAI Client TTS] Error playing audio for message ${messageId}:`, err);
-        toast({
-          variant: "destructive",
-          title: "Audio Playback Error",
-          description: "Could not play Shravya AI's voice.",
-        });
-        setMessages(prev => prev.map(msg => msg.id === messageId ? { ...msg, isPlayingAudio: false } : msg));
-      });
-
-    audio.onended = () => {
-      console.log(`[ShravyaAI Client TTS] Finished playing audio for message ${messageId}`);
-      setMessages(prev => prev.map(msg => msg.id === messageId ? { ...msg, isPlayingAudio: false } : msg));
-      currentAudioRef.current = null;
-    };
-    audio.onerror = (e) => {
-      console.error(`[ShravyaAI Client TTS] Audio element error for message ${messageId}:`, e);
-      toast({
-        variant: "destructive",
-        title: "Audio Playback Error",
-        description: "An error occurred with Shravya AI's voice.",
-      });
-      setMessages(prev => prev.map(msg => msg.id === messageId ? { ...msg, isPlayingAudio: false } : msg));
-      currentAudioRef.current = null;
-    };
-  }, [toast]);
-
-  const stopCurrentAudio = useCallback(() => {
-    if (currentAudioRef.current) {
-      currentAudioRef.current.pause();
-      currentAudioRef.current.onended = null; // Clean up listener
-      currentAudioRef.current.onerror = null; // Clean up listener
-      console.log('[ShravyaAI Client TTS] Audio playback stopped by user action.');
-      setMessages(prev => prev.map(msg => ({ ...msg, isPlayingAudio: false })));
-      currentAudioRef.current = null;
-    }
-  }, []);
+  }, [messages.length, voicesReady, speakText]);
 
 
   const handleSubmit = useCallback(async (e?: React.FormEvent<HTMLFormElement>, directInput?: string) => {
@@ -121,14 +165,12 @@ export default function ShravyaChatModalContent() {
     const userInput = directInput || inputValue.trim();
 
     if (!userInput || isLoading) return;
-
-    stopCurrentAudio(); // Stop any currently playing audio before sending new message
-
+    
+    if (speechSynthesis) speechSynthesis.cancel();
     if (isListening && speechRecognitionRef.current) {
       speechRecognitionRef.current.stop();
     }
     setIsListening(false);
-
 
     const userMessage: ChatMessage = {
       id: `user-${Date.now()}`,
@@ -146,19 +188,14 @@ export default function ShravyaChatModalContent() {
       const input: ShravyaAIChatInput = { userInput };
       const output: ShravyaAIChatOutput = await shravyaAIChat(input);
       
-      const aiMessageId = `assistant-${Date.now()}`;
       const aiMessage: ChatMessage = {
-        id: aiMessageId,
+        id: `assistant-${Date.now()}`,
         role: 'assistant',
         content: output.response,
-        audioContent: output.audioContent,
-        isPlayingAudio: false,
       };
       setMessages((prevMessages) => [...prevMessages, aiMessage]);
 
-      if (output.audioContent) {
-        playAudio(output.audioContent, aiMessageId);
-      }
+      speakText(output.response, output.responseLanguage);
 
     } catch (error) {
       console.error('Error calling Shravya AI chat flow:', error);
@@ -169,11 +206,11 @@ export default function ShravyaChatModalContent() {
         content: errorText,
       };
       setMessages((prevMessages) => [...prevMessages, errorMessage]);
-      // No client-side TTS for errors now, relies on server TTS if it were to be added for errors.
+      speakText(errorText, 'en'); // Speak error in English
     } finally {
       setIsLoading(false);
     }
-  }, [inputValue, isLoading, isListening, playAudio, stopCurrentAudio, toast]);
+  }, [inputValue, isLoading, isListening, speakText, toast]);
 
   useEffect(() => {
     if (SpeechRecognition) {
@@ -181,13 +218,12 @@ export default function ShravyaChatModalContent() {
       const recognition = new SpeechRecognition();
       recognition.continuous = false;
       recognition.interimResults = false;
-      recognition.lang = 'en-US'; // Keeping STT to English for now
+      recognition.lang = 'en-US'; 
 
       recognition.onresult = (event) => {
         const transcript = event.results[event.results.length - 1][0].transcript;
         console.log("[ShravyaAI STT] Transcript:", transcript);
-        // setInputValue(transcript); // No longer just setting, but submitting
-        handleSubmit(undefined, transcript); // Automatically submit after STT
+        handleSubmit(undefined, transcript);
         setSttError(null);
       };
 
@@ -208,7 +244,7 @@ export default function ShravyaChatModalContent() {
       recognition.onstart = () => {
         setIsListening(true);
         setSttError(null);
-        stopCurrentAudio(); // Stop any AI speech when user starts speaking
+        if (speechSynthesis) speechSynthesis.cancel(); 
         console.log("[ShravyaAI STT] Speech recognition started.");
       };
 
@@ -227,9 +263,9 @@ export default function ShravyaChatModalContent() {
       if (speechRecognitionRef.current && isListening) {
         speechRecognitionRef.current.stop();
       }
-      stopCurrentAudio(); // Clean up audio on component unmount
+      if (speechSynthesis) speechSynthesis.cancel();
     };
-  }, [isListening, handleSubmit, stopCurrentAudio]);
+  }, [isListening, handleSubmit]);
 
   const handleToggleListen = () => {
     if (!browserSupportsSTT) {
@@ -246,8 +282,8 @@ export default function ShravyaChatModalContent() {
       if (isListening) {
         speechRecognitionRef.current.stop();
       } else {
-        stopCurrentAudio(); // Stop AI speech before starting to listen
-        setInputValue('');
+        if (speechSynthesis) speechSynthesis.cancel();
+        setInputValue(''); 
         try {
           speechRecognitionRef.current.start();
         } catch (e) {
@@ -277,6 +313,12 @@ export default function ShravyaChatModalContent() {
           Voice input (microphone) is not supported by your browser. You can still type your questions.
         </div>
       )}
+      {!voicesReady && speechSynthesis && (
+        <div className="mb-2 p-2 bg-blue-500/10 border border-blue-500/30 rounded-md text-blue-700 text-xs flex items-center">
+            <Loader2 size={16} className="animate-spin mr-2"/> Initializing voices...
+        </div>
+      )}
+
 
       <ScrollArea className="flex-grow mb-4 pr-4 -mr-4" ref={scrollAreaRef}>
         <div className="space-y-4 py-2">
@@ -302,18 +344,6 @@ export default function ShravyaChatModalContent() {
                 )}
               >
                 <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                {message.role === 'assistant' && message.audioContent && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => message.isPlayingAudio ? stopCurrentAudio() : playAudio(message.audioContent!, message.id)}
-                    className="mt-2 text-xs text-muted-foreground hover:text-foreground"
-                    aria-label={message.isPlayingAudio ? "Pause Shravya AI's voice" : "Play Shravya AI's voice"}
-                  >
-                    {message.isPlayingAudio ? <PauseCircle size={14} className="mr-1" /> : <PlayCircle size={14} className="mr-1" />}
-                    {message.isPlayingAudio ? 'Pause' : 'Play Voice'}
-                  </Button>
-                )}
               </div>
               {message.role === 'user' && (
                  <span className="flex-shrink-0 p-2 bg-secondary rounded-full text-secondary-foreground shadow">
@@ -378,7 +408,7 @@ export default function ShravyaChatModalContent() {
       </form>
        <p className="text-xs text-muted-foreground text-center mt-3">
           <Sparkles size={12} className="inline mr-1"/>
-          Shravya AI's voice is generated on the server for quality. Responses and translations may sometimes be inaccurate.
+          Shravya AI's voice quality depends on your browser. Responses and translations may sometimes be inaccurate.
       </p>
     </div>
   );
