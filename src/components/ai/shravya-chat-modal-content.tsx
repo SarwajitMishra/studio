@@ -85,10 +85,10 @@ export default function ShravyaChatModalContent() {
               v.name.toLowerCase().includes('female') || 
               v.name.toLowerCase().includes('lekha') || 
               v.name.toLowerCase().includes('google हिन्दी') ||
-              v.name.toLowerCase().includes('kalpana') // Another common one
+              v.name.toLowerCase().includes('kalpana') 
             );
             selectedVoice = hindiFemaleVoices.length > 0 ? hindiFemaleVoices[0] : langVoices[0];
-          } else { // For 'en-IN' (English)
+          } else { 
             const indianFemaleVoices = langVoices.filter(
               (voice) => voice.lang === 'en-IN' && (
                 voice.name.toLowerCase().includes('female') ||
@@ -100,14 +100,13 @@ export default function ShravyaChatModalContent() {
           }
         }
         
-        // Fallback for English if specific en-IN not found
         if (!selectedVoice && targetLang.startsWith('en')) {
           const usFemaleVoices = availableVoices.filter(
             voice => voice.lang === 'en-US' && voice.name.toLowerCase().includes('female')
           );
           if (usFemaleVoices.length > 0) {
             selectedVoice = usFemaleVoices[0];
-          } else { // Last resort: any available English voice
+          } else { 
              const anyEnglishVoice = availableVoices.find(voice => voice.lang.startsWith('en-'));
              if(anyEnglishVoice) selectedVoice = anyEnglishVoice;
           }
@@ -146,72 +145,20 @@ export default function ShravyaChatModalContent() {
   }, [messages, speakText]);
 
 
-  useEffect(() => {
-    if (SpeechRecognition) {
-      setBrowserSupportsSTT(true);
-      const recognition = new SpeechRecognition();
-      recognition.continuous = false;
-      recognition.interimResults = false;
-      recognition.lang = 'en-US'; // Keeping STT to English for now
-
-      recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        setInputValue(transcript);
-        setIsListening(false);
-        setSttError(null);
-      };
-
-      recognition.onerror = (event) => {
-        console.error('Speech recognition error', event.error);
-        if (event.error === 'no-speech') {
-          setSttError("I didn't hear anything. Please try again.");
-        } else if (event.error === 'audio-capture') {
-          setSttError("Couldn't access microphone. Please check permissions.");
-        } else if (event.error === 'not-allowed') {
-          setSttError("Microphone access denied. Please enable it in browser settings.");
-        } else {
-          setSttError(`Error: ${event.error}. Please try again.`);
-        }
-        setIsListening(false);
-      };
-      
-      recognition.onstart = () => {
-        setIsListening(true);
-        setSttError(null);
-      };
-
-      recognition.onend = () => {
-        setIsListening(false);
-      };
-
-      speechRecognitionRef.current = recognition;
-    } else {
-      setBrowserSupportsSTT(false);
-      console.warn("SpeechRecognition API not supported by this browser.");
-    }
-
-    return () => {
-      if (speechRecognitionRef.current && isListening) {
-        speechRecognitionRef.current.stop();
-      }
-      if (typeof window !== 'undefined' && window.speechSynthesis) {
-        window.speechSynthesis.cancel();
-      }
-    };
-  }, [isListening]); 
-
-  const handleSubmit = async (e?: React.FormEvent<HTMLFormElement>, directInput?: string) => {
+  const handleSubmit = useCallback(async (e?: React.FormEvent<HTMLFormElement>, directInput?: string) => {
     if (e) e.preventDefault();
     const userInput = directInput || inputValue.trim();
+
     if (!userInput || isLoading) return;
 
     if (typeof window !== 'undefined' && window.speechSynthesis) {
       window.speechSynthesis.cancel();
     }
     if (isListening && speechRecognitionRef.current) {
+       // Stop listening if it's still active, though `continuous = false` should handle this for single utterances.
       speechRecognitionRef.current.stop();
     }
-    setIsListening(false);
+    setIsListening(false); // Explicitly set listening to false
 
 
     const userMessage: ChatMessage = {
@@ -220,7 +167,7 @@ export default function ShravyaChatModalContent() {
       content: userInput,
     };
     setMessages((prevMessages) => [...prevMessages, userMessage]);
-    setInputValue('');
+    setInputValue(''); // Clear input field after sending
     setIsLoading(true);
     setSttError(null);
 
@@ -253,7 +200,64 @@ export default function ShravyaChatModalContent() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [inputValue, isLoading, isListening, speakText, toast]);
+
+  useEffect(() => {
+    if (SpeechRecognition) {
+      setBrowserSupportsSTT(true);
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false; // Stop after first pause
+      recognition.interimResults = false; // We only want final results for auto-send
+      recognition.lang = 'en-US'; 
+
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        // Automatically submit the transcript
+        handleSubmit(undefined, transcript); 
+        // setInputValue(transcript); // Optionally briefly show transcript, but auto-submit is key
+        setIsListening(false); // Should be set by onend, but good to be sure
+        setSttError(null);
+      };
+
+      recognition.onerror = (event) => {
+        console.error('Speech recognition error', event.error);
+        if (event.error === 'no-speech') {
+          setSttError("I didn't hear anything. Please try again.");
+        } else if (event.error === 'audio-capture') {
+          setSttError("Couldn't access microphone. Please check permissions.");
+        } else if (event.error === 'not-allowed') {
+          setSttError("Microphone access denied. Please enable it in browser settings.");
+        } else {
+          setSttError(`Error: ${event.error}. Please try again.`);
+        }
+        setIsListening(false);
+      };
+      
+      recognition.onstart = () => {
+        setIsListening(true);
+        setSttError(null);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false); 
+      };
+
+      speechRecognitionRef.current = recognition;
+    } else {
+      setBrowserSupportsSTT(false);
+      console.warn("SpeechRecognition API not supported by this browser.");
+    }
+
+    return () => {
+      if (speechRecognitionRef.current && isListening) { // Use local isListening state
+        speechRecognitionRef.current.stop();
+      }
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  // handleSubmit is now a dependency because it's called directly from onresult
+  }, [isListening, handleSubmit]); 
 
   const handleToggleListen = () => {
     if (!browserSupportsSTT) {
@@ -269,11 +273,14 @@ export default function ShravyaChatModalContent() {
     if (speechRecognitionRef.current) {
       if (isListening) {
         speechRecognitionRef.current.stop();
+        setIsListening(false); // Explicitly set state
       } else {
         if (typeof window !== 'undefined' && window.speechSynthesis) {
-            window.speechSynthesis.cancel();
+            window.speechSynthesis.cancel(); // Stop any ongoing TTS
         }
+        setInputValue(''); // Clear input field before starting new voice input
         speechRecognitionRef.current.start();
+        // setIsListening(true) will be set by recognition.onstart
       }
     }
   };
@@ -364,14 +371,14 @@ export default function ShravyaChatModalContent() {
             variant={isListening ? "destructive" : "outline"}
             size="icon"
             onClick={handleToggleListen}
-            disabled={isLoading}
+            disabled={isLoading} // Disable mic button if AI is already processing a request.
             aria-label={isListening ? "Stop listening" : "Start listening"}
           >
             {isListening ? <MicOff size={20} /> : <Mic size={20} />}
           </Button>
         )}
         <Button type="submit" disabled={isLoading || !inputValue.trim() || isListening} className="bg-accent text-accent-foreground hover:bg-accent/90">
-          {isLoading ? (
+          {isLoading && !isListening ? ( // Show loader only when not listening and AI is working
             <Loader2 size={20} className="animate-spin" />
           ) : (
             <Send size={20} />
