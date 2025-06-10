@@ -11,10 +11,10 @@ interface GameCardProps {
 
 export default function GameCard({ game }: GameCardProps) {
   return (
-    <Card className="flex flex-col h-full shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-lg overflow-hidden transform hover:-translate-y-1 hover:animate-gentle-bounce">
+    <Card className="group flex flex-col h-full shadow-lg hover:shadow-xl transition-all duration-300 rounded-lg overflow-hidden transform hover:-translate-y-1 hover:animate-gentle-bounce">
       <CardHeader className="bg-muted/50 p-4">
         <div className="flex items-center gap-3">
-          <game.Icon size={40} className={cn("text-primary", game.color)} />
+          <game.Icon size={40} className={cn("text-primary group-hover:scale-110 transition-transform duration-300", game.color)} />
           <div>
             <CardTitle className="text-xl font-semibold text-foreground">{game.title}</CardTitle>
             <CardDescription className="text-xs text-muted-foreground">{game.category}</CardDescription>

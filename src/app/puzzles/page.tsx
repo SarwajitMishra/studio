@@ -24,10 +24,10 @@ export default function PuzzlesPage() {
         <CardContent className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {PUZZLE_TYPES.map((puzzle) => (
-              <Card key={puzzle.id} id={puzzle.id} className="flex flex-col shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-lg overflow-hidden transform hover:-translate-y-1 hover:animate-gentle-bounce">
+              <Card key={puzzle.id} id={puzzle.id} className="group flex flex-col shadow-lg hover:shadow-xl transition-all duration-300 rounded-lg overflow-hidden transform hover:-translate-y-1 hover:animate-gentle-bounce">
                 <CardHeader className="bg-muted/50 p-4">
                   <div className="flex items-center gap-3">
-                    <puzzle.Icon size={36} className={cn("text-primary", puzzle.color)} />
+                    <puzzle.Icon size={36} className={cn("text-primary group-hover:scale-110 transition-transform duration-300", puzzle.color)} />
                     <CardTitle className="text-xl font-semibold text-foreground">{puzzle.name}</CardTitle>
                   </div>
                 </CardHeader>
