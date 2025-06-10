@@ -1,3 +1,4 @@
+
 // src/components/icons/custom-chat-icon.tsx
 import type React from 'react';
 import NextImage from 'next/image';
@@ -6,27 +7,26 @@ import { cn } from '@/lib/utils';
 interface CustomChatIconProps {
   size?: number | string;
   className?: string;
-  // The src prop will be the path to your icon in the public folder
-  // e.g., /images/icons/custom-chat-icon.png
-  src?: string; 
+  /**
+   * The path to your icon in the `public` folder.
+   * IMPORTANT: Place your `custom-chat-icon.png` (or other named PNG)
+   * in the `public/images/icons/` directory.
+   * Example: If your icon is at `public/images/icons/my-chat-avatar.png`,
+   * then this prop should be `/images/icons/my-chat-avatar.png`.
+   */
+  src?: string;
   alt?: string;
 }
 
-const CustomChatIcon = ({ 
-  size = 24, 
-  className, 
-  src = '/images/icons/placeholder-chat-icon.png', // Default placeholder if no src provided
+const CustomChatIcon = ({
+  size = 24,
+  className,
+  // Default src assumes you have placed `custom-chat-icon.png`
+  // at `public/images/icons/custom-chat-icon.png`
+  src = '/images/icons/custom-chat-icon.png',
   alt = 'Chat Icon',
-  ...props 
+  ...props
 }: CustomChatIconProps) => {
-  // If you are using a PNG, ensure it's placed in the public folder.
-  // For example, if your icon is at public/images/icons/custom-chat-icon.png,
-  // the src prop should be "/images/icons/custom-chat-icon.png".
-
-  // We use a simple img tag here for flexibility with external or dynamic SVGs if needed,
-  // or a NextImage for optimized PNGs.
-  // For a user-provided PNG, NextImage is better.
-
   const numericSize = typeof size === 'string' ? parseInt(size, 10) : size;
 
   return (
@@ -36,10 +36,11 @@ const CustomChatIcon = ({
       width={numericSize}
       height={numericSize}
       className={cn(className)}
-      // Add a data-ai-hint if you want to use AI to find a similar stock image later
-      // data-ai-hint="chat bubble" 
+      // Next.js optimizes PNGs by default.
+      // The 'unoptimized' prop is generally for specific cases like external URLs or when you want to serve the image as-is.
+      // For local PNGs in /public, default optimization is usually what you want.
+      // unoptimized={src.startsWith('data:')} // Only unoptimize for data URIs if ever used.
       {...props}
-      unoptimized={src.startsWith('data:') || src.endsWith('.svg')} // Basic check for SVGs or data URIs
     />
   );
 };
