@@ -14,6 +14,8 @@ interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  isStreaming?: boolean; // To indicate if the message is currently streaming
+  fullContent?: string; // To store the complete message if content is partial during streaming
 }
 
 const SpeechRecognition = (typeof window !== 'undefined') ? (window.SpeechRecognition || window.webkitSpeechRecognition) : null;
@@ -26,6 +28,8 @@ const INITIAL_GREETINGS = [
   "Greetings! I'm Shravya AI. Let's talk games! You can type or click the mic to ask your questions.",
   "Welcome! I'm Shravya AI, your guide to the games in Shravya Playhouse. How can I help you today? Feel free to use the mic!"
 ];
+
+const STREAMING_SPEED_MS = 50; // Adjust for faster/slower typing effect
 
 export default function ShravyaChatModalContent() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -41,20 +45,37 @@ export default function ShravyaChatModalContent() {
 
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [voicesReady, setVoicesReady] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null); // Kept for potential future server-side TTS
+  
+  // Ref to manage the streaming timeout
+  const streamingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const scrollToBottom = () => {
+
+  const scrollToBottom = useCallback(() => {
     if (scrollAreaRef.current) {
       const scrollViewport = scrollAreaRef.current.querySelector('div[data-radix-scroll-area-viewport]');
       if (scrollViewport) {
         scrollViewport.scrollTop = scrollViewport.scrollHeight;
       }
     }
-  };
+  }, []);
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, scrollToBottom]);
+  
+  const cancelCurrentStreaming = useCallback(() => {
+    if (streamingTimeoutRef.current) {
+      clearTimeout(streamingTimeoutRef.current);
+      streamingTimeoutRef.current = null;
+    }
+    // Ensure any message currently streaming shows its full content immediately
+    setMessages(prevMessages => 
+      prevMessages.map(msg => 
+        msg.isStreaming ? { ...msg, content: msg.fullContent || msg.content, isStreaming: false } : msg
+      )
+    );
+  }, []);
+
 
   const loadVoices = useCallback(() => {
     if (speechSynthesis) {
@@ -83,7 +104,7 @@ export default function ShravyaChatModalContent() {
   useEffect(() => {
     if (speechSynthesis) {
       loadVoices();
-      speechSynthesis.onvoiceschanged = loadVoices; // Important for some browsers
+      speechSynthesis.onvoiceschanged = loadVoices;
     } else {
       setVoicesReady(true);
       console.warn("[ShravyaAI TTS Client] SpeechSynthesis API not supported by this browser.");
@@ -94,12 +115,9 @@ export default function ShravyaChatModalContent() {
         speechSynthesis.onvoiceschanged = null;
         speechSynthesis.cancel();
       }
-      if (audioRef.current) { // If server-side TTS was re-enabled
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
+      cancelCurrentStreaming();
     };
-  }, [loadVoices]);
+  }, [loadVoices, cancelCurrentStreaming]);
   
   const speakText = useCallback((text: string, languageCode: string) => {
     if (!speechSynthesis || !voicesReady) {
@@ -148,13 +166,11 @@ export default function ShravyaChatModalContent() {
         console.log("[ShravyaAI TTS Client] Speech interrupted for:", `"${text.substring(0,30)}..."`, "Utterance:", event.utterance);
       } else {
         console.error("[ShravyaAI TTS Client] Speech error:", event.error, "for text:", `"${text.substring(0,30)}..."`, "Utterance:", event.utterance);
-        if (event.error !== 'interrupted') { // Don't show toast for intentional interruptions
-          toast({
-            variant: "destructive",
-            title: "Speech Error",
-            description: `Could not play Shravya AI's voice. Error: ${event.error}`,
-          });
-        }
+        toast({
+          variant: "destructive",
+          title: "Speech Error",
+          description: `Could not play Shravya AI's voice. Error: ${event.error}`,
+        });
       }
     };
     speechSynthesis.speak(utterance);
@@ -164,15 +180,41 @@ export default function ShravyaChatModalContent() {
   useEffect(() => {
     if (messages.length === 0 && voicesReady) {
       const randomGreeting = INITIAL_GREETINGS[Math.floor(Math.random() * INITIAL_GREETINGS.length)];
+      const initialMessageId = 'initial-greeting';
       const initialMessage: ChatMessage = {
-        id: 'initial-greeting',
+        id: initialMessageId,
         role: 'assistant',
-        content: randomGreeting,
+        content: '', // Start empty for streaming effect
+        isStreaming: true,
+        fullContent: randomGreeting,
       };
       setMessages([initialMessage]);
-      speakText(initialMessage.content, 'en-US'); // Assuming initial greeting is always English for now
+
+      // Stream the initial greeting
+      const words = randomGreeting.split(' ');
+      let currentWordIndex = 0;
+      const streamGreeting = () => {
+        if (currentWordIndex < words.length) {
+          setMessages(prev => prev.map(msg => 
+            msg.id === initialMessageId 
+            ? { ...msg, content: words.slice(0, currentWordIndex + 1).join(' ') } 
+            : msg
+          ));
+          currentWordIndex++;
+          streamingTimeoutRef.current = setTimeout(streamGreeting, STREAMING_SPEED_MS);
+        } else {
+          setMessages(prev => prev.map(msg => 
+            msg.id === initialMessageId 
+            ? { ...msg, isStreaming: false, content: randomGreeting } // Ensure full content and stop streaming
+            : msg
+          ));
+          speakText(randomGreeting, 'en-US'); // Assuming initial greeting is always English for now
+          streamingTimeoutRef.current = null;
+        }
+      };
+      streamingTimeoutRef.current = setTimeout(streamGreeting, STREAMING_SPEED_MS);
     }
-  }, [messages.length, voicesReady, speakText]);
+  }, [voicesReady, speakText]); // messages.length removed to allow re-greeting if modal reopens empty
 
 
   const handleSubmit = useCallback(async (e?: React.FormEvent<HTMLFormElement>, directInput?: string) => {
@@ -181,6 +223,7 @@ export default function ShravyaChatModalContent() {
 
     if (!userInput || isLoading) return;
     
+    cancelCurrentStreaming(); // Stop any ongoing AI message streaming
     if (speechSynthesis) speechSynthesis.cancel();
     if (isListening && speechRecognitionRef.current) {
       speechRecognitionRef.current.stop();
@@ -193,7 +236,7 @@ export default function ShravyaChatModalContent() {
       content: userInput,
     };
     setMessages((prevMessages) => [...prevMessages, userMessage]);
-    if (!directInput) { // Only clear input if it wasn't a direct voice submission
+    if (!directInput) {
         setInputValue('');
     }
     setIsLoading(true);
@@ -203,41 +246,75 @@ export default function ShravyaChatModalContent() {
       const input: ShravyaAIChatInput = { userInput };
       const output: ShravyaAIChatOutput = await shravyaAIChat(input);
       
+      const assistantMessageId = `assistant-${Date.now()}`;
       const aiMessage: ChatMessage = {
-        id: `assistant-${Date.now()}`,
+        id: assistantMessageId,
         role: 'assistant',
-        content: output.response,
+        content: '', // Start empty for streaming
+        isStreaming: true,
+        fullContent: output.response,
       };
       setMessages((prevMessages) => [...prevMessages, aiMessage]);
+      setIsLoading(false); // Set loading false here so user can interact
 
-      speakText(output.response, output.responseLanguage);
+      // Stream AI's response
+      const words = output.response.split(' ');
+      let currentWordIndex = 0;
+      const streamWords = () => {
+        if (currentWordIndex < words.length) {
+          setMessages(prev => {
+            // Check if this message is still the one being streamed
+            const lastMsg = prev[prev.length -1];
+            if (lastMsg && lastMsg.id === assistantMessageId && lastMsg.isStreaming) {
+              return prev.map(msg => 
+                msg.id === assistantMessageId 
+                ? { ...msg, content: words.slice(0, currentWordIndex + 1).join(' ') } 
+                : msg
+              );
+            }
+            return prev; // If interrupted or different message, stop streaming this one
+          });
+          currentWordIndex++;
+          streamingTimeoutRef.current = setTimeout(streamWords, STREAMING_SPEED_MS);
+        } else {
+          setMessages(prev => prev.map(msg => 
+            msg.id === assistantMessageId 
+            ? { ...msg, isStreaming: false, content: output.response } // Ensure full content and stop streaming
+            : msg
+          ));
+          speakText(output.response, output.responseLanguage);
+          streamingTimeoutRef.current = null;
+        }
+      };
+      streamingTimeoutRef.current = setTimeout(streamWords, STREAMING_SPEED_MS);
 
     } catch (error) {
       console.error('Error calling Shravya AI chat flow:', error);
+      cancelCurrentStreaming(); // Ensure streaming stops on error
+      setIsLoading(false);
       const errorText = "I'm sorry, something went wrong. Please try asking again later.";
       const errorMessage: ChatMessage = {
         id: `error-${Date.now()}`,
         role: 'assistant',
-        content: errorText,
+        content: errorText, // No streaming for error messages
       };
       setMessages((prevMessages) => [...prevMessages, errorMessage]);
-      speakText(errorText, 'en'); // Error message in English
-    } finally {
-      setIsLoading(false);
-    }
-  }, [inputValue, isLoading, isListening, speakText, toast]);
+      speakText(errorText, 'en');
+    } 
+    // setIsLoading(false) moved up to allow interaction sooner
+  }, [inputValue, isLoading, isListening, speakText, toast, cancelCurrentStreaming]);
 
   useEffect(() => {
     if (SpeechRecognition) {
       setBrowserSupportsSTT(true);
       const recognition = new SpeechRecognition();
-      recognition.continuous = false; // Stop after first pause
+      recognition.continuous = false;
       recognition.interimResults = false; 
 
       recognition.onresult = (event) => {
         const transcript = event.results[event.results.length - 1][0].transcript;
         console.log("[ShravyaAI STT] Transcript:", transcript);
-        setInputValue(''); // Clear input field after successful voice input
+        setInputValue(''); 
         handleSubmit(undefined, transcript); 
         setSttError(null);
       };
@@ -260,6 +337,7 @@ export default function ShravyaChatModalContent() {
         setIsListening(true);
         setSttError(null);
         if (speechSynthesis) speechSynthesis.cancel(); 
+        cancelCurrentStreaming(); // Stop AI text streaming if user starts STT
         console.log("[ShravyaAI STT] Speech recognition started.");
       };
 
@@ -275,12 +353,13 @@ export default function ShravyaChatModalContent() {
     }
 
     return () => {
-      if (speechRecognitionRef.current && isListening) { // Check if recognition is active before stopping
+      if (speechRecognitionRef.current && isListening) {
         speechRecognitionRef.current.stop();
       }
       if (speechSynthesis) speechSynthesis.cancel();
+      cancelCurrentStreaming();
     };
-  }, [isListening, handleSubmit]); // isListening dependency added to re-setup if it changes unexpectedly
+  }, [isListening, handleSubmit, cancelCurrentStreaming]);
 
   const handleToggleListen = () => {
     if (!browserSupportsSTT) {
@@ -297,20 +376,19 @@ export default function ShravyaChatModalContent() {
       if (isListening) {
         speechRecognitionRef.current.stop();
       } else {
-        if (speechSynthesis) speechSynthesis.cancel();
+        cancelCurrentStreaming(); // Stop AI text streaming
+        if (speechSynthesis) speechSynthesis.cancel(); // Stop AI speaking
         setInputValue(''); 
         try {
-          speechRecognitionRef.current.lang = 'en-US'; // STT primarily listens in English, LLM detects other languages
+          speechRecognitionRef.current.lang = 'en-US';
           speechRecognitionRef.current.start();
         } catch (e) {
           console.error("[ShravyaAI STT] Error starting speech recognition:", e);
            if ((e as DOMException).name === 'InvalidStateError' && isListening) {
-             // Already listening, likely a quick double click - stop it.
              speechRecognitionRef.current.stop();
            } else if ((e as DOMException).name === 'InvalidStateError') {
              setSttError("Voice recognition is busy. Please try again in a moment.");
-           }
-            else {
+           } else {
              setSttError("Could not start voice input. Please try again.");
            }
           setIsListening(false);
@@ -340,7 +418,7 @@ export default function ShravyaChatModalContent() {
       )}
 
 
-      <ScrollArea className="flex-grow mb-4 pr-4 -mr-4" ref={scrollAreaRef}>
+      <ScrollArea className="flex-grow mb-4 pr-4 -mr-4" ref={scrollAreaRef} onScroll={scrollToBottom}>
         <div className="space-y-4 py-2">
           {messages.map((message) => (
             <div
@@ -363,7 +441,7 @@ export default function ShravyaChatModalContent() {
                     : 'bg-card border'
                 )}
               >
-                <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                <p className="text-sm whitespace-pre-wrap">{message.content}{message.isStreaming && <span className="animate-pulse">▍</span>}</p>
               </div>
               {message.role === 'user' && (
                  <span className="flex-shrink-0 p-2 bg-secondary rounded-full text-secondary-foreground shadow">
@@ -372,7 +450,7 @@ export default function ShravyaChatModalContent() {
               )}
             </div>
           ))}
-          {isLoading && !isListening && ( // Ensure this doesn't show when STT is active
+          {isLoading && !isListening && messages[messages.length -1]?.role !== 'assistant' && ( // Show thinking if not already streaming an assistant message
             <div className="flex items-start space-x-3">
               <span className="flex-shrink-0 p-2 bg-accent rounded-full text-accent-foreground shadow">
                  <Bot size={20} />
@@ -402,7 +480,7 @@ export default function ShravyaChatModalContent() {
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           className="flex-grow text-base"
-          disabled={isLoading && !isListening} // Allow typing if STT is on but not actively processing an AI request.
+          disabled={isLoading && !isListening && messages[messages.length-1]?.role !== 'assistant' && !messages[messages.length-1]?.isStreaming}
           aria-label="Your message to Shravya AI"
         />
         {browserSupportsSTT && (
@@ -411,14 +489,14 @@ export default function ShravyaChatModalContent() {
             variant={isListening ? "destructive" : "outline"}
             size="icon"
             onClick={handleToggleListen}
-            disabled={isLoading && !isListening} // Disable if AI is processing a text submission
+            disabled={isLoading && !isListening && messages[messages.length-1]?.role !== 'assistant' && !messages[messages.length-1]?.isStreaming}
             aria-label={isListening ? "Stop listening" : "Start listening"}
           >
             {isListening ? <MicOff size={20} /> : <Mic size={20} />}
           </Button>
         )}
-        <Button type="submit" disabled={(isLoading && !isListening) || !inputValue.trim()} className="bg-accent text-accent-foreground hover:bg-accent/90">
-          {(isLoading && !isListening) ? ( // Show loader only if it's an AI loading state, not STT listening
+        <Button type="submit" disabled={(isLoading && !isListening && messages[messages.length-1]?.role !== 'assistant' && !messages[messages.length-1]?.isStreaming) || !inputValue.trim()} className="bg-accent text-accent-foreground hover:bg-accent/90">
+          {(isLoading && !isListening && messages[messages.length-1]?.role !== 'assistant' && !messages[messages.length-1]?.isStreaming) ? (
             <Loader2 size={20} className="animate-spin" />
           ) : (
             <Send size={20} />
@@ -433,4 +511,3 @@ export default function ShravyaChatModalContent() {
     </div>
   );
 }
-
