@@ -100,26 +100,37 @@ export default function EasyEnglishPuzzlePage() {
       return;
     }
 
-    const remainingPuzzles = PUZZLE_DATA.filter(
-      (p) => !currentPuzzle || p.id !== currentPuzzle.id // Simplistic way to avoid immediate repeat, better would be to track answered puzzles
-    );
-    const nextPuzzle = remainingPuzzles.length > 0
-      ? remainingPuzzles[Math.floor(Math.random() * remainingPuzzles.length)]
-      : PUZZLE_DATA[Math.floor(Math.random() * PUZZLE_DATA.length)]; // Fallback if all unique are exhausted
+    // To avoid immediate repeat, we read currentPuzzle directly from state.
+    // This means loadNextPuzzle's useCallback dependencies should reflect this.
+    const currentPuzzleIdToAvoid = currentPuzzle ? currentPuzzle.id : null;
+    
+    const availablePuzzles = PUZZLE_DATA.filter(p => p.id !== currentPuzzleIdToAvoid);
+    const puzzlePool = availablePuzzles.length > 0 ? availablePuzzles : PUZZLE_DATA;
+    
+    const nextPuzzle = puzzlePool[Math.floor(Math.random() * puzzlePool.length)];
 
     setCurrentPuzzle(nextPuzzle);
     setShuffledOptions(shuffleArray(nextPuzzle.options));
     setFeedback(null);
     setIsAnswered(false);
-  }, [questionsAnswered, currentPuzzle, score]);
+  }, [questionsAnswered, score, currentPuzzle, MAX_QUESTIONS]); // MAX_QUESTIONS is stable, PUZZLE_DATA is stable.
 
   useEffect(() => {
-    loadNextPuzzle();
-  }, [loadNextPuzzle, questionsAnswered === 0]); // Load first puzzle or when game resets via questionsAnswered = 0
+    // This effect handles the initial loading of a puzzle and reset.
+    if (questionsAnswered === 0) {
+      loadNextPuzzle();
+    }
+    // By not including loadNextPuzzle in the dependency array here, we break the loop
+    // if loadNextPuzzle's own execution (and subsequent state updates) would cause its
+    // reference to change and re-trigger this effect when questionsAnswered is still 0.
+    // This relies on loadNextPuzzle being correctly defined by its useCallback dependencies.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [questionsAnswered, MAX_QUESTIONS]);
 
   const handleAnswer = (selectedWord: string) => {
     if (!currentPuzzle || isAnswered) return;
     setIsAnswered(true);
+    let isCorrect = false;
 
     if (selectedWord === currentPuzzle.correctWord) {
       setScore((prevScore) => prevScore + 1);
@@ -129,15 +140,7 @@ export default function EasyEnglishPuzzlePage() {
         description: `You matched "${selectedWord}" correctly!`,
         className: "bg-green-500 text-white",
       });
-      setTimeout(() => {
-        setQuestionsAnswered((prev) => prev + 1);
-        if (questionsAnswered + 1 < MAX_QUESTIONS) {
-            loadNextPuzzle();
-        } else {
-             setFeedback({ message: `Game Over! Your final score: ${score + 1}/${MAX_QUESTIONS}`, type: "info" });
-             setCurrentPuzzle(null);
-        }
-      }, 1500);
+      isCorrect = true;
     } else {
       setFeedback({ message: `Not quite! The correct answer was "${currentPuzzle.correctWord}".`, type: "incorrect" });
       toast({
@@ -145,22 +148,25 @@ export default function EasyEnglishPuzzlePage() {
         title: "Try Again!",
         description: `"${selectedWord}" was not the right match. Keep trying!`,
       });
-      setTimeout(() => {
-        setQuestionsAnswered((prev) => prev + 1);
-         if (questionsAnswered + 1 < MAX_QUESTIONS) {
-            loadNextPuzzle();
-        } else {
-            setFeedback({ message: `Game Over! Your final score: ${score}/${MAX_QUESTIONS}`, type: "info" });
-            setCurrentPuzzle(null);
-        }
-      }, 2500);
     }
+
+    setTimeout(() => {
+      const newQuestionsAnswered = questionsAnswered + 1;
+      setQuestionsAnswered(newQuestionsAnswered); // Update state first
+
+      if (newQuestionsAnswered < MAX_QUESTIONS) {
+          loadNextPuzzle(); // Load next based on the updated questionsAnswered
+      } else {
+           const finalScore = isCorrect ? score + 1 : score;
+           setFeedback({ message: `Game Over! Your final score: ${finalScore}/${MAX_QUESTIONS}`, type: "info" });
+           setCurrentPuzzle(null);
+      }
+    }, isCorrect ? 1500 : 2500);
   };
 
   const resetGame = () => {
     setScore(0);
-    setQuestionsAnswered(0);
-    // useEffect dependency on questionsAnswered will trigger loadNextPuzzle
+    setQuestionsAnswered(0); // This will trigger the useEffect to load the first puzzle
   };
 
   return (
@@ -174,7 +180,7 @@ export default function EasyEnglishPuzzlePage() {
               <CardTitle className="text-3xl font-bold text-primary">Easy English: Word Match</CardTitle>
             </div>
             <CardDescription className="text-center text-md text-foreground/80 pt-2">
-              Match the picture to the correct English word! Score: {score} / {questionsAnswered} (Max: {MAX_QUESTIONS})
+              Match the picture to the correct English word! Score: {score} / {questionsAnswered < MAX_QUESTIONS ? questionsAnswered : MAX_QUESTIONS} (Max: {MAX_QUESTIONS})
             </CardDescription>
           </CardHeader>
           <CardContent className="p-6 text-center space-y-6">
@@ -208,7 +214,7 @@ export default function EasyEnglishPuzzlePage() {
                     </Button>
                   ))}
                 </div>
-                {feedback && (
+                {feedback && (feedback.type !== "info" || questionsAnswered >= MAX_QUESTIONS) && ( // Show feedback unless it's info and game isn't over
                   <div
                     className={cn(
                       "mt-4 p-3 rounded-md text-center font-medium",
@@ -227,8 +233,10 @@ export default function EasyEnglishPuzzlePage() {
             ) : (
               <div className="space-y-4">
                 <Sparkles size={64} className="mx-auto text-yellow-500" />
-                <p className="text-2xl font-semibold text-accent">
-                  {questionsAnswered >= MAX_QUESTIONS ? `Game Over! Final Score: ${score}/${MAX_QUESTIONS}` : "Loading Puzzle..."}
+                 <p className="text-2xl font-semibold text-accent">
+                  {questionsAnswered >= MAX_QUESTIONS && feedback?.type === "info"
+                    ? feedback.message
+                    : "Loading Puzzle..."}
                 </p>
                  {questionsAnswered >= MAX_QUESTIONS && (
                     <Button onClick={resetGame} className="bg-accent text-accent-foreground hover:bg-accent/90">
@@ -251,4 +259,3 @@ export default function EasyEnglishPuzzlePage() {
   );
 }
 
-    
