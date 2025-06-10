@@ -23,11 +23,12 @@ export default function FloatingChatButton() {
                 size="icon"
                 className={cn(
                   "fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg bg-accent hover:bg-accent/90 text-accent-foreground animate-gentle-bounce z-50",
-                  "p-1" // Reduced padding to allow icon to fill more space
+                  "p-1", // Reduced padding to allow icon to fill more space
+                  "transition-transform duration-200 ease-in-out hover:scale-110" // Added hover effect
                 )}
                 aria-label="Chat with Shravya AI"
               >
-                <CustomChatIcon src="/icons/custom-chat-icon.png" alt="Shravya AI Chat" size={48} /> {/* Increased icon size */}
+                <CustomChatIcon src="/icons/custom-chat-icon.png" alt="Shravya AI Chat" size={48} />
               </Button>
             </DialogTrigger>
           </TooltipTrigger>
