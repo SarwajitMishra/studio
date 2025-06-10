@@ -5,7 +5,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Bot, User, Send, Loader2, Sparkles, Mic, MicOff, AlertTriangle } from 'lucide-react';
+import { User, Send, Loader2, Sparkles, Mic, MicOff, AlertTriangle } from 'lucide-react'; // Bot removed, Sparkles already here
 import { shravyaAIChat, type ShravyaAIChatInput, type ShravyaAIChatOutput } from '@/ai/flows/shravya-ai-chat-flow';
 import { cn } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
@@ -14,8 +14,8 @@ interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
-  isStreaming?: boolean; // To indicate if the message is currently streaming
-  fullContent?: string; // To store the complete message if content is partial during streaming
+  isStreaming?: boolean;
+  fullContent?: string;
 }
 
 const SpeechRecognition = (typeof window !== 'undefined') ? (window.SpeechRecognition || window.webkitSpeechRecognition) : null;
@@ -29,7 +29,7 @@ const INITIAL_GREETINGS = [
   "Welcome! I'm Shravya AI, your guide to the games in Shravya Playhouse. How can I help you today? Feel free to use the mic!"
 ];
 
-const STREAMING_SPEED_MS = 50; // Adjust for faster/slower typing effect
+const STREAMING_SPEED_MS = 50;
 
 export default function ShravyaChatModalContent() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -46,7 +46,6 @@ export default function ShravyaChatModalContent() {
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [voicesReady, setVoicesReady] = useState(false);
   
-  // Ref to manage the streaming timeout
   const streamingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
 
@@ -68,7 +67,6 @@ export default function ShravyaChatModalContent() {
       clearTimeout(streamingTimeoutRef.current);
       streamingTimeoutRef.current = null;
     }
-    // Ensure any message currently streaming shows its full content immediately
     setMessages(prevMessages => 
       prevMessages.map(msg => 
         msg.isStreaming ? { ...msg, content: msg.fullContent || msg.content, isStreaming: false } : msg
@@ -184,13 +182,12 @@ export default function ShravyaChatModalContent() {
       const initialMessage: ChatMessage = {
         id: initialMessageId,
         role: 'assistant',
-        content: '', // Start empty for streaming effect
+        content: '',
         isStreaming: true,
         fullContent: randomGreeting,
       };
       setMessages([initialMessage]);
 
-      // Stream the initial greeting
       const words = randomGreeting.split(' ');
       let currentWordIndex = 0;
       const streamGreeting = () => {
@@ -205,16 +202,16 @@ export default function ShravyaChatModalContent() {
         } else {
           setMessages(prev => prev.map(msg => 
             msg.id === initialMessageId 
-            ? { ...msg, isStreaming: false, content: randomGreeting } // Ensure full content and stop streaming
+            ? { ...msg, isStreaming: false, content: randomGreeting } 
             : msg
           ));
-          speakText(randomGreeting, 'en-US'); // Assuming initial greeting is always English for now
+          speakText(randomGreeting, 'en-US');
           streamingTimeoutRef.current = null;
         }
       };
       streamingTimeoutRef.current = setTimeout(streamGreeting, STREAMING_SPEED_MS);
     }
-  }, [voicesReady, speakText]); // messages.length removed to allow re-greeting if modal reopens empty
+  }, [voicesReady, speakText]);
 
 
   const handleSubmit = useCallback(async (e?: React.FormEvent<HTMLFormElement>, directInput?: string) => {
@@ -223,7 +220,7 @@ export default function ShravyaChatModalContent() {
 
     if (!userInput || isLoading) return;
     
-    cancelCurrentStreaming(); // Stop any ongoing AI message streaming
+    cancelCurrentStreaming();
     if (speechSynthesis) speechSynthesis.cancel();
     if (isListening && speechRecognitionRef.current) {
       speechRecognitionRef.current.stop();
@@ -250,20 +247,18 @@ export default function ShravyaChatModalContent() {
       const aiMessage: ChatMessage = {
         id: assistantMessageId,
         role: 'assistant',
-        content: '', // Start empty for streaming
+        content: '',
         isStreaming: true,
         fullContent: output.response,
       };
       setMessages((prevMessages) => [...prevMessages, aiMessage]);
-      setIsLoading(false); // Set loading false here so user can interact
+      setIsLoading(false);
 
-      // Stream AI's response
       const words = output.response.split(' ');
       let currentWordIndex = 0;
       const streamWords = () => {
         if (currentWordIndex < words.length) {
           setMessages(prev => {
-            // Check if this message is still the one being streamed
             const lastMsg = prev[prev.length -1];
             if (lastMsg && lastMsg.id === assistantMessageId && lastMsg.isStreaming) {
               return prev.map(msg => 
@@ -272,14 +267,14 @@ export default function ShravyaChatModalContent() {
                 : msg
               );
             }
-            return prev; // If interrupted or different message, stop streaming this one
+            return prev;
           });
           currentWordIndex++;
           streamingTimeoutRef.current = setTimeout(streamWords, STREAMING_SPEED_MS);
         } else {
           setMessages(prev => prev.map(msg => 
             msg.id === assistantMessageId 
-            ? { ...msg, isStreaming: false, content: output.response } // Ensure full content and stop streaming
+            ? { ...msg, isStreaming: false, content: output.response } 
             : msg
           ));
           speakText(output.response, output.responseLanguage);
@@ -290,18 +285,17 @@ export default function ShravyaChatModalContent() {
 
     } catch (error) {
       console.error('Error calling Shravya AI chat flow:', error);
-      cancelCurrentStreaming(); // Ensure streaming stops on error
+      cancelCurrentStreaming();
       setIsLoading(false);
       const errorText = "I'm sorry, something went wrong. Please try asking again later.";
       const errorMessage: ChatMessage = {
         id: `error-${Date.now()}`,
         role: 'assistant',
-        content: errorText, // No streaming for error messages
+        content: errorText,
       };
       setMessages((prevMessages) => [...prevMessages, errorMessage]);
       speakText(errorText, 'en');
     } 
-    // setIsLoading(false) moved up to allow interaction sooner
   }, [inputValue, isLoading, isListening, speakText, toast, cancelCurrentStreaming]);
 
   useEffect(() => {
@@ -337,7 +331,7 @@ export default function ShravyaChatModalContent() {
         setIsListening(true);
         setSttError(null);
         if (speechSynthesis) speechSynthesis.cancel(); 
-        cancelCurrentStreaming(); // Stop AI text streaming if user starts STT
+        cancelCurrentStreaming();
         console.log("[ShravyaAI STT] Speech recognition started.");
       };
 
@@ -376,8 +370,8 @@ export default function ShravyaChatModalContent() {
       if (isListening) {
         speechRecognitionRef.current.stop();
       } else {
-        cancelCurrentStreaming(); // Stop AI text streaming
-        if (speechSynthesis) speechSynthesis.cancel(); // Stop AI speaking
+        cancelCurrentStreaming();
+        if (speechSynthesis) speechSynthesis.cancel();
         setInputValue(''); 
         try {
           speechRecognitionRef.current.lang = 'en-US';
@@ -430,7 +424,7 @@ export default function ShravyaChatModalContent() {
             >
               {message.role === 'assistant' && (
                 <span className="flex-shrink-0 p-2 bg-accent rounded-full text-accent-foreground shadow">
-                  <Bot size={20} />
+                  <Sparkles size={20} /> {/* Changed icon here */}
                 </span>
               )}
               <div
@@ -450,10 +444,10 @@ export default function ShravyaChatModalContent() {
               )}
             </div>
           ))}
-          {isLoading && !isListening && messages[messages.length -1]?.role !== 'assistant' && ( // Show thinking if not already streaming an assistant message
+          {isLoading && !isListening && messages[messages.length -1]?.role !== 'assistant' && (
             <div className="flex items-start space-x-3">
               <span className="flex-shrink-0 p-2 bg-accent rounded-full text-accent-foreground shadow">
-                 <Bot size={20} />
+                 <Sparkles size={20} /> {/* Changed icon here */}
               </span>
               <div className="p-3 rounded-lg shadow bg-card border flex items-center space-x-2">
                 <Loader2 size={18} className="animate-spin text-muted-foreground" />

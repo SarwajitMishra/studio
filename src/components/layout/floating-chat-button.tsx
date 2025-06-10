@@ -3,8 +3,8 @@
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"; // Added Tooltip imports
-import { Bot, MessageCircle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Sparkles } from "lucide-react"; // Changed from Bot, MessageCircle
 import ShravyaChatModalContent from "@/components/ai/shravya-chat-modal-content";
 import { useState } from "react";
 
@@ -21,13 +21,13 @@ export default function FloatingChatButton() {
                 variant="default"
                 size="icon"
                 className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg bg-accent hover:bg-accent/90 text-accent-foreground animate-gentle-bounce z-50"
-                aria-label="Chat with Shravya AI" // Updated aria-label for conciseness
+                aria-label="Chat with Shravya AI"
               >
-                <MessageCircle size={28} />
+                <Sparkles size={28} /> {/* Changed icon here */}
               </Button>
             </DialogTrigger>
           </TooltipTrigger>
-          <TooltipContent side="left" className="mr-2 mb-1"> {/* Positioned to the left, with slight margin */}
+          <TooltipContent side="left" className="mr-2 mb-1">
             <p>Chat with Shravya AI</p>
           </TooltipContent>
         </Tooltip>
@@ -35,7 +35,8 @@ export default function FloatingChatButton() {
       <DialogContent className="sm:max-w-xl md:max-w-2xl p-0 max-h-[85vh] flex flex-col">
         <DialogHeader className="p-4 sm:p-6 border-b bg-primary/10">
           <DialogTitle className="text-xl sm:text-2xl font-bold text-primary flex items-center">
-            <Bot size={28} className="mr-2" /> Chat with Shravya AI
+            <Sparkles size={28} className="mr-2" /> {/* Changed icon here */}
+            Chat with Shravya AI
           </DialogTitle>
           <DialogDescription className="text-sm sm:text-base text-foreground/80">
             Ask about games in Shravya Playhouse!
