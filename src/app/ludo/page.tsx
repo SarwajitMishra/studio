@@ -17,7 +17,7 @@ const PLAYER_COLORS = ['red', 'green', 'yellow', 'blue'] as const;
 type PlayerColor = typeof PLAYER_COLORS[number];
 
 const MAIN_PATH_LENGTH = 52;
-const HOME_STRETCH_LENGTH = 6; 
+const HOME_STRETCH_LENGTH = 6;
 const NUM_TOKENS_PER_PLAYER = 4;
 const BOARD_GRID_SIZE = 15;
 
@@ -25,16 +25,16 @@ const BOARD_GRID_SIZE = 15;
 const MAIN_PATH_COORDINATES: { row: number; col: number }[] = [
   { row: 6, col: 1 }, { row: 6, col: 2 }, { row: 6, col: 3 }, { row: 6, col: 4 }, { row: 6, col: 5 },
   { row: 5, col: 6 }, { row: 4, col: 6 }, { row: 3, col: 6 }, { row: 2, col: 6 }, { row: 1, col: 6 }, { row: 0, col: 6 },
-  { row: 0, col: 8 }, 
+  { row: 0, col: 8 },
   { row: 1, col: 8 }, { row: 2, col: 8 }, { row: 3, col: 8 }, { row: 4, col: 8 }, { row: 5, col: 8 },
   { row: 6, col: 9 }, { row: 6, col: 10 }, { row: 6, col: 11 }, { row: 6, col: 12 }, { row: 6, col: 13 }, { row: 6, col: 14 },
-  { row: 8, col: 14 }, 
+  { row: 8, col: 14 },
   { row: 8, col: 13 }, { row: 8, col: 12 }, { row: 8, col: 11 }, { row: 8, col: 10 }, { row: 8, col: 9 },
   { row: 9, col: 8 }, { row: 10, col: 8 }, { row: 11, col: 8 }, { row: 12, col: 8 }, { row: 13, col: 8 }, { row: 14, col: 8 },
-  { row: 14, col: 6 }, 
+  { row: 14, col: 6 },
   { row: 13, col: 6 }, { row: 12, col: 6 }, { row: 11, col: 6 }, { row: 10, col: 6 }, { row: 9, col: 6 },
   { row: 8, col: 5 }, { row: 8, col: 4 }, { row: 8, col: 3 }, { row: 8, col: 2 }, { row: 8, col: 1 }, { row: 8, col: 0 },
-  { row: 6, col: 0 } 
+  { row: 6, col: 0 }
 ];
 
 const HOME_STRETCH_COORDINATES: Record<PlayerColor, { row: number; col: number }[]> = {
@@ -45,22 +45,21 @@ const HOME_STRETCH_COORDINATES: Record<PlayerColor, { row: number; col: number }
 };
 
 
-const PLAYER_CONFIG: Record<PlayerColor, { name: string; baseClass: string; textClass: string; pathStartIndex: number; homeEntryPathIndex: number; panelGridArea: string; houseCoords: {row: number, col: number}[], startCell: {row: number, col: number} }> = {
-  red:    { name: "Red",    baseClass: "bg-red-500",    textClass: "text-red-700",    pathStartIndex: 0,  homeEntryPathIndex: 50, panelGridArea: "panel-red",    houseCoords: [{row:1,col:1},{row:1,col:4},{row:4,col:1},{row:4,col:4}], startCell: MAIN_PATH_COORDINATES[0] },
-  green:  { name: "Green",  baseClass: "bg-green-500",  textClass: "text-green-700",  pathStartIndex: 13, homeEntryPathIndex: 11, panelGridArea: "panel-green",  houseCoords: [{row:1,col:10},{row:1,col:13},{row:4,col:10},{row:4,col:13}], startCell: MAIN_PATH_COORDINATES[13]},
-  yellow: { name: "Yellow", baseClass: "bg-yellow-400", textClass: "text-yellow-700", pathStartIndex: 26, homeEntryPathIndex: 24, panelGridArea: "panel-yellow", houseCoords: [{row:10,col:10},{row:10,col:13},{row:13,col:10},{row:13,col:13}], startCell: MAIN_PATH_COORDINATES[26]},
-  blue:   { name: "Blue",   baseClass: "bg-blue-500",   textClass: "text-blue-700",   pathStartIndex: 39, homeEntryPathIndex: 37, panelGridArea: "panel-blue",   houseCoords: [{row:10,col:1},{row:10,col:4},{row:13,col:1},{row:13,col:4}], startCell: MAIN_PATH_COORDINATES[39]},
+const PLAYER_CONFIG: Record<PlayerColor, { name: string; baseClass: string; textClass: string; pathStartIndex: number; homeEntryPathIndex: number; houseCoords: {row: number, col: number}[], startCell: {row: number, col: number} }> = {
+  red:    { name: "Red",    baseClass: "bg-red-500",    textClass: "text-red-700",    pathStartIndex: 0,  homeEntryPathIndex: 50, houseCoords: [{row:1,col:1},{row:1,col:4},{row:4,col:1},{row:4,col:4}], startCell: MAIN_PATH_COORDINATES[0] },
+  green:  { name: "Green",  baseClass: "bg-green-500",  textClass: "text-green-700",  pathStartIndex: 13, homeEntryPathIndex: 11, houseCoords: [{row:1,col:10},{row:1,col:13},{row:4,col:10},{row:4,col:13}], startCell: MAIN_PATH_COORDINATES[13]},
+  yellow: { name: "Yellow", baseClass: "bg-yellow-400", textClass: "text-yellow-700", pathStartIndex: 26, homeEntryPathIndex: 24, houseCoords: [{row:10,col:10},{row:10,col:13},{row:13,col:10},{row:13,col:13}], startCell: MAIN_PATH_COORDINATES[26]},
+  blue:   { name: "Blue",   baseClass: "bg-blue-500",   textClass: "text-blue-700",   pathStartIndex: 39, homeEntryPathIndex: 37, houseCoords: [{row:10,col:1},{row:10,col:4},{row:13,col:1},{row:13,col:4}], startCell: MAIN_PATH_COORDINATES[39]},
 };
 
-const SAFE_SQUARE_INDICES = [0, 8, 13, 21, 26, 34, 39, 47];
-
+const SAFE_SQUARE_INDICES = [0, 8, 13, 21, 26, 34, 39, 47]; // Example safe squares
 
 const DICE_ICONS = [Dice1, Dice2, Dice3, Dice4, Dice5, Dice6];
 
 interface Token {
   id: number;
   color: PlayerColor;
-  position: number; 
+  position: number;
 }
 
 interface Player {
@@ -87,17 +86,19 @@ const initialPlayerState = (
   if (mode === 'offline' && offlinePlayerColors && offlinePlayerColors.length === numPlayersToCreate && offlinePlayerColors.every(c => c !== null)) {
     activePlayerColors = offlinePlayerColors;
   } else if (numPlayersToCreate === 2) {
-     activePlayerColors = ['red', 'yellow']; // Default for 2 players: Red (bottom), Yellow (top)
+     activePlayerColors = ['red', 'yellow']; 
   } else {
     activePlayerColors = PLAYER_COLORS.slice(0, numPlayersToCreate);
   }
 
   return activePlayerColors.map((color, index) => {
-    const isAIPlayer = mode === 'ai' && index > 0; // First player is human in AI mode
+    const isAIPlayer = mode === 'ai' && index > 0;
     let playerName = PLAYER_CONFIG[color].name;
 
     if (mode === 'ai') {
-      playerName = (index === 0) ? (humanName || "Human") : `Shravya AI`;
+      // In AI mode, Player 0 (Red) is Human, Player 1 (Yellow) is AI
+      if (index === 0) playerName = humanName || "Human Player";
+      else playerName = "Shravya AI";
     } else if (mode === 'offline') {
       playerName = (offlineNames && offlineNames[index]) ? offlineNames[index] : `Player ${index + 1}`;
     }
@@ -117,18 +118,16 @@ const initialPlayerState = (
   });
 };
 
-
 const boardCells = Array(BOARD_GRID_SIZE * BOARD_GRID_SIZE).fill(null).map((_, i) => i);
 
-const PlayerPanel: React.FC<{
+const PlayerInfoCard: React.FC<{ // Renamed from PlayerPanel
   player: Player;
   isCurrentPlayer: boolean;
   diceValue: number | null;
   isRolling: boolean;
   onDiceRoll: () => void;
   gameState: GameState;
-  panelOrientation: 'horizontal' | 'vertical';
-}> = ({ player, isCurrentPlayer, diceValue, isRolling, onDiceRoll, gameState, panelOrientation }) => {
+}> = ({ player, isCurrentPlayer, diceValue, isRolling, onDiceRoll, gameState }) => {
   const playerSpecificConfig = PLAYER_CONFIG[player.color];
   let DiceIconToRender = Dice6;
   let diceButtonStyling = "text-muted-foreground opacity-50";
@@ -154,28 +153,27 @@ const PlayerPanel: React.FC<{
   }
 
   const panelClasses = cn(
-    "flex items-center justify-center p-1.5 sm:p-2 rounded-lg shadow-md border border-primary/30 bg-card/90 backdrop-blur-sm",
-    panelOrientation === 'horizontal' ? "flex-col h-full w-20 sm:w-24" : "flex-row w-full h-20 sm:h-24",
-    playerSpecificConfig.baseClass + "/20"
+    "flex flex-col items-center justify-center p-3 sm:p-4 rounded-lg shadow-md border border-primary/30 bg-card/90 backdrop-blur-sm",
+    playerSpecificConfig.baseClass + "/20",
+    "w-36 sm:w-48 h-auto" // Adjusted width, height auto
   );
   
   const nameClasses = cn(
-    "text-xs sm:text-sm font-semibold truncate", 
-    playerSpecificConfig.textClass,
-    panelOrientation === 'horizontal' ? "mb-1 sm:mb-1.5 text-center [writing-mode:vertical-rl] transform rotate-180" : "mr-1 sm:mr-1.5 text-center"
+    "text-sm sm:text-base font-semibold truncate mb-2 text-center", 
+    playerSpecificConfig.textClass
   );
 
   return (
-    <div className={panelClasses} style={{ gridArea: playerSpecificConfig.panelGridArea }}>
+    <div className={panelClasses}>
       <p className={nameClasses} title={player.name}>
-        {player.name} {player.isAI && <Cpu size={12} className="inline ml-0.5"/>}
+        {player.name} {player.isAI && <Cpu size={14} className="inline ml-1"/>}
       </p>
       <Button
         variant="outline"
         size="icon"
         className={cn(
           "border-2 border-dashed rounded-lg shadow-sm flex items-center justify-center",
-          isCurrentPlayer && !player.isAI ? "h-8 w-8 sm:h-10 sm:w-10" : "h-7 w-7 sm:h-8 sm:w-8",
+          "h-10 w-10 sm:h-12 sm:w-12", // Consistent dice button size
           isDiceButtonClickable
             ? cn("cursor-pointer", playerSpecificConfig.baseClass + "/30", `hover:${playerSpecificConfig.baseClass}/50`)
             : "border-muted-foreground/30 cursor-not-allowed opacity-70"
@@ -186,7 +184,7 @@ const PlayerPanel: React.FC<{
         disabled={!isDiceButtonClickable || gameState === 'gameOver'}
         aria-label={`Roll dice for ${player.name}`}
       >
-        <DiceIconToRender size={isCurrentPlayer && !player.isAI ? 22 : 18} className={diceButtonStyling} />
+        <DiceIconToRender size={24} className={diceButtonStyling} />
       </Button>
     </div>
   );
@@ -265,12 +263,21 @@ export default function LudoPage() {
         return;
     }
 
+    // For AI mode with 2 players, explicitly set Human as Red, AI as Yellow to match visual layout intentions.
+    let playerSetupColors: PlayerColor[] | undefined = undefined;
+    if (selectedMode === 'ai' && selectedNumPlayers === 2) {
+        playerSetupColors = ['red', 'yellow']; // Human (Red), AI (Yellow)
+    } else if (selectedMode === 'offline') {
+        playerSetupColors = validSelectedColors;
+    }
+
+
     const newPlayers = initialPlayerState(
         selectedNumPlayers, 
         selectedMode, 
         humanPlayerName, 
         offlinePlayerNames, 
-        selectedMode === 'offline' ? validSelectedColors : undefined
+        playerSetupColors
     );
     setPlayers(newPlayers);
     setCurrentPlayerIndex(0);
@@ -283,7 +290,7 @@ export default function LudoPage() {
   };
 
   const handleDiceRoll = useCallback(() => {
-    if (isRolling || !currentPlayer || (currentPlayer.isAI && diceValue !== null)) return; 
+    if (isRolling || !currentPlayer || (currentPlayer.isAI && diceValue !== null)) return;
     if (!currentPlayer.isAI && diceValue !== null && !currentPlayer.hasRolledSix) return;
 
     const initialAnimatingRoll = Math.floor(Math.random() * 6) + 1;
@@ -302,18 +309,18 @@ export default function LudoPage() {
         processDiceRoll(finalRoll);
       }
     }, 100);
-  }, [isRolling, currentPlayer, diceValue, players, currentPlayerIndex]); // Added players, currentPlayerIndex based on usage in processDiceRoll
+  }, [isRolling, currentPlayer, diceValue, players, currentPlayerIndex]);
 
   const getMovableTokens = (player: Player, roll: number): Token[] => {
     if (!player) return [];
     
     return player.tokens.filter(token => {
-      if (token.position === -1) return roll === 6; 
-      if (token.position >= 200) return false; 
+      if (token.position === -1) return roll === 6;
+      if (token.position >= 200) return false;
 
-      if (token.position >= 100) { 
-        const stretchPos = token.position % 100; 
-        return (stretchPos + roll) <= HOME_STRETCH_LENGTH -1; 
+      if (token.position >= 100) {
+        const stretchPos = token.position % 100;
+        return (stretchPos + roll) <= HOME_STRETCH_LENGTH -1;
       }
       return true;
     });
@@ -328,12 +335,12 @@ export default function LudoPage() {
     if (roll === 6) {
       const updatedPlayer = { ...currentP, hasRolledSix: true, sixStreak: currentP.sixStreak + 1 };
       setPlayers(prev => prev.map((p, idx) => idx === currentPlayerIndex ? updatedPlayer : p));
-      currentP = updatedPlayer; 
+      currentP = updatedPlayer;
 
       if (updatedPlayer.sixStreak === 3) {
         currentMessage += ` Three 6s in a row! Turn forfeited.`;
         setGameMessage(currentMessage);
-        setTimeout(() => passTurn(true, true), 1500); 
+        setTimeout(() => passTurn(true, true), 1500);
         return;
       }
     }
@@ -355,18 +362,18 @@ export default function LudoPage() {
         let tokenToMoveAI: Token | undefined;
         if (roll === 6 && hasTokensInBase) {
           tokenToMoveAI = movableTokens.find(t => t.position === -1);
-        } 
-        if (!tokenToMoveAI) { 
-          const sortedMovable = [...movableTokens].sort((a,b) => b.position - a.position); 
+        }
+        if (!tokenToMoveAI) {
+          const sortedMovable = [...movableTokens].sort((a,b) => b.position - a.position);
           tokenToMoveAI = sortedMovable[0];
         }
 
         if (tokenToMoveAI) {
           attemptMoveToken(currentPlayerIndex, tokenToMoveAI.id, roll);
-        } else { 
-          passTurn(roll !== 6); 
+        } else {
+          passTurn(roll !== 6);
         }
-      }, 1000); 
+      }, 1000);
     }
   };
 
@@ -385,7 +392,7 @@ export default function LudoPage() {
     }
     
     setCurrentPlayerIndex(nextPlayerIdx);
-    setDiceValue(null); 
+    setDiceValue(null);
 
     const nextPlayer = players[nextPlayerIdx];
     if (nextPlayer) {
@@ -395,8 +402,8 @@ export default function LudoPage() {
 
  useEffect(() => {
     if (gameState === 'playing' && players.length > 0 && currentPlayer?.isAI && !diceValue && !isRolling) {
-        if (currentPlayer.sixStreak < 3) { 
-            setTimeout(() => handleDiceRoll(), 1500); 
+        if (currentPlayer.sixStreak < 3) {
+            setTimeout(() => handleDiceRoll(), 1500);
         }
     }
 }, [currentPlayerIndex, players, gameState, diceValue, isRolling, currentPlayer, handleDiceRoll]);
@@ -424,68 +431,68 @@ export default function LudoPage() {
 
   const attemptMoveToken = (playerIdx: number, tokenId: number, roll: number) => {
     setPlayers(prevPlayers => {
-      const newPlayers = prevPlayers.map(p => ({ ...p, tokens: p.tokens.map(t => ({ ...t })) })); 
+      const newPlayers = prevPlayers.map(p => ({ ...p, tokens: p.tokens.map(t => ({ ...t })) }));
       let playerToMove = newPlayers[playerIdx];
-      if (!playerToMove) return prevPlayers; 
+      if (!playerToMove) return prevPlayers;
       const tokenToMove = playerToMove.tokens.find(t => t.id === tokenId);
       if (!tokenToMove) return prevPlayers;
 
       const playerConfig = PLAYER_CONFIG[playerToMove.color];
       let moveSuccessful = false;
-      const originalPositionDisplay = tokenToMove.position === -1 ? "base" : 
+      const originalPositionDisplay = tokenToMove.position === -1 ? "base" :
                                    tokenToMove.position >= 100 ? `S${tokenToMove.position % 100}` :
                                    `${tokenToMove.position}`;
 
-      if (tokenToMove.position === -1 && roll === 6) { 
+      if (tokenToMove.position === -1 && roll === 6) {
         tokenToMove.position = playerConfig.pathStartIndex;
         setGameMessage(`${playerToMove.name} brought token ${tokenId + 1} out to square ${MAIN_PATH_COORDINATES[tokenToMove.position].row},${MAIN_PATH_COORDINATES[tokenToMove.position].col}.`);
         moveSuccessful = true;
-      } else if (tokenToMove.position >= 0 && tokenToMove.position < MAIN_PATH_LENGTH) { 
+      } else if (tokenToMove.position >= 0 && tokenToMove.position < MAIN_PATH_LENGTH) {
         let currentPosOnGlobalTrack = tokenToMove.position;
         const homeEntry = playerConfig.homeEntryPathIndex;
         const start = playerConfig.pathStartIndex;
         
         let stepsToHomeEntry;
-        if (currentPosOnGlobalTrack >= start) { 
+        if (currentPosOnGlobalTrack >= start) {
             stepsToHomeEntry = (homeEntry - currentPosOnGlobalTrack + MAIN_PATH_LENGTH) % MAIN_PATH_LENGTH;
-        } else { 
+        } else {
             stepsToHomeEntry = homeEntry - currentPosOnGlobalTrack;
         }
         if (currentPosOnGlobalTrack === homeEntry || roll > stepsToHomeEntry) {
-            const stepsIntoHomeStretch = roll - stepsToHomeEntry -1; 
+            const stepsIntoHomeStretch = roll - stepsToHomeEntry -1;
             if (stepsIntoHomeStretch < HOME_STRETCH_LENGTH) {
-                tokenToMove.position = 100 + stepsIntoHomeStretch; 
-                 if (tokenToMove.position === 100 + HOME_STRETCH_LENGTH - 1) { 
-                    tokenToMove.position = 200 + tokenToMove.id; 
+                tokenToMove.position = 100 + stepsIntoHomeStretch;
+                 if (tokenToMove.position === 100 + HOME_STRETCH_LENGTH - 1) {
+                    tokenToMove.position = 200 + tokenToMove.id;
                     setGameMessage(`${playerToMove.name} moved token ${tokenId + 1} home!`);
                  } else {
                     setGameMessage(`${playerToMove.name} moved token ${tokenId + 1} into home stretch to S${stepsIntoHomeStretch}.`);
                  }
                  moveSuccessful = true;
-            } else { 
+            } else {
                  tokenToMove.position = (currentPosOnGlobalTrack + roll) % MAIN_PATH_LENGTH;
                  setGameMessage(`${playerToMove.name} moved token ${tokenId + 1} from ${originalPositionDisplay} to ${tokenToMove.position}. Overshot home.`);
                  moveSuccessful = true;
             }
-        } else { 
+        } else {
             tokenToMove.position = (currentPosOnGlobalTrack + roll) % MAIN_PATH_LENGTH;
             setGameMessage(`${playerToMove.name} moved token ${tokenId + 1} from ${originalPositionDisplay} to square ${tokenToMove.position}.`);
-            moveSuccessful = true; 
+            moveSuccessful = true;
         }
-      } else if (tokenToMove.position >= 100 && tokenToMove.position < 200) { 
-        const currentHomeStretchPos = tokenToMove.position % 100; 
+      } else if (tokenToMove.position >= 100 && tokenToMove.position < 200) {
+        const currentHomeStretchPos = tokenToMove.position % 100;
         let newHomeStretchPos = currentHomeStretchPos + roll;
-        if (newHomeStretchPos === HOME_STRETCH_LENGTH -1) { 
+        if (newHomeStretchPos === HOME_STRETCH_LENGTH -1) {
           tokenToMove.position = 200 + tokenToMove.id;
           setGameMessage(`${playerToMove.name} moved token ${tokenId + 1} home!`);
           moveSuccessful = true;
-        } else if (newHomeStretchPos < HOME_STRETCH_LENGTH -1 ) { 
+        } else if (newHomeStretchPos < HOME_STRETCH_LENGTH -1 ) {
           tokenToMove.position = 100 + newHomeStretchPos;
           setGameMessage(`${playerToMove.name} moved token ${tokenId + 1} in home stretch to S${newHomeStretchPos}.`);
           moveSuccessful = true;
-        } else { 
+        } else {
           setGameMessage(`${playerToMove.name} cannot move token ${tokenId+1}: overshot final home spot. No move.`);
-          moveSuccessful = false; 
+          moveSuccessful = false;
         }
       }
 
@@ -495,23 +502,23 @@ export default function LudoPage() {
             setGameMessage(`${potentiallyWinningPlayer.name} has won the game! Congratulations!`);
             setGameState('gameOver');
             toast({ title: "Game Over!", description: `${potentiallyWinningPlayer.name} wins!` });
-            return newPlayers; 
+            return newPlayers;
         }
 
         if (roll === 6) {
-          newPlayers[playerIdx].hasRolledSix = true; 
+          newPlayers[playerIdx].hasRolledSix = true;
           setGameMessage(prev => prev + ` ${playerToMove.name} rolled a 6 and gets another turn.`);
-          setDiceValue(null); 
+          setDiceValue(null);
         } else {
-          passTurn(true); 
+          passTurn(true);
         }
       } else {
-        if (roll === 6) { 
-            newPlayers[playerIdx].hasRolledSix = true; 
+        if (roll === 6) {
+            newPlayers[playerIdx].hasRolledSix = true;
             setGameMessage(prev => prev + ` No valid move available with 6. ${playerToMove.name} rolls again.`);
             setDiceValue(null);
         } else {
-            passTurn(true); 
+            passTurn(true);
         }
       }
       return newPlayers;
@@ -532,18 +539,18 @@ export default function LudoPage() {
     players.forEach(player => {
       const playerSpecificConfig = PLAYER_CONFIG[player.color];
       player.tokens.forEach(token => {
-        if (token.position === -1) { 
+        if (token.position === -1) {
             const baseSpot = playerSpecificConfig.houseCoords[token.id];
             if (baseSpot && baseSpot.row === rowIndex && baseSpot.col === colIndex) {
                 tokensOnThisCell.push(token);
             }
-        } else if (token.position >= 0 && token.position < MAIN_PATH_LENGTH) { 
+        } else if (token.position >= 0 && token.position < MAIN_PATH_LENGTH) {
             const mainPathCell = MAIN_PATH_COORDINATES[token.position];
             if (mainPathCell && mainPathCell.row === rowIndex && mainPathCell.col === colIndex) {
                 tokensOnThisCell.push(token);
             }
-        } else if (token.position >= 100 && token.position < 200) { 
-            const homeStretchStep = token.position % 100; 
+        } else if (token.position >= 100 && token.position < 200) {
+            const homeStretchStep = token.position % 100;
             const homeStretchCell = HOME_STRETCH_COORDINATES[player.color][homeStretchStep];
             if (homeStretchCell && homeStretchCell.row === rowIndex && homeStretchCell.col === colIndex) {
                 tokensOnThisCell.push(token);
@@ -555,22 +562,22 @@ export default function LudoPage() {
   };
 
   const getCellBackgroundColor = (rowIndex: number, colIndex: number): string => {
-    if ((rowIndex >= 0 && rowIndex <= 5 && colIndex >= 0 && colIndex <= 5) && !(rowIndex >=2 && rowIndex <=3 && colIndex >=2 && colIndex <=3 )) { 
+    if ((rowIndex >= 0 && rowIndex <= 5 && colIndex >= 0 && colIndex <= 5) && !(rowIndex >=2 && rowIndex <=3 && colIndex >=2 && colIndex <=3 )) {
       if (PLAYER_CONFIG.red.houseCoords.some(hc => hc.row === rowIndex && hc.col === colIndex) || (rowIndex >=0 && rowIndex <=5 && colIndex >=0 && colIndex <=5 && !(rowIndex >=2 && rowIndex <=3 && colIndex >=2 && colIndex <=3) && (rowIndex <1 || rowIndex >4 || colIndex <1 || colIndex >4) )) {
         return PLAYER_CONFIG.red.baseClass + "/60";
       }
     }
-    if ((rowIndex >= 0 && rowIndex <= 5 && colIndex >= 9 && colIndex <= 14) && !(rowIndex >=2 && rowIndex <=3 && colIndex >=11 && colIndex <=12 )) { 
+    if ((rowIndex >= 0 && rowIndex <= 5 && colIndex >= 9 && colIndex <= 14) && !(rowIndex >=2 && rowIndex <=3 && colIndex >=11 && colIndex <=12 )) {
        if (PLAYER_CONFIG.green.houseCoords.some(hc => hc.row === rowIndex && hc.col === colIndex) || (rowIndex >=0 && rowIndex <=5 && colIndex >=9 && colIndex <=14 && !(rowIndex >=2 && rowIndex <=3 && colIndex >=11 && colIndex <=12 ) && (rowIndex <1 || rowIndex >4 || colIndex <10 || colIndex >13))) {
         return PLAYER_CONFIG.green.baseClass + "/60";
       }
     }
-    if ((rowIndex >= 9 && rowIndex <= 14 && colIndex >= 0 && colIndex <= 5) && !(rowIndex >=11 && rowIndex <=12 && colIndex >=2 && colIndex <=3 ) ) { 
+    if ((rowIndex >= 9 && rowIndex <= 14 && colIndex >= 0 && colIndex <= 5) && !(rowIndex >=11 && rowIndex <=12 && colIndex >=2 && colIndex <=3 ) ) {
        if (PLAYER_CONFIG.blue.houseCoords.some(hc => hc.row === rowIndex && hc.col === colIndex) || (rowIndex >=9 && rowIndex <=14 && colIndex >=0 && colIndex <=5 && !(rowIndex >=11 && rowIndex <=12 && colIndex >=2 && colIndex <=3 ) && (rowIndex <10 || rowIndex >13 || colIndex <1 || colIndex >4))) {
         return PLAYER_CONFIG.blue.baseClass + "/60";
       }
     }
-    if ((rowIndex >= 9 && rowIndex <= 14 && colIndex >= 9 && colIndex <= 14) && !(rowIndex >=11 && rowIndex <=12 && colIndex >=11 && colIndex <=12 ) ) { 
+    if ((rowIndex >= 9 && rowIndex <= 14 && colIndex >= 9 && colIndex <= 14) && !(rowIndex >=11 && rowIndex <=12 && colIndex >=11 && colIndex <=12 ) ) {
        if (PLAYER_CONFIG.yellow.houseCoords.some(hc => hc.row === rowIndex && hc.col === colIndex) || (rowIndex >=9 && rowIndex <=14 && colIndex >=9 && colIndex <=14 && !(rowIndex >=11 && rowIndex <=12 && colIndex >=11 && colIndex <=12 ) && (rowIndex <10 || rowIndex >13 || colIndex <10 || colIndex >13))) {
         return PLAYER_CONFIG.yellow.baseClass + "/60";
       }
@@ -581,21 +588,21 @@ export default function LudoPage() {
       if (HOME_STRETCH_COORDINATES.green[HOME_STRETCH_LENGTH-1].row === rowIndex && HOME_STRETCH_COORDINATES.green[HOME_STRETCH_LENGTH-1].col === colIndex) return PLAYER_CONFIG.green.baseClass + "/90";
       if (HOME_STRETCH_COORDINATES.yellow[HOME_STRETCH_LENGTH-1].row === rowIndex && HOME_STRETCH_COORDINATES.yellow[HOME_STRETCH_LENGTH-1].col === colIndex) return PLAYER_CONFIG.yellow.baseClass + "/90";
       if (HOME_STRETCH_COORDINATES.blue[HOME_STRETCH_LENGTH-1].row === rowIndex && HOME_STRETCH_COORDINATES.blue[HOME_STRETCH_LENGTH-1].col === colIndex) return PLAYER_CONFIG.blue.baseClass + "/90";
-      return "bg-primary/30"; 
+      return "bg-primary/30";
     }
 
     for (const color of PLAYER_COLORS) {
-        for (let i = 0; i < HOME_STRETCH_LENGTH -1; i++) { 
+        for (let i = 0; i < HOME_STRETCH_LENGTH -1; i++) {
             const cell = HOME_STRETCH_COORDINATES[color][i];
             if (cell.row === rowIndex && cell.col === colIndex) return PLAYER_CONFIG[color].baseClass + "/40";
         }
     }
     
     if (MAIN_PATH_COORDINATES.some(p => p.row === rowIndex && p.col === colIndex)) {
-        return "bg-slate-50"; 
+        return "bg-slate-50";
     }
 
-    return (rowIndex + colIndex) % 2 === 0 ? "bg-slate-100/70" : "bg-slate-200/70"; 
+    return (rowIndex + colIndex) % 2 === 0 ? "bg-slate-100/70" : "bg-slate-200/70";
   };
 
 
@@ -638,7 +645,7 @@ export default function LudoPage() {
                       onValueChange={(value) => setSelectedNumPlayers(parseInt(value))} 
                       className="mt-2 grid grid-cols-3 gap-4"
                   >
-                    {(selectedMode === 'offline' ? [2, 3, 4] : [2, 4]).map(num => ( 
+                    {(selectedMode === 'offline' ? [2, 3, 4] : [2, 4]).map(num => (
                       <div key={num}>
                         <RadioGroupItem value={num.toString()} id={`${selectedMode}-${num}`} className="peer sr-only" />
                         <Label htmlFor={`${selectedMode}-${num}`} className="flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer">
@@ -723,7 +730,12 @@ export default function LudoPage() {
     );
   }
   
-  const getPlayerByColor = (color: PlayerColor): Player | undefined => players.find(p => p.color === color);
+  const player1 = players.length > 0 ? players[0] : null; // Typically Red (Human in AI mode)
+  const player2 = players.length > 1 ? players[1] : null; // Typically Yellow (AI in AI mode)
+  // For 3-4 players, we would need to extend this or revert to the grid layout.
+  // This refactor primarily focuses on the 2-player layout shown in the image.
+  const isTwoPlayerGame = players.length === 2;
+
 
   return (
     <>
@@ -738,68 +750,26 @@ export default function LudoPage() {
             <p className="text-xs sm:text-sm text-foreground/90 min-h-[1.5em]">{gameMessage}</p>
         </div>
 
-        <div 
-            className="grid w-full max-w-[380px] sm:max-w-[480px] md:max-w-[560px] lg:max-w-[640px] aspect-[1/1.1] sm:aspect-[1/1.05] game-board-grid gap-1"
-            style={{
-                gridTemplateAreas: `
-                    ". panel-yellow ."
-                    "panel-green board panel-blue"
-                    ". panel-red ."
-                `,
-                gridTemplateColumns: "auto 1fr auto",
-                gridTemplateRows: "auto 1fr auto",
-            }}
-        >
-            {/* Render player panels based on active players */}
-            {getPlayerByColor('yellow') && players.length > 1 && (
-              <PlayerPanel 
-                player={getPlayerByColor('yellow')!}
-                isCurrentPlayer={currentPlayer?.color === 'yellow'}
-                diceValue={diceValue}
-                isRolling={isRolling}
-                onDiceRoll={handleDiceRoll}
-                gameState={gameState}
-                panelOrientation={players.length === 2 && getPlayerByColor('yellow')?.color === players[1].color ? 'horizontal' : 'vertical'}
-              />
-            )}
-             {getPlayerByColor('green') && players.length > 2 && (
-              <PlayerPanel 
-                player={getPlayerByColor('green')!}
-                isCurrentPlayer={currentPlayer?.color === 'green'}
-                diceValue={diceValue}
-                isRolling={isRolling}
-                onDiceRoll={handleDiceRoll}
-                gameState={gameState}
-                panelOrientation="horizontal"
-              />
-            )}
-            {getPlayerByColor('blue') && players.length > 2 && (
-              <PlayerPanel 
-                player={getPlayerByColor('blue')!}
-                isCurrentPlayer={currentPlayer?.color === 'blue'}
-                diceValue={diceValue}
-                isRolling={isRolling}
-                onDiceRoll={handleDiceRoll}
-                gameState={gameState}
-                panelOrientation="horizontal"
-              />
-            )}
-             {getPlayerByColor('red') && (
-              <PlayerPanel 
-                player={getPlayerByColor('red')!}
-                isCurrentPlayer={currentPlayer?.color === 'red'}
-                diceValue={diceValue}
-                isRolling={isRolling}
-                onDiceRoll={handleDiceRoll}
-                gameState={gameState}
-                panelOrientation="vertical"
-              />
+        {/* Main Game Area: Panels and Board */}
+        <div className={cn(
+            "flex w-full items-center justify-center gap-2 sm:gap-4",
+            isTwoPlayerGame ? "flex-row" : "flex-col" // Fallback for >2 players, though image shows 2
+        )}>
+            {isTwoPlayerGame && player1 && (
+                 <PlayerInfoCard 
+                    player={player1}
+                    isCurrentPlayer={currentPlayer?.color === player1.color}
+                    diceValue={diceValue}
+                    isRolling={isRolling}
+                    onDiceRoll={handleDiceRoll}
+                    gameState={gameState}
+                  />
             )}
 
+            {/* Board - Centered */}
             <div
-              className="grid gap-px border-2 border-neutral-700 rounded overflow-hidden shadow-lg bg-neutral-300 w-full h-full aspect-square"
+              className="grid gap-px border-2 border-neutral-700 rounded overflow-hidden shadow-lg bg-neutral-300 w-full max-w-[300px] sm:max-w-[400px] md:max-w-[480px] lg:max-w-[540px] aspect-square"
               style={{ 
-                gridArea: "board",
                 gridTemplateColumns: `repeat(${BOARD_GRID_SIZE}, minmax(0, 1fr))` 
               }}
               aria-label="Ludo board"
@@ -819,7 +789,7 @@ export default function LudoPage() {
                     className={cn(
                       "aspect-square flex items-center justify-center text-xs relative",
                        cellBg,
-                      "border border-neutral-400/30" 
+                      "border border-neutral-400/30"
                     )}
                   >
                     {isSafe && !isStart && <Star size={12} className="absolute text-yellow-500/70 opacity-70 z-0"/>}
@@ -829,7 +799,7 @@ export default function LudoPage() {
                          <button
                             key={token.color + token.id}
                             onClick={() => currentPlayer && !currentPlayer.isAI && diceValue && handleTokenClick(PLAYER_COLORS.indexOf(token.color), token.id)}
-                            disabled={ 
+                            disabled={
                                 !currentPlayer || 
                                 PLAYER_COLORS.indexOf(token.color) !== currentPlayerIndex || 
                                 isRolling || 
@@ -838,18 +808,17 @@ export default function LudoPage() {
                                 gameState === 'gameOver' ||
                                 !getMovableTokens(currentPlayer,diceValue).some(mt => mt.id === token.id && mt.color === token.color) ||
                                 (diceValue === 6 && currentPlayer.tokens.some(t => t.position === -1 && getMovableTokens(currentPlayer, diceValue).some(m_t => m_t.position === -1)) && token.position !== -1 )
-
                             }
                             className={cn(
                                 "rounded-full flex items-center justify-center border-2 hover:ring-2 hover:ring-offset-1 absolute shadow-md",
-                                PLAYER_CONFIG[token.color].baseClass, 
+                                PLAYER_CONFIG[token.color].baseClass,
                                 (currentPlayer && PLAYER_COLORS.indexOf(token.color) === currentPlayerIndex && diceValue && !currentPlayer.isAI && 
                                  getMovableTokens(currentPlayer,diceValue).some(mt => mt.id === token.id && mt.color === token.color) &&
                                   !(diceValue === 6 && currentPlayer.tokens.some(t => t.position === -1 && getMovableTokens(currentPlayer, diceValue).some(m_t => m_t.position === -1)) && token.position !== -1 )
-                                ) ? "cursor-pointer ring-2 ring-offset-1 ring-black" : "cursor-default", 
-                                "text-white font-bold text-[calc(min(1.5vw,0.8rem))] z-10" 
+                                ) ? "cursor-pointer ring-2 ring-offset-1 ring-black" : "cursor-default",
+                                "text-white font-bold text-[calc(min(1.5vw,0.8rem))] z-10"
                             )}
-                            style={{ 
+                            style={{
                                 transform: tokensOnThisCell.length > 1 ? (idx === 0 ? 'translateX(-20%) translateY(-20%) scale(0.75)' : 'translateX(20%) translateY(20%) scale(0.75)') : 'scale(0.85)',
                                 width: tokensOnThisCell.length > 1 ? '65%' : '75%',
                                 height: tokensOnThisCell.length > 1 ? '65%' : '75%',
@@ -867,6 +836,30 @@ export default function LudoPage() {
                 );
               })}
             </div>
+
+            {isTwoPlayerGame && player2 && (
+                 <PlayerInfoCard
+                    player={player2}
+                    isCurrentPlayer={currentPlayer?.color === player2.color}
+                    diceValue={diceValue}
+                    isRolling={isRolling}
+                    onDiceRoll={handleDiceRoll}
+                    gameState={gameState}
+                  />
+            )}
+
+            {/* Fallback for 3-4 players (or adapt this area for a 4-player grid layout if needed) */}
+            {!isTwoPlayerGame && players.map(p => (
+                p && <PlayerInfoCard 
+                        key={p.color}
+                        player={p}
+                        isCurrentPlayer={currentPlayer?.color === p.color}
+                        diceValue={diceValue}
+                        isRolling={isRolling}
+                        onDiceRoll={handleDiceRoll}
+                        gameState={gameState}
+                      />
+            ))}
         </div>
 
         <div className="mt-3 sm:mt-4">
@@ -879,3 +872,4 @@ export default function LudoPage() {
     </>
   );
 }
+
