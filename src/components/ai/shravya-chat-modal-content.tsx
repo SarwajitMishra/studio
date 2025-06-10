@@ -5,7 +5,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Bot, User, Send, Loader2, Sparkles, Mic, MicOff, Volume2, AlertTriangle } from 'lucide-react';
+import { Bot, User, Send, Loader2, Sparkles, Mic, MicOff, AlertTriangle } from 'lucide-react';
 import { shravyaAIChat, type ShravyaAIChatInput, type ShravyaAIChatOutput } from '@/ai/flows/shravya-ai-chat-flow';
 import { cn } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
@@ -16,7 +16,6 @@ interface ChatMessage {
   content: string;
 }
 
-// Browser compatibility check
 const SpeechRecognition = (typeof window !== 'undefined') ? (window.SpeechRecognition || window.webkitSpeechRecognition) : null;
 
 export default function ShravyaChatModalContent() {
@@ -30,6 +29,9 @@ export default function ShravyaChatModalContent() {
   const [sttError, setSttError] = useState<string | null>(null);
   const [browserSupportsSTT, setBrowserSupportsSTT] = useState(false);
   const speechRecognitionRef = useRef<SpeechRecognition | null>(null);
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const initialMessageSpokenRef = useRef(false);
+
 
   const scrollToBottom = () => {
     if (scrollAreaRef.current) {
@@ -45,7 +47,76 @@ export default function ShravyaChatModalContent() {
   }, [messages]);
 
   useEffect(() => {
-    if (messages.length === 0) {
+    const loadVoices = () => {
+      const voices = window.speechSynthesis.getVoices();
+      if (voices.length > 0) {
+        setAvailableVoices(voices);
+      }
+    };
+
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      loadVoices(); // Initial attempt
+      window.speechSynthesis.onvoiceschanged = loadVoices; // Listen for changes
+    }
+
+    return () => {
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        window.speechSynthesis.onvoiceschanged = null;
+      }
+    };
+  }, []);
+
+  const speakText = useCallback((text: string) => {
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.cancel(); // Cancel any ongoing speech
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'en-IN'; // Prefer Indian English
+
+      let selectedVoice: SpeechSynthesisVoice | null = null;
+
+      if (availableVoices.length > 0) {
+        // Try to find an Indian English female voice
+        const indianFemaleVoices = availableVoices.filter(
+          (voice) => voice.lang === 'en-IN' && (
+            voice.name.toLowerCase().includes('female') ||
+            voice.name.toLowerCase().includes('aditi') ||
+            voice.name.toLowerCase().includes('raveena') ||
+            voice.name.toLowerCase().includes('kalpana')
+            // Add other known Indian female voice names if identified
+          )
+        );
+
+        if (indianFemaleVoices.length > 0) {
+          selectedVoice = indianFemaleVoices[0];
+        } else {
+          // Fallback: try any 'en-IN' voice
+          const anyIndianVoice = availableVoices.find(voice => voice.lang === 'en-IN');
+          if (anyIndianVoice) {
+            selectedVoice = anyIndianVoice;
+          } else {
+            // Fallback: try any 'en-US' female voice if no 'en-IN' found
+            const usFemaleVoices = availableVoices.filter(
+              voice => voice.lang === 'en-US' && voice.name.toLowerCase().includes('female')
+            );
+            if (usFemaleVoices.length > 0) {
+              selectedVoice = usFemaleVoices[0];
+            }
+          }
+        }
+        if (selectedVoice) {
+          utterance.voice = selectedVoice;
+        }
+      }
+      // If no specific voice is found, the browser will use its default for 'en-IN' or its overall default.
+      // utterance.pitch = 1.1; // Slightly higher pitch, can be adjusted (0-2, default 1)
+      // utterance.rate = 1; // Normal speed (0.1-10, default 1)
+      window.speechSynthesis.speak(utterance);
+    }
+  }, [availableVoices]);
+
+
+  useEffect(() => {
+    if (messages.length === 0 && !initialMessageSpokenRef.current) {
       const initialMessage = "Hello! I'm Shravya AI. Ask me anything about the games in Shravya Playhouse! You can also click the microphone to speak.";
       setMessages([
         {
@@ -54,10 +125,21 @@ export default function ShravyaChatModalContent() {
           content: initialMessage,
         },
       ]);
-      speakText(initialMessage);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [messages.length]);
+
+  useEffect(() => {
+    // Speak the initial greeting once it's set and voices might be ready
+    if (messages.length === 1 && messages[0].id === 'initial-greeting' && !initialMessageSpokenRef.current) {
+      // Small delay to allow voices to potentially load if speakText is called too quickly
+      const timer = setTimeout(() => {
+        speakText(messages[0].content);
+        initialMessageSpokenRef.current = true;
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [messages, speakText]);
+
 
   useEffect(() => {
     if (SpeechRecognition) {
@@ -72,6 +154,8 @@ export default function ShravyaChatModalContent() {
         setInputValue(transcript);
         setIsListening(false);
         setSttError(null);
+        // Optional: auto-submit after STT?
+        // handleSubmit(undefined, transcript); // Pass transcript directly
       };
 
       recognition.onerror = (event) => {
@@ -103,7 +187,6 @@ export default function ShravyaChatModalContent() {
       console.warn("SpeechRecognition API not supported by this browser.");
     }
 
-    // Cleanup: stop recognition and synthesis if component unmounts
     return () => {
       if (speechRecognitionRef.current && isListening) {
         speechRecognitionRef.current.stop();
@@ -113,32 +196,20 @@ export default function ShravyaChatModalContent() {
       }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isListening]); // Re-run if isListening changes from an external source, though unlikely here
+  }, []); // Removed isListening from dependencies as it's managed internally
 
-  const speakText = (text: string) => {
-    if (typeof window !== 'undefined' && window.speechSynthesis) {
-      // Cancel any ongoing speech before starting new one
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'en-US';
-      // You can add more configurations like voice, rate, pitch here
-      window.speechSynthesis.speak(utterance);
-    }
-  };
-
-  const handleSubmit = async (e?: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e?: React.FormEvent<HTMLFormElement>, directInput?: string) => {
     if (e) e.preventDefault();
-    const userInput = inputValue.trim();
+    const userInput = directInput || inputValue.trim();
     if (!userInput || isLoading) return;
 
-    // Stop any ongoing speech synthesis
     if (typeof window !== 'undefined' && window.speechSynthesis) {
       window.speechSynthesis.cancel();
     }
     if (isListening && speechRecognitionRef.current) {
       speechRecognitionRef.current.stop();
-      setIsListening(false);
     }
+    setIsListening(false);
 
 
     const userMessage: ChatMessage = {
@@ -197,7 +268,6 @@ export default function ShravyaChatModalContent() {
       if (isListening) {
         speechRecognitionRef.current.stop();
       } else {
-        // Cancel any ongoing speech synthesis before listening
         if (typeof window !== 'undefined' && window.speechSynthesis) {
             window.speechSynthesis.cancel();
         }
@@ -253,7 +323,7 @@ export default function ShravyaChatModalContent() {
               )}
             </div>
           ))}
-          {isLoading && !isListening && ( // Show typing indicator only if not listening
+          {isLoading && !isListening && (
             <div className="flex items-start space-x-3">
               <span className="flex-shrink-0 p-2 bg-accent rounded-full text-accent-foreground shadow">
                  <Bot size={20} />
@@ -276,7 +346,7 @@ export default function ShravyaChatModalContent() {
           )}
         </div>
       </ScrollArea>
-      <form onSubmit={handleSubmit} className="flex items-center space-x-2 border-t pt-4">
+      <form onSubmit={(e) => handleSubmit(e)} className="flex items-center space-x-2 border-t pt-4">
         <Input
           type="text"
           placeholder={isListening ? "Listening..." : "Ask Shravya AI..."}
@@ -309,8 +379,9 @@ export default function ShravyaChatModalContent() {
       </form>
        <p className="text-xs text-muted-foreground text-center mt-3">
           <Sparkles size={12} className="inline mr-1"/>
-          Shravya AI may occasionally provide inaccurate information. Voice features work best in Chrome/Edge.
+          Shravya AI will try to use an Indian English voice. Availability depends on your browser/OS. May provide inaccurate info.
       </p>
     </div>
   );
 }
+
