@@ -104,15 +104,14 @@ export const PUZZLE_TYPES: PuzzleType[] = [
 ];
 
 export const AVATARS: { src: string; alt: string; hint: string }[] = [
-  { src: '/images/avatars/avatar_sun.png', alt: 'Sun avatar', hint: 'sun happy' },
-  { src: '/images/avatars/avatar_robot.png', alt: 'Robot avatar', hint: 'robot friendly' },
-  { src: '/images/avatars/avatar_star.png', alt: 'Star avatar', hint: 'star cute' },
-  { src: '/images/avatars/avatar_cat.png', alt: 'Cat avatar', hint: 'cat playful' },
-  { src: '/images/avatars/avatar_dog.png', alt: 'Dog avatar', hint: 'dog loyal' },
-  { src: '/images/avatars/avatar_alien.png', alt: 'Alien avatar', hint: 'alien space' },
-  // Add more diverse avatars if available, e.g., different characters
-  { src: '/images/avatars/modern_boy.png', alt: 'Modern Boy Avatar', hint: 'boy modern' },
-  { src: '/images/avatars/modern_girl.png', alt: 'Modern Girl Avatar', hint: 'girl modern' },
+  { src: 'https://placehold.co/100x100.png', alt: 'Sun avatar', hint: 'sun happy' },
+  { src: 'https://placehold.co/100x100.png', alt: 'Robot avatar', hint: 'robot friendly' },
+  { src: 'https://placehold.co/100x100.png', alt: 'Star avatar', hint: 'star cute' },
+  { src: 'https://placehold.co/100x100.png', alt: 'Cat avatar', hint: 'cat playful' },
+  { src: 'https://placehold.co/100x100.png', alt: 'Dog avatar', hint: 'dog loyal' },
+  { src: 'https://placehold.co/100x100.png', alt: 'Alien avatar', hint: 'alien space' },
+  { src: 'https://placehold.co/100x100.png', alt: 'Modern Boy Avatar', hint: 'boy modern' },
+  { src: 'https://placehold.co/100x100.png', alt: 'Modern Girl Avatar', hint: 'girl modern' },
 ];
 
 export interface NavItem {
