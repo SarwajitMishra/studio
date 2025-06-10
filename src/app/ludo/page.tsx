@@ -17,43 +17,39 @@ const PLAYER_COLORS = ['red', 'green', 'yellow', 'blue'] as const;
 type PlayerColor = typeof PLAYER_COLORS[number];
 
 const MAIN_PATH_LENGTH = 52;
-const HOME_STRETCH_LENGTH = 6; // Each home stretch has 5 steps + 1 final home spot
+const HOME_STRETCH_LENGTH = 6; 
 const NUM_TOKENS_PER_PLAYER = 4;
 const BOARD_GRID_SIZE = 15;
 
 
 const MAIN_PATH_COORDINATES: { row: number; col: number }[] = [
-  // Red arm (clockwise)
   { row: 6, col: 1 }, { row: 6, col: 2 }, { row: 6, col: 3 }, { row: 6, col: 4 }, { row: 6, col: 5 },
   { row: 5, col: 6 }, { row: 4, col: 6 }, { row: 3, col: 6 }, { row: 2, col: 6 }, { row: 1, col: 6 }, { row: 0, col: 6 },
-  // Green arm (entry at top-left of its block)
-  { row: 0, col: 8 }, // Path index 12 (Green's 13th square from its perspective)
+  { row: 0, col: 8 }, 
   { row: 1, col: 8 }, { row: 2, col: 8 }, { row: 3, col: 8 }, { row: 4, col: 8 }, { row: 5, col: 8 },
   { row: 6, col: 9 }, { row: 6, col: 10 }, { row: 6, col: 11 }, { row: 6, col: 12 }, { row: 6, col: 13 }, { row: 6, col: 14 },
-  // Yellow arm
-  { row: 8, col: 14 }, // Path index 25 (Yellow's 26th square)
+  { row: 8, col: 14 }, 
   { row: 8, col: 13 }, { row: 8, col: 12 }, { row: 8, col: 11 }, { row: 8, col: 10 }, { row: 8, col: 9 },
   { row: 9, col: 8 }, { row: 10, col: 8 }, { row: 11, col: 8 }, { row: 12, col: 8 }, { row: 13, col: 8 }, { row: 14, col: 8 },
-  // Blue arm
-  { row: 14, col: 6 }, // Path index 38 (Blue's 39th square)
+  { row: 14, col: 6 }, 
   { row: 13, col: 6 }, { row: 12, col: 6 }, { row: 11, col: 6 }, { row: 10, col: 6 }, { row: 9, col: 6 },
   { row: 8, col: 5 }, { row: 8, col: 4 }, { row: 8, col: 3 }, { row: 8, col: 2 }, { row: 8, col: 1 }, { row: 8, col: 0 },
-  { row: 6, col: 0 } // Path index 51, connects back to red's arm. Red's start {row:6, col:1} is index 0.
+  { row: 6, col: 0 } 
 ];
 
 const HOME_STRETCH_COORDINATES: Record<PlayerColor, { row: number; col: number }[]> = {
-  red:    [ { row: 7, col: 1 }, { row: 7, col: 2 }, { row: 7, col: 3 }, { row: 7, col: 4 }, { row: 7, col: 5 }, {row: 7, col: 6} ], // Last one is home
+  red:    [ { row: 7, col: 1 }, { row: 7, col: 2 }, { row: 7, col: 3 }, { row: 7, col: 4 }, { row: 7, col: 5 }, {row: 7, col: 6} ],
   green:  [ { row: 1, col: 7 }, { row: 2, col: 7 }, { row: 3, col: 7 }, { row: 4, col: 7 }, { row: 5, col: 7 }, {row: 6, col: 7} ],
   yellow: [ { row: 7, col: 13 }, { row: 7, col: 12 }, { row: 7, col: 11 }, { row: 7, col: 10 }, { row: 7, col: 9 }, {row: 7, col: 8} ],
   blue:   [ { row: 13, col: 7 }, { row: 12, col: 7 }, { row: 11, col: 7 }, { row: 10, col: 7 }, { row: 9, col: 7 }, {row: 8, col: 7} ],
 };
 
 
-const PLAYER_CONFIG: Record<PlayerColor, { name: string; baseClass: string; textClass: string; pathStartIndex: number; homeEntryPathIndex: number; cornerPosition: string; houseCoords: {row: number, col: number}[], startCell: {row: number, col: number} }> = {
-  red:    { name: "Red",    baseClass: "bg-red-500",    textClass: "text-red-700",    pathStartIndex: 0,  homeEntryPathIndex: 50, cornerPosition: "bottom-4 left-4", houseCoords: [{row:1,col:1},{row:1,col:4},{row:4,col:1},{row:4,col:4}], startCell: MAIN_PATH_COORDINATES[0] },
-  green:  { name: "Green",  baseClass: "bg-green-500",  textClass: "text-green-700",  pathStartIndex: 13, homeEntryPathIndex: 11, cornerPosition: "top-4 left-4", houseCoords: [{row:1,col:10},{row:1,col:13},{row:4,col:10},{row:4,col:13}], startCell: MAIN_PATH_COORDINATES[13]},
-  yellow: { name: "Yellow", baseClass: "bg-yellow-400", textClass: "text-yellow-700", pathStartIndex: 26, homeEntryPathIndex: 24, cornerPosition: "top-4 right-4", houseCoords: [{row:10,col:10},{row:10,col:13},{row:13,col:10},{row:13,col:13}], startCell: MAIN_PATH_COORDINATES[26]},
-  blue:   { name: "Blue",   baseClass: "bg-blue-500",   textClass: "text-blue-700",   pathStartIndex: 39, homeEntryPathIndex: 37, cornerPosition: "bottom-4 right-4", houseCoords: [{row:10,col:1},{row:10,col:4},{row:13,col:1},{row:13,col:4}], startCell: MAIN_PATH_COORDINATES[39]},
+const PLAYER_CONFIG: Record<PlayerColor, { name: string; baseClass: string; textClass: string; pathStartIndex: number; homeEntryPathIndex: number; panelGridArea: string; houseCoords: {row: number, col: number}[], startCell: {row: number, col: number} }> = {
+  red:    { name: "Red",    baseClass: "bg-red-500",    textClass: "text-red-700",    pathStartIndex: 0,  homeEntryPathIndex: 50, panelGridArea: "panel-red",    houseCoords: [{row:1,col:1},{row:1,col:4},{row:4,col:1},{row:4,col:4}], startCell: MAIN_PATH_COORDINATES[0] },
+  green:  { name: "Green",  baseClass: "bg-green-500",  textClass: "text-green-700",  pathStartIndex: 13, homeEntryPathIndex: 11, panelGridArea: "panel-green",  houseCoords: [{row:1,col:10},{row:1,col:13},{row:4,col:10},{row:4,col:13}], startCell: MAIN_PATH_COORDINATES[13]},
+  yellow: { name: "Yellow", baseClass: "bg-yellow-400", textClass: "text-yellow-700", pathStartIndex: 26, homeEntryPathIndex: 24, panelGridArea: "panel-yellow", houseCoords: [{row:10,col:10},{row:10,col:13},{row:13,col:10},{row:13,col:13}], startCell: MAIN_PATH_COORDINATES[26]},
+  blue:   { name: "Blue",   baseClass: "bg-blue-500",   textClass: "text-blue-700",   pathStartIndex: 39, homeEntryPathIndex: 37, panelGridArea: "panel-blue",   houseCoords: [{row:10,col:1},{row:10,col:4},{row:13,col:1},{row:13,col:4}], startCell: MAIN_PATH_COORDINATES[39]},
 };
 
 const SAFE_SQUARE_INDICES = [0, 8, 13, 21, 26, 34, 39, 47];
@@ -64,7 +60,7 @@ const DICE_ICONS = [Dice1, Dice2, Dice3, Dice4, Dice5, Dice6];
 interface Token {
   id: number;
   color: PlayerColor;
-  position: number; // -1: base, 0-51: main path, 100-105: home stretch (100 = first step, 105 = last step before home), 200+: finished
+  position: number; 
 }
 
 interface Player {
@@ -91,20 +87,19 @@ const initialPlayerState = (
   if (mode === 'offline' && offlinePlayerColors && offlinePlayerColors.length === numPlayersToCreate && offlinePlayerColors.every(c => c !== null)) {
     activePlayerColors = offlinePlayerColors;
   } else if (numPlayersToCreate === 2) {
-     activePlayerColors = ['red', 'green']; 
+     activePlayerColors = ['red', 'yellow']; // Default for 2 players: Red (bottom), Yellow (top)
   } else {
     activePlayerColors = PLAYER_COLORS.slice(0, numPlayersToCreate);
   }
 
-
   return activePlayerColors.map((color, index) => {
-    const isAIPlayer = mode === 'ai' && index > 0;
+    const isAIPlayer = mode === 'ai' && index > 0; // First player is human in AI mode
     let playerName = PLAYER_CONFIG[color].name;
 
     if (mode === 'ai') {
-      playerName = (index === 0) ? (humanName || "Human Player") : `Shravya AI (${PLAYER_CONFIG[color].name})`;
+      playerName = (index === 0) ? (humanName || "Human") : `Shravya AI`;
     } else if (mode === 'offline') {
-      playerName = (offlineNames && offlineNames[index]) ? offlineNames[index] : `Player ${index + 1} (${PLAYER_CONFIG[color].name})`;
+      playerName = (offlineNames && offlineNames[index]) ? offlineNames[index] : `Player ${index + 1}`;
     }
     
     return {
@@ -124,6 +119,79 @@ const initialPlayerState = (
 
 
 const boardCells = Array(BOARD_GRID_SIZE * BOARD_GRID_SIZE).fill(null).map((_, i) => i);
+
+const PlayerPanel: React.FC<{
+  player: Player;
+  isCurrentPlayer: boolean;
+  diceValue: number | null;
+  isRolling: boolean;
+  onDiceRoll: () => void;
+  gameState: GameState;
+  panelOrientation: 'horizontal' | 'vertical';
+}> = ({ player, isCurrentPlayer, diceValue, isRolling, onDiceRoll, gameState, panelOrientation }) => {
+  const playerSpecificConfig = PLAYER_CONFIG[player.color];
+  let DiceIconToRender = Dice6;
+  let diceButtonStyling = "text-muted-foreground opacity-50";
+  let isDiceButtonClickable = false;
+
+  if (isCurrentPlayer && player) {
+    if (isRolling && diceValue) {
+      DiceIconToRender = DICE_ICONS[diceValue - 1] || Dice6;
+      diceButtonStyling = "text-muted-foreground animate-spin";
+    } else if (diceValue) {
+      DiceIconToRender = DICE_ICONS[diceValue - 1] || Dice6;
+      diceButtonStyling = cn("animate-gentle-bounce", playerSpecificConfig.textClass);
+    } else {
+      DiceIconToRender = Dice6;
+      diceButtonStyling = cn("cursor-pointer hover:opacity-75", playerSpecificConfig.textClass);
+    }
+    if (!player.isAI && gameState === 'playing' && !isRolling && (diceValue === null || player.hasRolledSix)) {
+      isDiceButtonClickable = true;
+    }
+  } else {
+    DiceIconToRender = Dice6;
+    diceButtonStyling = "text-muted-foreground opacity-30";
+  }
+
+  const panelClasses = cn(
+    "flex items-center justify-center p-1.5 sm:p-2 rounded-lg shadow-md border border-primary/30 bg-card/90 backdrop-blur-sm",
+    panelOrientation === 'horizontal' ? "flex-col h-full w-20 sm:w-24" : "flex-row w-full h-20 sm:h-24",
+    playerSpecificConfig.baseClass + "/20"
+  );
+  
+  const nameClasses = cn(
+    "text-xs sm:text-sm font-semibold truncate", 
+    playerSpecificConfig.textClass,
+    panelOrientation === 'horizontal' ? "mb-1 sm:mb-1.5 text-center [writing-mode:vertical-rl] transform rotate-180" : "mr-1 sm:mr-1.5 text-center"
+  );
+
+  return (
+    <div className={panelClasses} style={{ gridArea: playerSpecificConfig.panelGridArea }}>
+      <p className={nameClasses} title={player.name}>
+        {player.name} {player.isAI && <Cpu size={12} className="inline ml-0.5"/>}
+      </p>
+      <Button
+        variant="outline"
+        size="icon"
+        className={cn(
+          "border-2 border-dashed rounded-lg shadow-sm flex items-center justify-center",
+          isCurrentPlayer && !player.isAI ? "h-8 w-8 sm:h-10 sm:w-10" : "h-7 w-7 sm:h-8 sm:w-8",
+          isDiceButtonClickable
+            ? cn("cursor-pointer", playerSpecificConfig.baseClass + "/30", `hover:${playerSpecificConfig.baseClass}/50`)
+            : "border-muted-foreground/30 cursor-not-allowed opacity-70"
+        )}
+        onClick={() => {
+          if (isDiceButtonClickable) onDiceRoll();
+        }}
+        disabled={!isDiceButtonClickable || gameState === 'gameOver'}
+        aria-label={`Roll dice for ${player.name}`}
+      >
+        <DiceIconToRender size={isCurrentPlayer && !player.isAI ? 22 : 18} className={diceButtonStyling} />
+      </Button>
+    </div>
+  );
+};
+
 
 export default function LudoPage() {
   const [gameState, setGameState] = useState<GameState>('setup');
@@ -234,7 +302,7 @@ export default function LudoPage() {
         processDiceRoll(finalRoll);
       }
     }, 100);
-  }, [isRolling, currentPlayer, diceValue, players, currentPlayerIndex]);
+  }, [isRolling, currentPlayer, diceValue, players, currentPlayerIndex]); // Added players, currentPlayerIndex based on usage in processDiceRoll
 
   const getMovableTokens = (player: Player, roll: number): Token[] => {
     if (!player) return [];
@@ -654,90 +722,86 @@ export default function LudoPage() {
       </>
     );
   }
+  
+  const getPlayerByColor = (color: PlayerColor): Player | undefined => players.find(p => p.color === color);
 
   return (
     <>
       <title>Ludo Game | Shravya Playhouse</title>
       <meta name="description" content="Play the classic game of Ludo online." />
-      <div className="relative flex flex-col items-center justify-start min-h-screen w-full p-2 sm:p-4 bg-gradient-to-br from-primary/30 to-background overflow-x-hidden">
+      <div className="flex flex-col items-center justify-start min-h-screen w-full p-1 sm:p-2 md:p-4 bg-gradient-to-br from-primary/30 to-background overflow-x-hidden">
         
-        {players.map((p, idx) => {
-          const playerSpecificConfig = PLAYER_CONFIG[p.color];
-          let panelPositionClass = playerSpecificConfig.cornerPosition;
+        <div className="mb-2 sm:mb-3 p-2 rounded-lg shadow-md bg-card/90 backdrop-blur-sm max-w-md text-center">
+            <h2 className="text-base sm:text-lg font-semibold text-primary">
+                {gameState === 'gameOver' ? "Game Over!" : (currentPlayer ? `Turn: ${currentPlayer.name}` : "Loading...")}
+            </h2>
+            <p className="text-xs sm:text-sm text-foreground/90 min-h-[1.5em]">{gameMessage}</p>
+        </div>
 
-          if (players.length === 2) {
-            // For 2 players, place them diagonally.
-            // Player 1 (human or first offline) uses Red's default position.
-            // Player 2 (AI or second offline) uses Yellow's default position for visual balance.
-            if (idx === 0) panelPositionClass = PLAYER_CONFIG.red.cornerPosition; 
-            if (idx === 1) panelPositionClass = PLAYER_CONFIG.yellow.cornerPosition; // Uses Yellow's corner for Player 2
-          }
-          
-          const isCurrentPlayerTurn = currentPlayerIndex === idx;
-          let DiceIconToRender = Dice6; 
-          let diceButtonStyling = "text-muted-foreground opacity-50";
-          let isDiceButtonClickable = false;
-
-          if (isCurrentPlayerTurn && currentPlayer) {
-            if (isRolling && diceValue) { 
-              DiceIconToRender = DICE_ICONS[diceValue - 1] || Dice6;
-              diceButtonStyling = "text-muted-foreground animate-spin";
-            } else if (diceValue) { 
-              DiceIconToRender = DICE_ICONS[diceValue - 1] || Dice6;
-              diceButtonStyling = cn("animate-gentle-bounce", playerSpecificConfig.textClass);
-            } else { 
-              DiceIconToRender = Dice6;
-              diceButtonStyling = cn("cursor-pointer hover:opacity-75", playerSpecificConfig.textClass);
-            }
-            if (!currentPlayer.isAI && gameState !== 'gameOver' && !isRolling && (diceValue === null || currentPlayer.hasRolledSix)) {
-              isDiceButtonClickable = true;
-            }
-          } else { 
-             DiceIconToRender = Dice6; 
-             diceButtonStyling = "text-muted-foreground opacity-30";
-          }
-
-          return (
-            <div key={p.color} className={cn(
-              "absolute p-2 sm:p-3 rounded-lg shadow-xl border-2 border-primary/50 backdrop-blur-sm bg-card/80 w-32 sm:w-40 z-10",
-              panelPositionClass
-            )}>
-              <p className={cn("text-xs sm:text-sm font-semibold truncate text-center mb-1 sm:mb-2", playerSpecificConfig.textClass)} title={p.name}>
-                {p.name} {p.isAI && <Cpu size={14} className="inline ml-1"/>}
-              </p>
-              <Button
-                  variant="outline"
-                  size="icon"
-                  className={cn(
-                    "border-2 border-dashed rounded-lg shadow-sm mx-auto flex items-center justify-center",
-                    isCurrentPlayerTurn && !p.isAI ? "h-10 w-10 sm:h-12 sm:w-12" : "h-8 w-8 sm:h-10 sm:w-10",
-                    isDiceButtonClickable 
-                        ? cn("cursor-pointer", playerSpecificConfig.baseClass + "/30", `hover:${playerSpecificConfig.baseClass}/50`) 
-                        : "border-muted-foreground/30 cursor-not-allowed opacity-70"
-                  )}
-                  onClick={() => { 
-                    if(isDiceButtonClickable) handleDiceRoll();
-                  }}
-                  disabled={!isDiceButtonClickable || gameState === 'gameOver'}
-                  aria-label={`Roll dice for ${p.name}`}
-              >
-                  <DiceIconToRender size={isCurrentPlayerTurn && !p.isAI ? 28 : 20} className={diceButtonStyling} />
-              </Button>
-            </div>
-          );
-        })}
-
-        <div className="flex flex-col items-center justify-center z-0 mt-16 sm:mt-20 md:mt-24 mb-10 w-full">
-            <div className="mb-2 sm:mb-4 p-2 sm:p-3 rounded-lg shadow-md bg-card/90 backdrop-blur-sm max-w-md text-center">
-                <h2 className="text-lg sm:text-xl font-semibold text-primary">
-                    {gameState === 'gameOver' ? "Game Over!" : (currentPlayer ? `Turn: ${currentPlayer.name}` : "Loading...")}
-                </h2>
-                <p className="text-xs sm:text-sm text-foreground/90 min-h-[2em]">{gameMessage}</p>
-            </div>
+        <div 
+            className="grid w-full max-w-[380px] sm:max-w-[480px] md:max-w-[560px] lg:max-w-[640px] aspect-[1/1.1] sm:aspect-[1/1.05] game-board-grid gap-1"
+            style={{
+                gridTemplateAreas: `
+                    ". panel-yellow ."
+                    "panel-green board panel-blue"
+                    ". panel-red ."
+                `,
+                gridTemplateColumns: "auto 1fr auto",
+                gridTemplateRows: "auto 1fr auto",
+            }}
+        >
+            {/* Render player panels based on active players */}
+            {getPlayerByColor('yellow') && players.length > 1 && (
+              <PlayerPanel 
+                player={getPlayerByColor('yellow')!}
+                isCurrentPlayer={currentPlayer?.color === 'yellow'}
+                diceValue={diceValue}
+                isRolling={isRolling}
+                onDiceRoll={handleDiceRoll}
+                gameState={gameState}
+                panelOrientation={players.length === 2 && getPlayerByColor('yellow')?.color === players[1].color ? 'horizontal' : 'vertical'}
+              />
+            )}
+             {getPlayerByColor('green') && players.length > 2 && (
+              <PlayerPanel 
+                player={getPlayerByColor('green')!}
+                isCurrentPlayer={currentPlayer?.color === 'green'}
+                diceValue={diceValue}
+                isRolling={isRolling}
+                onDiceRoll={handleDiceRoll}
+                gameState={gameState}
+                panelOrientation="horizontal"
+              />
+            )}
+            {getPlayerByColor('blue') && players.length > 2 && (
+              <PlayerPanel 
+                player={getPlayerByColor('blue')!}
+                isCurrentPlayer={currentPlayer?.color === 'blue'}
+                diceValue={diceValue}
+                isRolling={isRolling}
+                onDiceRoll={handleDiceRoll}
+                gameState={gameState}
+                panelOrientation="horizontal"
+              />
+            )}
+             {getPlayerByColor('red') && (
+              <PlayerPanel 
+                player={getPlayerByColor('red')!}
+                isCurrentPlayer={currentPlayer?.color === 'red'}
+                diceValue={diceValue}
+                isRolling={isRolling}
+                onDiceRoll={handleDiceRoll}
+                gameState={gameState}
+                panelOrientation="vertical"
+              />
+            )}
 
             <div
-              className="grid gap-px border-2 border-neutral-700 rounded overflow-hidden shadow-lg bg-neutral-300 w-full max-w-[300px] sm:max-w-[400px] md:max-w-[480px] lg:max-w-[540px] aspect-square"
-              style={{ gridTemplateColumns: `repeat(${BOARD_GRID_SIZE}, minmax(0, 1fr))` }}
+              className="grid gap-px border-2 border-neutral-700 rounded overflow-hidden shadow-lg bg-neutral-300 w-full h-full aspect-square"
+              style={{ 
+                gridArea: "board",
+                gridTemplateColumns: `repeat(${BOARD_GRID_SIZE}, minmax(0, 1fr))` 
+              }}
               aria-label="Ludo board"
             >
               {boardCells.map((_, cellFlatIndex) => {
@@ -805,7 +869,7 @@ export default function LudoPage() {
             </div>
         </div>
 
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20">
+        <div className="mt-3 sm:mt-4">
              <Button onClick={resetGame} variant="outline" className="shadow-lg bg-card/80 hover:bg-card">
               <RotateCcw className="mr-2 h-4 w-4" /> Reset Game
             </Button>
@@ -815,4 +879,3 @@ export default function LudoPage() {
     </>
   );
 }
-
