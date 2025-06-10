@@ -8,16 +8,17 @@ export default {
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
-    container: { // Added container default settings
+    container: {
       center: true,
-      padding: "1rem", // Default padding for containers
+      padding: "1rem", 
       screens: {
         "2xl": "1400px",
       },
     },
   	extend: {
-      fontFamily: { // Added fontFamily
-        sans: ["var(--font-inter)", "system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", "Noto Sans", "sans-serif"],
+      fontFamily: {
+        // Changed from Inter to Quicksand
+        sans: ["var(--font-quicksand)", "system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", "Noto Sans", "sans-serif"],
       },
   		colors: {
   			background: 'hsl(var(--background))',
@@ -93,7 +94,7 @@ export default {
   					height: '0'
   				}
   			},
-        'gentle-bounce': { // Added gentle-bounce keyframes
+        'gentle-bounce': {
           '0%, 100%': { transform: 'translateY(0)' },
           '50%': { transform: 'translateY(-3px)' },
         },
@@ -101,7 +102,7 @@ export default {
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
   			'accordion-up': 'accordion-up 0.2s ease-out',
-        'gentle-bounce': 'gentle-bounce 0.5s ease-in-out', // Added gentle-bounce animation
+        'gentle-bounce': 'gentle-bounce 0.5s ease-in-out',
   		}
   	}
   },

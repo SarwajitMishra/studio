@@ -1,14 +1,16 @@
 
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Quicksand } from 'next/font/google'; // Changed from Inter to Quicksand
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import MainLayout from '@/components/layout/main-layout';
-import PWALoader from '@/components/pwa-loader'; // Import the PWALoader
+import PWALoader from '@/components/pwa-loader';
 
-const inter = Inter({
-  variable: '--font-inter',
+// Configure Quicksand font
+const quicksand = Quicksand({
   subsets: ['latin'],
+  variable: '--font-quicksand', // Define CSS variable name
+  weight: ['300', '400', '500', '600', '700'] // Include a range of weights
 });
 
 export const metadata: Metadata = {
@@ -17,7 +19,7 @@ export const metadata: Metadata = {
     template: '%s | Shravya Playhouse',
   },
   description: 'Fun and educational games for kids at Shravya Playhouse!',
-  manifest: '/manifest.json', // Added manifest link for PWA
+  manifest: '/manifest.json',
 };
 
 export default function RootLayout({
@@ -28,12 +30,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head><meta name="theme-color" content="#87CEEB" /></head>
-      <body className={`${inter.variable} font-sans antialiased`} suppressHydrationWarning={true}>
+      {/* Apply Quicksand font variable to the body */}
+      <body className={`${quicksand.variable} font-sans antialiased`} suppressHydrationWarning={true}>
         <MainLayout>
           {children}
         </MainLayout>
         <Toaster />
-        <PWALoader /> {/* Add PWALoader here to register service worker */}
+        <PWALoader />
       </body>
     </html>
   );
