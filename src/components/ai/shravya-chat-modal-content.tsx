@@ -81,14 +81,30 @@ export default function ShravyaChatModalContent() {
 
         if (langVoices.length > 0) {
           if (targetLang === 'hi-IN') {
-            const hindiFemaleVoices = langVoices.filter(v => 
-              v.name.toLowerCase().includes('female') || 
+            // Prioritize specific known female Hindi voices
+            let specificFemaleVoice = langVoices.find(v => 
               v.name.toLowerCase().includes('lekha') || 
-              v.name.toLowerCase().includes('google हिन्दी') ||
-              v.name.toLowerCase().includes('kalpana') 
+              v.name.toLowerCase().includes('kalpana')
             );
-            selectedVoice = hindiFemaleVoices.length > 0 ? hindiFemaleVoices[0] : langVoices[0];
-          } else { 
+            if (specificFemaleVoice) {
+                selectedVoice = specificFemaleVoice;
+            } else {
+                // Then try generic "female" in name
+                let genericFemaleVoice = langVoices.find(v => v.name.toLowerCase().includes('female'));
+                if (genericFemaleVoice) {
+                    selectedVoice = genericFemaleVoice;
+                } else {
+                    // Then try "Google हिन्दी" as it's often female and good quality
+                    let googleHindiVoice = langVoices.find(v => v.name.toLowerCase().includes('google हिन्दी'));
+                    if (googleHindiVoice) {
+                        selectedVoice = googleHindiVoice;
+                    } else {
+                        // Fallback to the first available Hindi voice
+                        selectedVoice = langVoices[0];
+                    }
+                }
+            }
+          } else { // English voice selection (en-IN preference)
             const indianFemaleVoices = langVoices.filter(
               (voice) => voice.lang === 'en-IN' && (
                 voice.name.toLowerCase().includes('female') ||
@@ -100,6 +116,7 @@ export default function ShravyaChatModalContent() {
           }
         }
         
+        // Fallback for English if no en-IN or targetLang voice found
         if (!selectedVoice && targetLang.startsWith('en')) {
           const usFemaleVoices = availableVoices.filter(
             voice => voice.lang === 'en-US' && voice.name.toLowerCase().includes('female')
@@ -112,10 +129,11 @@ export default function ShravyaChatModalContent() {
           }
         }
       }
+      
       if (selectedVoice) {
         utterance.voice = selectedVoice;
       }
-      
+      // If no voice is selected, the browser will use its default for the utterance.lang.
       window.speechSynthesis.speak(utterance);
     }
   }, [availableVoices]);
@@ -155,10 +173,9 @@ export default function ShravyaChatModalContent() {
       window.speechSynthesis.cancel();
     }
     if (isListening && speechRecognitionRef.current) {
-       // Stop listening if it's still active, though `continuous = false` should handle this for single utterances.
       speechRecognitionRef.current.stop();
     }
-    setIsListening(false); // Explicitly set listening to false
+    setIsListening(false); 
 
 
     const userMessage: ChatMessage = {
@@ -167,7 +184,7 @@ export default function ShravyaChatModalContent() {
       content: userInput,
     };
     setMessages((prevMessages) => [...prevMessages, userMessage]);
-    setInputValue(''); // Clear input field after sending
+    setInputValue(''); 
     setIsLoading(true);
     setSttError(null);
 
@@ -206,16 +223,14 @@ export default function ShravyaChatModalContent() {
     if (SpeechRecognition) {
       setBrowserSupportsSTT(true);
       const recognition = new SpeechRecognition();
-      recognition.continuous = false; // Stop after first pause
-      recognition.interimResults = false; // We only want final results for auto-send
+      recognition.continuous = false; 
+      recognition.interimResults = false; 
       recognition.lang = 'en-US'; 
 
       recognition.onresult = (event) => {
         const transcript = event.results[0][0].transcript;
-        // Automatically submit the transcript
         handleSubmit(undefined, transcript); 
-        // setInputValue(transcript); // Optionally briefly show transcript, but auto-submit is key
-        setIsListening(false); // Should be set by onend, but good to be sure
+        setIsListening(false); 
         setSttError(null);
       };
 
@@ -249,14 +264,13 @@ export default function ShravyaChatModalContent() {
     }
 
     return () => {
-      if (speechRecognitionRef.current && isListening) { // Use local isListening state
+      if (speechRecognitionRef.current && isListening) { 
         speechRecognitionRef.current.stop();
       }
       if (typeof window !== 'undefined' && window.speechSynthesis) {
         window.speechSynthesis.cancel();
       }
     };
-  // handleSubmit is now a dependency because it's called directly from onresult
   }, [isListening, handleSubmit]); 
 
   const handleToggleListen = () => {
@@ -273,14 +287,13 @@ export default function ShravyaChatModalContent() {
     if (speechRecognitionRef.current) {
       if (isListening) {
         speechRecognitionRef.current.stop();
-        setIsListening(false); // Explicitly set state
+        setIsListening(false); 
       } else {
         if (typeof window !== 'undefined' && window.speechSynthesis) {
-            window.speechSynthesis.cancel(); // Stop any ongoing TTS
+            window.speechSynthesis.cancel(); 
         }
-        setInputValue(''); // Clear input field before starting new voice input
+        setInputValue(''); 
         speechRecognitionRef.current.start();
-        // setIsListening(true) will be set by recognition.onstart
       }
     }
   };
@@ -371,14 +384,14 @@ export default function ShravyaChatModalContent() {
             variant={isListening ? "destructive" : "outline"}
             size="icon"
             onClick={handleToggleListen}
-            disabled={isLoading} // Disable mic button if AI is already processing a request.
+            disabled={isLoading} 
             aria-label={isListening ? "Stop listening" : "Start listening"}
           >
             {isListening ? <MicOff size={20} /> : <Mic size={20} />}
           </Button>
         )}
         <Button type="submit" disabled={isLoading || !inputValue.trim() || isListening} className="bg-accent text-accent-foreground hover:bg-accent/90">
-          {isLoading && !isListening ? ( // Show loader only when not listening and AI is working
+          {isLoading && !isListening ? ( 
             <Loader2 size={20} className="animate-spin" />
           ) : (
             <Send size={20} />
