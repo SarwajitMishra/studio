@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Dice1, Dice2, Dice3, Dice4, Dice5, Dice6, RotateCcw, Home, Users, Cpu, Info } from 'lucide-react';
+import { Dice1, Dice2, Dice3, Dice4, Dice5, Dice6, RotateCcw, Home, Users, Cpu, Info, Star } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
@@ -17,22 +17,58 @@ const PLAYER_COLORS = ['red', 'green', 'yellow', 'blue'] as const;
 type PlayerColor = typeof PLAYER_COLORS[number];
 
 const MAIN_PATH_LENGTH = 52;
-const HOME_STRETCH_LENGTH = 6;
+const HOME_STRETCH_LENGTH = 6; // Each home stretch has 5 steps + 1 final home spot
 const NUM_TOKENS_PER_PLAYER = 4;
+const BOARD_GRID_SIZE = 15;
+
+
+const MAIN_PATH_COORDINATES: { row: number; col: number }[] = [
+  // Red arm (clockwise)
+  { row: 6, col: 1 }, { row: 6, col: 2 }, { row: 6, col: 3 }, { row: 6, col: 4 }, { row: 6, col: 5 },
+  { row: 5, col: 6 }, { row: 4, col: 6 }, { row: 3, col: 6 }, { row: 2, col: 6 }, { row: 1, col: 6 }, { row: 0, col: 6 },
+  // Green arm (entry at top-left of its block)
+  { row: 0, col: 8 }, // Path index 12 (Green's 13th square from its perspective)
+  { row: 1, col: 8 }, { row: 2, col: 8 }, { row: 3, col: 8 }, { row: 4, col: 8 }, { row: 5, col: 8 },
+  { row: 6, col: 9 }, { row: 6, col: 10 }, { row: 6, col: 11 }, { row: 6, col: 12 }, { row: 6, col: 13 }, { row: 6, col: 14 },
+  // Yellow arm
+  { row: 8, col: 14 }, // Path index 25 (Yellow's 26th square)
+  { row: 8, col: 13 }, { row: 8, col: 12 }, { row: 8, col: 11 }, { row: 8, col: 10 }, { row: 8, col: 9 },
+  { row: 9, col: 8 }, { row: 10, col: 8 }, { row: 11, col: 8 }, { row: 12, col: 8 }, { row: 13, col: 8 }, { row: 14, col: 8 },
+  // Blue arm
+  { row: 14, col: 6 }, // Path index 38 (Blue's 39th square)
+  { row: 13, col: 6 }, { row: 12, col: 6 }, { row: 11, col: 6 }, { row: 10, col: 6 }, { row: 9, col: 6 },
+  { row: 8, col: 5 }, { row: 8, col: 4 }, { row: 8, col: 3 }, { row: 8, col: 2 }, { row: 8, col: 1 }, { row: 8, col: 0 },
+  { row: 6, col: 0 } // Path index 51, connects back to red's arm. Red's start {row:6, col:1} is index 0.
+];
+
+const HOME_STRETCH_COORDINATES: Record<PlayerColor, { row: number; col: number }[]> = {
+  red:    [ { row: 7, col: 1 }, { row: 7, col: 2 }, { row: 7, col: 3 }, { row: 7, col: 4 }, { row: 7, col: 5 }, {row: 7, col: 6} ], // Last one is home
+  green:  [ { row: 1, col: 7 }, { row: 2, col: 7 }, { row: 3, col: 7 }, { row: 4, col: 7 }, { row: 5, col: 7 }, {row: 6, col: 7} ],
+  yellow: [ { row: 7, col: 13 }, { row: 7, col: 12 }, { row: 7, col: 11 }, { row: 7, col: 10 }, { row: 7, col: 9 }, {row: 7, col: 8} ],
+  blue:   [ { row: 13, col: 7 }, { row: 12, col: 7 }, { row: 11, col: 7 }, { row: 10, col: 7 }, { row: 9, col: 7 }, {row: 8, col: 7} ],
+};
+
 
 const PLAYER_CONFIG: Record<PlayerColor, { name: string; baseClass: string; textClass: string; pathStartIndex: number; homeEntryPathIndex: number; cornerPosition: string; houseCoords: {row: number, col: number}[], startCell: {row: number, col: number} }> = {
-  red:    { name: "Red",    baseClass: "bg-red-500",    textClass: "text-red-700",    pathStartIndex: 0,  homeEntryPathIndex: 50, cornerPosition: "bottom-4 left-4", houseCoords: [{row:1,col:1},{row:1,col:4},{row:4,col:1},{row:4,col:4}], startCell: {row: 6, col: 1} },
-  green:  { name: "Green",  baseClass: "bg-green-500",  textClass: "text-green-700",  pathStartIndex: 13, homeEntryPathIndex: 11, cornerPosition: "top-4 left-4", houseCoords: [{row:1,col:10},{row:1,col:13},{row:4,col:10},{row:4,col:13}], startCell: {row:1, col:6}},
-  yellow: { name: "Yellow", baseClass: "bg-yellow-400", textClass: "text-yellow-700", pathStartIndex: 26, homeEntryPathIndex: 24, cornerPosition: "top-4 right-4", houseCoords: [{row:10,col:10},{row:10,col:13},{row:13,col:10},{row:13,col:13}], startCell: {row:8, col:13}},
-  blue:   { name: "Blue",   baseClass: "bg-blue-500",   textClass: "text-blue-700",   pathStartIndex: 39, homeEntryPathIndex: 37, cornerPosition: "bottom-4 right-4", houseCoords: [{row:10,col:1},{row:10,col:4},{row:13,col:1},{row:13,col:4}], startCell: {row:13, col:8}},
+  red:    { name: "Red",    baseClass: "bg-red-500",    textClass: "text-red-700",    pathStartIndex: 0,  homeEntryPathIndex: 50, cornerPosition: "bottom-4 left-4", houseCoords: [{row:1,col:1},{row:1,col:4},{row:4,col:1},{row:4,col:4}], startCell: MAIN_PATH_COORDINATES[0] },
+  green:  { name: "Green",  baseClass: "bg-green-500",  textClass: "text-green-700",  pathStartIndex: 13, homeEntryPathIndex: 11, cornerPosition: "top-4 left-4", houseCoords: [{row:1,col:10},{row:1,col:13},{row:4,col:10},{row:4,col:13}], startCell: MAIN_PATH_COORDINATES[13]}, // Green starts at path index 13
+  yellow: { name: "Yellow", baseClass: "bg-yellow-400", textClass: "text-yellow-700", pathStartIndex: 26, homeEntryPathIndex: 24, cornerPosition: "top-4 right-4", houseCoords: [{row:10,col:10},{row:10,col:13},{row:13,col:10},{row:13,col:13}], startCell: MAIN_PATH_COORDINATES[26]},
+  blue:   { name: "Blue",   baseClass: "bg-blue-500",   textClass: "text-blue-700",   pathStartIndex: 39, homeEntryPathIndex: 37, cornerPosition: "bottom-4 right-4", houseCoords: [{row:10,col:1},{row:10,col:4},{row:13,col:1},{row:13,col:4}], startCell: MAIN_PATH_COORDINATES[39]},
 };
+
+// Define safe squares based on their index in MAIN_PATH_COORDINATES
+// Typically start squares and some others.
+// Red start: 0, Green start: 13, Yellow start: 26, Blue start: 39
+// Other common safe squares (example, 8 squares from start): 8, 21, 34, 47
+const SAFE_SQUARE_INDICES = [0, 8, 13, 21, 26, 34, 39, 47];
+
 
 const DICE_ICONS = [Dice1, Dice2, Dice3, Dice4, Dice5, Dice6];
 
 interface Token {
   id: number;
   color: PlayerColor;
-  position: number; // -1: base, 0-51: main path, 100-105+ (color specific for home stretch), 200+: finished
+  position: number; // -1: base, 0-51: main path, 100-105: home stretch (100 = first step, 105 = last step before home), 200+: finished
 }
 
 interface Player {
@@ -48,14 +84,25 @@ type GameState = 'setup' | 'playing' | 'gameOver';
 type GameMode = 'offline' | 'ai' | null;
 
 const initialPlayerState = (
-    numPlayersToCreate: number, 
+    numPlayersToCreate: number,
     mode: GameMode,
     humanName?: string,
-    offlineNames?: string[]
+    offlineNames?: string[],
+    offlinePlayerColors?: PlayerColor[]
 ): Player[] => {
-  const activePlayerColors = PLAYER_COLORS.slice(0, numPlayersToCreate);
+  let activePlayerColors: PlayerColor[];
+
+  if (mode === 'offline' && offlinePlayerColors && offlinePlayerColors.length === numPlayersToCreate && offlinePlayerColors.every(c => c !== null)) {
+    activePlayerColors = offlinePlayerColors;
+  } else if (numPlayersToCreate === 2) {
+     activePlayerColors = ['red', 'green']; // Default for 2 players (AI or unspecified offline)
+  } else {
+    activePlayerColors = PLAYER_COLORS.slice(0, numPlayersToCreate);
+  }
+
+
   return activePlayerColors.map((color, index) => {
-    const isAIPlayer = mode === 'ai' && index > 0; 
+    const isAIPlayer = mode === 'ai' && index > 0;
     let playerName = PLAYER_CONFIG[color].name;
 
     if (mode === 'ai') {
@@ -79,7 +126,7 @@ const initialPlayerState = (
   });
 };
 
-const BOARD_GRID_SIZE = 15;
+
 const boardCells = Array(BOARD_GRID_SIZE * BOARD_GRID_SIZE).fill(null).map((_, i) => i);
 
 export default function LudoPage() {
@@ -90,7 +137,7 @@ export default function LudoPage() {
   const [humanPlayerName, setHumanPlayerName] = useState<string>("Human Player");
   const [offlinePlayerNames, setOfflinePlayerNames] = useState<string[]>([]);
 
-  const [selectedColors, setSelectedColors] = useState<PlayerColor[]>([]);
+  const [selectedOfflineColors, setSelectedOfflineColors] = useState<(PlayerColor | null)[]>([]);
   const [players, setPlayers] = useState<Player[]>([]);
   const [currentPlayerIndex, setCurrentPlayerIndex] = useState(0);
   const [diceValue, setDiceValue] = useState<number | null>(null);
@@ -103,15 +150,15 @@ export default function LudoPage() {
   useEffect(() => {
     if (selectedMode === 'offline' && selectedNumPlayers) {
       setOfflinePlayerNames(Array(selectedNumPlayers).fill('').map((_, i) => `Player ${i + 1}`));
- setSelectedColors(Array(selectedNumPlayers).fill(null)); // Initialize selected colors array
+      setSelectedOfflineColors(Array(selectedNumPlayers).fill(null));
     } else {
       setOfflinePlayerNames([]);
- setSelectedColors([]);
+      setSelectedOfflineColors([]);
     }
   }, [selectedNumPlayers, selectedMode]);
 
  const handleColorChange = (index: number, color: PlayerColor) => {
-    setSelectedColors(prevColors => prevColors.map((c, i) => (i === index ? color : c)));
+    setSelectedOfflineColors(prevColors => prevColors.map((c, i) => (i === index ? color : c)));
  };
 
   const handleOfflinePlayerNameChange = (index: number, name: string) => {
@@ -127,7 +174,7 @@ export default function LudoPage() {
     setHumanPlayerName("Human Player");
     setOfflinePlayerNames([]);
     setPlayers([]);
-    setSelectedColors([]);
+    setSelectedOfflineColors([]);
     setCurrentPlayerIndex(0);
     setDiceValue(null);
     setIsRolling(false);
@@ -148,14 +195,19 @@ export default function LudoPage() {
       toast({ variant: "destructive", title: "Names Required", description: "Please enter names for all players." });
       return;
     }
-
-    if (selectedMode === 'offline' && selectedColors.slice(0, selectedNumPlayers).some(color => color === null || selectedColors.filter(c => c === color).length > 1)) {
+    const validSelectedColors = selectedOfflineColors.slice(0, selectedNumPlayers).filter(c => c !== null) as PlayerColor[];
+    if (selectedMode === 'offline' && (validSelectedColors.length !== selectedNumPlayers || new Set(validSelectedColors).size !== validSelectedColors.length) ) {
         toast({ variant: "destructive", title: "Color Selection Incomplete", description: "Please select a unique color for each offline player." });
         return;
     }
 
-    // Use selectedColors for offline mode players
-    const newPlayers = initialPlayerState(selectedNumPlayers, selectedMode, humanPlayerName, selectedMode === 'offline' ? offlinePlayerNames.slice(0, selectedNumPlayers) : undefined);
+    const newPlayers = initialPlayerState(
+        selectedNumPlayers, 
+        selectedMode, 
+        humanPlayerName, 
+        offlinePlayerNames, 
+        selectedMode === 'offline' ? validSelectedColors : undefined
+    );
     setPlayers(newPlayers);
     setCurrentPlayerIndex(0);
     setDiceValue(null);
@@ -166,33 +218,6 @@ export default function LudoPage() {
     }
   };
 
-  const createPlayers = (mode: 'offline' | 'ai', numPlayers: number, offlineNames?: string[], humanName?: string): Player[] => {
-    let colorsToUse: PlayerColor[];
-
-    if (numPlayers === 2) {
-      // Explicitly use diagonal colors for 2 players
- colorsToUse = ['red', 'green']; // Or ['blue', 'yellow'] depending on your board layout
-    } else {
-      colorsToUse = mode === 'offline' && selectedColors.length === numPlayers ? selectedColors : PLAYER_COLORS.slice(0, numPlayers);
-    }
-    return colorsToUse.map((color, index) => {
-        const isAIPlayer = mode === 'ai' && index > 0;
-        let playerName = PLAYER_CONFIG[color].name;
-
-        if (mode === 'ai') {
-            playerName = (index === 0) ? (humanName || "Human Player") : `Shravya AI (${PLAYER_CONFIG[color].name})`;
-        } else if (mode === 'offline') {
-            playerName = (offlineNames && offlineNames[index]) ? offlineNames[index] : `Player ${index + 1} (${PLAYER_CONFIG[color].name})`;
-        }
-
-        return {
-            color,
-            name: playerName,
-            tokens: Array(NUM_TOKENS_PER_PLAYER).fill(null).map((_, i) => ({ id: i, color, position: -1, })),
-            hasRolledSix: false, sixStreak: 0, isAI: isAIPlayer,
-        };
-    });
-  };
   const handleDiceRoll = useCallback(() => {
     if (isRolling || !currentPlayer || (currentPlayer.isAI && diceValue !== null)) return; 
     if (!currentPlayer.isAI && diceValue !== null && !currentPlayer.hasRolledSix) return;
@@ -213,46 +238,38 @@ export default function LudoPage() {
         processDiceRoll(finalRoll);
       }
     }, 100);
-  }, [isRolling, currentPlayer, diceValue, players, currentPlayerIndex]);
+  }, [isRolling, currentPlayer, diceValue, players, currentPlayerIndex]); // Removed processDiceRoll, setPlayers from deps
 
   const getMovableTokens = (player: Player, roll: number): Token[] => {
     if (!player) return [];
-    const hasTokensInBase = player.tokens.some(t => t.position === -1);
-
-    if (!player.isAI && roll === 6 && hasTokensInBase) {
-        return player.tokens.filter(token => token.position === -1);
-    }
-
+    
     return player.tokens.filter(token => {
-      if (token.position === -1 && roll === 6) return true; 
-      if (token.position >= 0 && token.position < 200) { 
-        const playerConfig = PLAYER_CONFIG[player.color];
-        const currentPos = token.position;
-        
-        if (currentPos >= 100) { 
-             const stretchPos = currentPos % 100;
-             return (stretchPos + roll) < HOME_STRETCH_LENGTH;
-        }
-        return true;
+      if (token.position === -1) return roll === 6; // Can only move from base with a 6
+      if (token.position >= 200) return false; // Already home
+
+      if (token.position >= 100) { // In home stretch
+        const stretchPos = token.position % 100; // 0 to 5
+        return (stretchPos + roll) <= HOME_STRETCH_LENGTH -1; // Cannot overshoot
       }
-      return false;
+      // On main path, any move is potentially valid (overshooting home entry is handled by move logic)
+      return true;
     });
   };
 
   const processDiceRoll = (roll: number) => {
     if (!currentPlayer) return;
-    setGameMessage(`${currentPlayer.name} rolled a ${roll}.`);
+    let currentMessage = `${currentPlayer.name} rolled a ${roll}.`;
 
     let currentP = players[currentPlayerIndex];
 
     if (roll === 6) {
       const updatedPlayer = { ...currentP, hasRolledSix: true, sixStreak: currentP.sixStreak + 1 };
-      const updatedPlayers = players.map((p, idx) => idx === currentPlayerIndex ? updatedPlayer : p);
-      setPlayers(updatedPlayers);
+      setPlayers(prev => prev.map((p, idx) => idx === currentPlayerIndex ? updatedPlayer : p));
       currentP = updatedPlayer; 
 
       if (updatedPlayer.sixStreak === 3) {
-        setGameMessage(`${currentP.name} rolled three 6s in a row! Turn forfeited.`);
+        currentMessage += ` Three 6s in a row! Turn forfeited.`;
+        setGameMessage(currentMessage);
         setTimeout(() => passTurn(true, true), 1500); 
         return;
       }
@@ -261,41 +278,37 @@ export default function LudoPage() {
     const movableTokens = getMovableTokens(currentP, roll);
     const hasTokensInBase = currentP.tokens.some(t => t.position === -1);
 
-    if (hasTokensInBase && roll !== 6 && movableTokens.filter(t => t.position !== -1).length === 0) {
-      setGameMessage(prev => prev + ` No valid moves (all tokens in base, need 6). Passing turn.`);
-      setTimeout(() => passTurn(true), 1500); 
-      return;
-    }
-
     if (movableTokens.length === 0) {
-       setGameMessage(prev => prev + ` No valid moves. Passing turn.`);
+       currentMessage += ` No valid moves. Passing turn.`;
+       setGameMessage(currentMessage);
        setTimeout(() => passTurn(roll !== 6), 1500);
        return;
     }
+    
+    // If a 6 is rolled and there are tokens in base, one of them *must* be moved if possible.
+    // The getMovableTokens already filters for this (only base tokens if roll is 6 and base tokens exist).
+    // If no base tokens, then other tokens are movable.
+
+    setGameMessage(currentMessage + (currentP.isAI ? ` AI thinking...` : ` Select a token to move.`));
 
     if (currentP.isAI) {
-      setGameMessage(prev => prev + ` AI thinking...`);
       setTimeout(() => {
         let tokenToMoveAI: Token | undefined;
+        // AI simple strategy: 1. Move from base if 6. 2. Advance furthest token.
         if (roll === 6 && hasTokensInBase) {
           tokenToMoveAI = movableTokens.find(t => t.position === -1);
-        } else {
-          const onBoardTokens = movableTokens.filter(t => t.position !== -1);
-          if (onBoardTokens.length > 0) tokenToMoveAI = onBoardTokens[0];
-          else tokenToMoveAI = movableTokens[0]; // fallback to base token if only option
+        } 
+        if (!tokenToMoveAI) { // If not moving from base or not a 6
+          const sortedMovable = [...movableTokens].sort((a,b) => b.position - a.position); // Furthest first
+          tokenToMoveAI = sortedMovable[0];
         }
 
         if (tokenToMoveAI) {
           attemptMoveToken(currentPlayerIndex, tokenToMoveAI.id, roll);
-        } else {
-          passTurn(roll !== 6); // Pass turn if AI somehow has no movable token (should not happen with above logic)
+        } else { // Should not happen if movableTokens.length > 0
+          passTurn(roll !== 6); 
         }
       }, 1000); 
-    } else {
-      setGameMessage(prev => prev + ` Select a token to move.`);
-      if (roll === 6 && hasTokensInBase && movableTokens.some(t => t.position === -1)) {
-          setGameMessage(prev => prev + ` You must move a token from base.`);
-      }
     }
   };
 
@@ -312,6 +325,8 @@ export default function LudoPage() {
         setPlayers(prev => prev.map((p, idx) => idx === currentPlayerIndex ? { ...p, sixStreak: 0, hasRolledSix: false } : p));
         nextPlayerIdx = (currentPlayerIndex + 1) % players.length;
     }
+    // If it was a 6 and turn is not ending (because a move was made), player rolls again.
+    // This is handled by setting diceValue to null, and currentP.hasRolledSix remains true.
     
     setCurrentPlayerIndex(nextPlayerIdx);
     setDiceValue(null); 
@@ -320,14 +335,15 @@ export default function LudoPage() {
     if (nextPlayer) {
         setGameMessage(`${nextPlayer.name}'s turn. ${nextPlayer.isAI ? 'AI is thinking...' : 'Click your dice to roll!'}`);
     } else {
-        resetGame();
+        // This case should ideally not be reached if game over is handled correctly
+        // resetGame(); // Or handle game over state
     }
   };
 
  useEffect(() => {
     if (gameState === 'playing' && players.length > 0 && currentPlayer?.isAI && !diceValue && !isRolling) {
         if (currentPlayer.sixStreak < 3) { 
-            setGameMessage(`${currentPlayer.name} is thinking...`);
+            // AI doesn't need "thinking" message here, handleDiceRoll will set it.
             setTimeout(() => handleDiceRoll(), 1500); 
         }
     }
@@ -339,29 +355,19 @@ export default function LudoPage() {
 
     const token = players[playerIndex].tokens.find(t=>t.id === tokenId);
     if(!token) return;
-    
-    const hasTokensInBase = currentPlayer.tokens.some(t => t.position === -1);
-    const canMoveFromBase = currentPlayer.tokens.some(t => t.position === -1); // check if any token is in base
-
-    if (diceValue === 6 && canMoveFromBase && token.position !== -1) {
-      toast({ variant: "default", title: "Move From Base", description: "You rolled a 6! Please select a token from your base to move out." });
-      return;
-    }
-
-    if (token.position === -1 && diceValue !== 6) {
-      toast({ variant: "destructive", title: "Invalid Move", description: "You need to roll a 6 to bring a token out of base." });
-      return;
-    }
-    if (token.position >= 200) { 
-      toast({ variant: "default", title: "Token Home", description: "This token has already reached home." });
-      return;
-    }
-    
+        
     const movableTokens = getMovableTokens(currentPlayer, diceValue);
     if (!movableTokens.some(mt => mt.id === tokenId && mt.color === currentPlayer.color)) {
-        toast({ variant: "destructive", title: "Cannot Move Token", description: "This token cannot make the attempted move." });
+        toast({ variant: "destructive", title: "Cannot Move Token", description: "This token cannot make the attempted move or you must move from base." });
         return;
     }
+    // If it's a 6 and tokens are in base, one of *those* must be chosen if they are in movableTokens.
+    const baseTokensAreMovable = movableTokens.some(t => t.position === -1);
+    if (diceValue === 6 && baseTokensAreMovable && token.position !== -1) {
+        toast({ variant: "default", title: "Move From Base", description: "You rolled a 6! Please select a token from your base to move out." });
+        return;
+    }
+
 
     attemptMoveToken(playerIndex, tokenId, diceValue);
   };
@@ -376,68 +382,59 @@ export default function LudoPage() {
 
       const playerConfig = PLAYER_CONFIG[playerToMove.color];
       let moveSuccessful = false;
-      const originalPosition = tokenToMove.position;
+      const originalPositionDisplay = tokenToMove.position === -1 ? "base" : 
+                                   tokenToMove.position >= 100 ? `S${tokenToMove.position % 100}` :
+                                   `${tokenToMove.position}`;
 
       if (tokenToMove.position === -1 && roll === 6) { 
         tokenToMove.position = playerConfig.pathStartIndex;
-        setGameMessage(`${playerToMove.name} brought token ${tokenId + 1} out to square ${tokenToMove.position}!`);
+        setGameMessage(`${playerToMove.name} brought token ${tokenId + 1} out to square ${MAIN_PATH_COORDINATES[tokenToMove.position].row},${MAIN_PATH_COORDINATES[tokenToMove.position].col}.`);
         moveSuccessful = true;
       } else if (tokenToMove.position >= 0 && tokenToMove.position < MAIN_PATH_LENGTH) { 
         let currentPosOnGlobalTrack = tokenToMove.position;
-        
         const homeEntry = playerConfig.homeEntryPathIndex;
         const start = playerConfig.pathStartIndex;
+        
         let stepsToHomeEntry;
-
-        if (start <= homeEntry) { 
-            if (currentPosOnGlobalTrack >= start && currentPosOnGlobalTrack <= homeEntry) {
-                stepsToHomeEntry = homeEntry - currentPosOnGlobalTrack;
-            } else { 
-                stepsToHomeEntry = MAIN_PATH_LENGTH; // effectively means it won't enter home stretch this turn
-            }
-        } else { // Path wraps around (e.g. red player)
-            if (currentPosOnGlobalTrack >= start || currentPosOnGlobalTrack <= homeEntry) {
-                 stepsToHomeEntry = (homeEntry - currentPosOnGlobalTrack + MAIN_PATH_LENGTH) % MAIN_PATH_LENGTH;
-            } else {
-                stepsToHomeEntry = MAIN_PATH_LENGTH;
-            }
+        if (currentPosOnGlobalTrack >= start) { // Token is on or after its starting point in current lap
+            stepsToHomeEntry = (homeEntry - currentPosOnGlobalTrack + MAIN_PATH_LENGTH) % MAIN_PATH_LENGTH;
+        } else { // Token has passed its start and is on the track before its starting point (e.g. red token on blue's arm)
+            stepsToHomeEntry = homeEntry - currentPosOnGlobalTrack;
         }
-
-        if (roll > stepsToHomeEntry) { 
-            const stepsIntoHomeStretch = roll - stepsToHomeEntry - 1; 
+        // If token is exactly on its home entry point or before it, and roll is enough to pass it
+        if (currentPosOnGlobalTrack === homeEntry || roll > stepsToHomeEntry) {
+            const stepsIntoHomeStretch = roll - stepsToHomeEntry -1; // -1 because landing on home entry is 0th step of home stretch
             if (stepsIntoHomeStretch < HOME_STRETCH_LENGTH) {
-                tokenToMove.position = 100 + stepsIntoHomeStretch; // Mark as in home stretch
-                 if (tokenToMove.position === 100 + HOME_STRETCH_LENGTH - 1) { // Exact land on finish
-                    tokenToMove.position = 200 + tokenToMove.id; // Mark as finished
+                tokenToMove.position = 100 + stepsIntoHomeStretch; 
+                 if (tokenToMove.position === 100 + HOME_STRETCH_LENGTH - 1) { 
+                    tokenToMove.position = 200 + tokenToMove.id; 
                     setGameMessage(`${playerToMove.name} moved token ${tokenId + 1} home!`);
                  } else {
                     setGameMessage(`${playerToMove.name} moved token ${tokenId + 1} into home stretch to S${stepsIntoHomeStretch}.`);
                  }
                  moveSuccessful = true;
             } else { 
-                setGameMessage(`${playerToMove.name} cannot move token ${tokenId+1}: overshot home stretch. Move stays on main path if possible.`);
-                // If overshot, but can still move on main path, calculate new main path position
-                tokenToMove.position = (currentPosOnGlobalTrack + roll) % MAIN_PATH_LENGTH;
-                setGameMessage(`${playerToMove.name} moved token ${tokenId + 1} from ${originalPosition === -1 ? "base" : originalPosition} to square ${tokenToMove.position}. Overshot home.`);
-                moveSuccessful = true; // still a valid move on main path
+                 tokenToMove.position = (currentPosOnGlobalTrack + roll) % MAIN_PATH_LENGTH;
+                 setGameMessage(`${playerToMove.name} moved token ${tokenId + 1} from ${originalPositionDisplay} to ${tokenToMove.position}. Overshot home.`);
+                 moveSuccessful = true;
             }
-        } else { // Stays on main path or lands exactly on home entry
+        } else { 
             tokenToMove.position = (currentPosOnGlobalTrack + roll) % MAIN_PATH_LENGTH;
-            setGameMessage(`${playerToMove.name} moved token ${tokenId + 1} from ${originalPosition === -1 ? "base" : originalPosition} to square ${tokenToMove.position}.`);
+            setGameMessage(`${playerToMove.name} moved token ${tokenId + 1} from ${originalPositionDisplay} to square ${tokenToMove.position}.`);
             moveSuccessful = true; 
         }
       } else if (tokenToMove.position >= 100 && tokenToMove.position < 200) { // Moving within home stretch
-        const currentHomeStretchPos = tokenToMove.position % 100;
+        const currentHomeStretchPos = tokenToMove.position % 100; // 0 to 4 for a 5-step stretch before home
         let newHomeStretchPos = currentHomeStretchPos + roll;
-        if (newHomeStretchPos === HOME_STRETCH_LENGTH -1) { // Exact land on finish
+        if (newHomeStretchPos === HOME_STRETCH_LENGTH -1) { 
           tokenToMove.position = 200 + tokenToMove.id;
           setGameMessage(`${playerToMove.name} moved token ${tokenId + 1} home!`);
           moveSuccessful = true;
-        } else if (newHomeStretchPos < HOME_STRETCH_LENGTH -1 ) { // Move within stretch
+        } else if (newHomeStretchPos < HOME_STRETCH_LENGTH -1 ) { 
           tokenToMove.position = 100 + newHomeStretchPos;
           setGameMessage(`${playerToMove.name} moved token ${tokenId + 1} in home stretch to S${newHomeStretchPos}.`);
           moveSuccessful = true;
-        } else { // Overshot final spot
+        } else { 
           setGameMessage(`${playerToMove.name} cannot move token ${tokenId+1}: overshot final home spot. No move.`);
           moveSuccessful = false; 
         }
@@ -453,38 +450,38 @@ export default function LudoPage() {
         }
 
         if (roll === 6) {
-          newPlayers[playerIdx] = { ...playerToMove, tokens: newPlayers[playerIdx].tokens, hasRolledSix: true }; 
+          newPlayers[playerIdx].hasRolledSix = true; // Keep six streak for another roll
           setGameMessage(prev => prev + ` ${playerToMove.name} rolled a 6 and gets another turn.`);
-          setDiceValue(null); 
+          setDiceValue(null); // Allow rolling again
         } else {
-          newPlayers[playerIdx] = { ...playerToMove, tokens: newPlayers[playerIdx].tokens, hasRolledSix: false, sixStreak: 0 };
-          passTurn(true); 
+          // newPlayers[playerIdx].hasRolledSix = false; // This is handled in passTurn
+          // newPlayers[playerIdx].sixStreak = 0;
+          passTurn(true); // Pass turn if not a 6
         }
       } else {
-        // If move wasn't successful but it was a 6, player should still get another roll.
-        if (roll === 6) {
-            newPlayers[playerIdx] = { ...playerToMove, tokens: newPlayers[playerIdx].tokens, hasRolledSix: true };
-            setDiceValue(null); 
-            setGameMessage(prev => prev + ` No valid move made with 6. ${playerToMove.name} gets to roll again.`);
+         // Move not successful
+        if (roll === 6) { // If it was a 6 but couldn't make a valid move (e.g. overshot home)
+            newPlayers[playerIdx].hasRolledSix = true; // Still gets another roll
+            setGameMessage(prev => prev + ` No valid move available with 6. ${playerToMove.name} rolls again.`);
+            setDiceValue(null);
         } else {
-            // If not a 6 and no move, pass turn
-             passTurn(true); 
+            passTurn(true); // No move and not a 6, pass turn
         }
       }
       return newPlayers;
     });
   };
 
-  const getTokenDisplayInfo = (token: Token): string => {
-    if (token.position === -1) return 'B'; 
-    if (token.position >= 200) return 'H'; 
-    if (token.position >= 100 && token.position < 200) return `S${token.position % 100}`; 
-    return `${token.position}`; 
+  const getTokenDisplayInfo = (token: Token): { text: string; onPath: boolean; pathIndex?: number } => {
+    if (token.position === -1) return { text: 'B', onPath: false };
+    if (token.position >= 200) return { text: 'H', onPath: false };
+    if (token.position >= 100 && token.position < 200) return { text: `S${token.position % 100}`, onPath: true, pathIndex: token.position };
+    return { text: `${token.position}`, onPath: true, pathIndex: token.position };
   };
 
- const getTokenForCell = (rowIndex: number, colIndex: number): Token[] => {
+  const getTokenForCell = (rowIndex: number, colIndex: number): Token[] => {
     const tokensOnThisCell: Token[] = [];
-    if (!players || players.length === 0) return tokensOnThisCell;
+    if (!players || players.length === 0 || gameState !== 'playing') return tokensOnThisCell;
 
     players.forEach(player => {
       const playerSpecificConfig = PLAYER_CONFIG[player.color];
@@ -494,69 +491,69 @@ export default function LudoPage() {
             if (baseSpot && baseSpot.row === rowIndex && baseSpot.col === colIndex) {
                 tokensOnThisCell.push(token);
             }
-        } else if (token.position === playerSpecificConfig.pathStartIndex) { // Token on start cell
-            if (playerSpecificConfig.startCell.row === rowIndex && playerSpecificConfig.startCell.col === colIndex) {
+        } else if (token.position >= 0 && token.position < MAIN_PATH_LENGTH) { // Token on main path
+            const mainPathCell = MAIN_PATH_COORDINATES[token.position];
+            if (mainPathCell && mainPathCell.row === rowIndex && mainPathCell.col === colIndex) {
+                tokensOnThisCell.push(token);
+            }
+        } else if (token.position >= 100 && token.position < 200) { // Token in home stretch
+            const homeStretchStep = token.position % 100; // 0 to 5
+            const homeStretchCell = HOME_STRETCH_COORDINATES[player.color][homeStretchStep];
+            if (homeStretchCell && homeStretchCell.row === rowIndex && homeStretchCell.col === colIndex) {
                 tokensOnThisCell.push(token);
             }
         }
-        // Add more logic here to map token.position (0-51 and 100-105) to specific (rowIndex, colIndex)
-        // This is the complex part for full board rendering.
       });
     });
     return tokensOnThisCell;
   };
 
   const getCellBackgroundColor = (rowIndex: number, colIndex: number): string => {
-    // Red House
-    if (rowIndex >= 0 && rowIndex <= 5 && colIndex >= 0 && colIndex <= 5) return PLAYER_CONFIG.red.baseClass + "/70";
-    // Green House
-    if (rowIndex >= 0 && rowIndex <= 5 && colIndex >= 9 && colIndex <= 14) return PLAYER_CONFIG.green.baseClass + "/70";
-    // Blue House
-    if (rowIndex >= 9 && rowIndex <= 5 && colIndex >= 0 && colIndex <= 5) return PLAYER_CONFIG.blue.baseClass + "/70"; // Typo fixed: rowIndex >= 9 && rowIndex <= 14
-    if (rowIndex >= 9 && rowIndex <= 14 && colIndex >= 0 && colIndex <= 5) return PLAYER_CONFIG.blue.baseClass + "/70";
-    // Yellow House
-    if (rowIndex >= 9 && rowIndex <= 14 && colIndex >= 9 && colIndex <= 14) return PLAYER_CONFIG.yellow.baseClass + "/70";
-    
-    // Center Home Area (Triangle)
-    if (rowIndex >= 6 && rowIndex <= 8 && colIndex >= 6 && colIndex <= 8) {
-      if (rowIndex === 7 && colIndex === 7) return "bg-primary/50"; // Center of home
-      if ((rowIndex === 6 && colIndex === 7) || (rowIndex === 7 && colIndex === 6) || (rowIndex === 8 && colIndex === 7) || (rowIndex === 7 && colIndex === 8 )) { // Arms of home
-        if (rowIndex === 6 && colIndex === 7) return PLAYER_CONFIG.green.baseClass + "/60"; // Green entry to home triangle
-        if (rowIndex === 7 && colIndex === 6) return PLAYER_CONFIG.red.baseClass + "/60";   // Red entry
-        if (rowIndex === 8 && colIndex === 7) return PLAYER_CONFIG.blue.baseClass + "/60";  // Blue entry
-        if (rowIndex === 7 && colIndex === 8) return PLAYER_CONFIG.yellow.baseClass + "/60"; // Yellow entry
+    // Player Houses
+    if ((rowIndex >= 0 && rowIndex <= 5 && colIndex >= 0 && colIndex <= 5) && !(rowIndex >=2 && rowIndex <=3 && colIndex >=2 && colIndex <=3 )) { // Red house area
+      if (PLAYER_CONFIG.red.houseCoords.some(hc => hc.row === rowIndex && hc.col === colIndex) || (rowIndex >=0 && rowIndex <=5 && colIndex >=0 && colIndex <=5 && !(rowIndex >=2 && rowIndex <=3 && colIndex >=2 && colIndex <=3) && (rowIndex <1 || rowIndex >4 || colIndex <1 || colIndex >4) )) {
+        return PLAYER_CONFIG.red.baseClass + "/60";
       }
-      return "bg-slate-300"; // Other parts of home triangle
+    }
+    if ((rowIndex >= 0 && rowIndex <= 5 && colIndex >= 9 && colIndex <= 14) && !(rowIndex >=2 && rowIndex <=3 && colIndex >=11 && colIndex <=12 )) { // Green house area
+       if (PLAYER_CONFIG.green.houseCoords.some(hc => hc.row === rowIndex && hc.col === colIndex) || (rowIndex >=0 && rowIndex <=5 && colIndex >=9 && colIndex <=14 && !(rowIndex >=2 && rowIndex <=3 && colIndex >=11 && colIndex <=12 ) && (rowIndex <1 || rowIndex >4 || colIndex <10 || colIndex >13))) {
+        return PLAYER_CONFIG.green.baseClass + "/60";
+      }
+    }
+    if ((rowIndex >= 9 && rowIndex <= 14 && colIndex >= 0 && colIndex <= 5) && !(rowIndex >=11 && rowIndex <=12 && colIndex >=2 && colIndex <=3 ) ) { // Blue house area
+       if (PLAYER_CONFIG.blue.houseCoords.some(hc => hc.row === rowIndex && hc.col === colIndex) || (rowIndex >=9 && rowIndex <=14 && colIndex >=0 && colIndex <=5 && !(rowIndex >=11 && rowIndex <=12 && colIndex >=2 && colIndex <=3 ) && (rowIndex <10 || rowIndex >13 || colIndex <1 || colIndex >4))) {
+        return PLAYER_CONFIG.blue.baseClass + "/60";
+      }
+    }
+    if ((rowIndex >= 9 && rowIndex <= 14 && colIndex >= 9 && colIndex <= 14) && !(rowIndex >=11 && rowIndex <=12 && colIndex >=11 && colIndex <=12 ) ) { // Yellow house area
+       if (PLAYER_CONFIG.yellow.houseCoords.some(hc => hc.row === rowIndex && hc.col === colIndex) || (rowIndex >=9 && rowIndex <=14 && colIndex >=9 && colIndex <=14 && !(rowIndex >=11 && rowIndex <=12 && colIndex >=11 && colIndex <=12 ) && (rowIndex <10 || rowIndex >13 || colIndex <10 || colIndex >13))) {
+        return PLAYER_CONFIG.yellow.baseClass + "/60";
+      }
+    }
+    
+    // Home Triangle
+    if (rowIndex >= 6 && rowIndex <= 8 && colIndex >= 6 && colIndex <= 8) {
+      // Center of home (actual destination)
+      if (HOME_STRETCH_COORDINATES.red[HOME_STRETCH_LENGTH-1].row === rowIndex && HOME_STRETCH_COORDINATES.red[HOME_STRETCH_LENGTH-1].col === colIndex) return PLAYER_CONFIG.red.baseClass + "/90";
+      if (HOME_STRETCH_COORDINATES.green[HOME_STRETCH_LENGTH-1].row === rowIndex && HOME_STRETCH_COORDINATES.green[HOME_STRETCH_LENGTH-1].col === colIndex) return PLAYER_CONFIG.green.baseClass + "/90";
+      if (HOME_STRETCH_COORDINATES.yellow[HOME_STRETCH_LENGTH-1].row === rowIndex && HOME_STRETCH_COORDINATES.yellow[HOME_STRETCH_LENGTH-1].col === colIndex) return PLAYER_CONFIG.yellow.baseClass + "/90";
+      if (HOME_STRETCH_COORDINATES.blue[HOME_STRETCH_LENGTH-1].row === rowIndex && HOME_STRETCH_COORDINATES.blue[HOME_STRETCH_LENGTH-1].col === colIndex) return PLAYER_CONFIG.blue.baseClass + "/90";
+      return "bg-primary/30"; // Neutral part of home triangle
     }
 
     // Home Stretch Paths
-    // Red Home Stretch (Vertical column 7, rows 1-5)
-    if (colIndex === 7 && rowIndex >= 1 && rowIndex <= 5) return PLAYER_CONFIG.red.baseClass + "/40";
-    // Green Home Stretch (Horizontal row 7, cols 9-13)
-    if (rowIndex === 7 && colIndex >= 9 && colIndex <= 13) return PLAYER_CONFIG.green.baseClass + "/40";
-    // Yellow Home Stretch (Vertical column 7, rows 9-13)
-    if (colIndex === 7 && rowIndex >= 9 && rowIndex <= 13) return PLAYER_CONFIG.yellow.baseClass + "/40";
-    // Blue Home Stretch (Horizontal row 7, cols 1-5)
-    if (rowIndex === 7 && colIndex >= 1 && colIndex <= 5) return PLAYER_CONFIG.blue.baseClass + "/40";
-
-    // Main Path Start Squares (adjacent to houses)
-    if (rowIndex === 6 && colIndex === 1) return PLAYER_CONFIG.red.baseClass + "/90";    // Red Start
-    if (rowIndex === 1 && colIndex === 8) return PLAYER_CONFIG.green.baseClass + "/90";  // Green Start (corrected from col 6 to 8)
-    if (rowIndex === 1 && colIndex === 6) return PLAYER_CONFIG.green.baseClass + "/90"; // Green Start actual
-    if (rowIndex === 8 && colIndex === 13) return PLAYER_CONFIG.yellow.baseClass + "/90"; // Yellow Start
-    if (rowIndex === 13 && colIndex === 8) return PLAYER_CONFIG.blue.baseClass + "/90";   // Blue Start (corrected from col 6 to 8)
-    if (rowIndex === 13 && colIndex === 6) return PLAYER_CONFIG.blue.baseClass + "/90"; // Blue Start actual
-
-
-    // Main path squares (outer 3 rows/cols, excluding corners and home stretches)
-    const isOuterPath = (
-      (rowIndex >= 0 && rowIndex <=5 && (colIndex === 6 || colIndex === 7 || colIndex === 8)) || // Top block columns
-      (rowIndex >= 9 && rowIndex <=14 && (colIndex === 6 || colIndex === 7 || colIndex === 8)) || // Bottom block columns
-      (colIndex >= 0 && colIndex <=5 && (rowIndex === 6 || rowIndex === 7 || rowIndex === 8)) || // Left block rows
-      (colIndex >= 9 && colIndex <=14 && (rowIndex === 6 || rowIndex === 7 || rowIndex === 8))    // Right block rows
-    );
-
-    if(isOuterPath) return "bg-slate-50";
+    for (const color of PLAYER_COLORS) {
+        for (let i = 0; i < HOME_STRETCH_LENGTH -1; i++) { // Exclude the final home spot itself
+            const cell = HOME_STRETCH_COORDINATES[color][i];
+            if (cell.row === rowIndex && cell.col === colIndex) return PLAYER_CONFIG[color].baseClass + "/40";
+        }
+    }
+    
+    // Main Path Start Squares (are also part of MAIN_PATH_COORDINATES)
+    // These will be colored by the main path logic below, star indicates start visually
+    if (MAIN_PATH_COORDINATES.some(p => p.row === rowIndex && p.col === colIndex)) {
+        return "bg-slate-50"; // Standard path color
+    }
 
     return (rowIndex + colIndex) % 2 === 0 ? "bg-slate-100/70" : "bg-slate-200/70"; // Default for unused cells
   };
@@ -601,7 +598,7 @@ export default function LudoPage() {
                       onValueChange={(value) => setSelectedNumPlayers(parseInt(value))} 
                       className="mt-2 grid grid-cols-3 gap-4"
                   >
-                    {(selectedMode === 'offline' ? [2, 3, 4] : [2, 4]).map(num => (
+                    {(selectedMode === 'offline' ? [2, 3, 4] : [2, 4]).map(num => ( // Allow 2, 3, 4 for offline
                       <div key={num}>
                         <RadioGroupItem value={num.toString()} id={`${selectedMode}-${num}`} className="peer sr-only" />
                         <Label htmlFor={`${selectedMode}-${num}`} className="flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer">
@@ -630,27 +627,33 @@ export default function LudoPage() {
 
               {selectedMode === 'offline' && selectedNumPlayers && offlinePlayerNames.length > 0 && (
                   <div className="space-y-4">
-                      <Label className="text-lg font-medium">Player Names</Label>
-                      {offlinePlayerNames.slice(0, selectedNumPlayers).map((name, index) => (
-                          <div key={index} className="flex items-end space-x-4">
+                      <Label className="text-lg font-medium">Player Details</Label>
+                      {Array.from({ length: selectedNumPlayers }).map((_, index) => (
+                          <div key={index} className="flex items-end space-x-2 sm:space-x-4">
                               <div className="space-y-1 flex-grow">
                                   <Label htmlFor={`offlinePlayerName-${index}`}>Player {index + 1} Name</Label>
                                   <Input
                                       id={`offlinePlayerName-${index}`}
-                                      value={name}
+                                      value={offlinePlayerNames[index] || ''}
                                       onChange={(e) => handleOfflinePlayerNameChange(index, e.target.value)}
-                                      placeholder={`Enter name for Player ${index + 1}`}
+                                      placeholder={`Name for Player ${index + 1}`}
                                   />
                               </div>
                               <div className="space-y-1">
                                   <Label htmlFor={`offlinePlayerColor-${index}`}>Color</Label>
-                                   <Select value={selectedColors[index] || ''} onValueChange={(value) => handleColorChange(index, value as PlayerColor)}>
-                                      <SelectTrigger id={`offlinePlayerColor-${index}`} className="w-[130px]">
-                                          <SelectValue placeholder="Select Color" />
+                                   <Select value={selectedOfflineColors[index] || ''} onValueChange={(value) => handleColorChange(index, value as PlayerColor)}>
+                                      <SelectTrigger id={`offlinePlayerColor-${index}`} className="w-[100px] sm:w-[130px]">
+                                          <SelectValue placeholder="Color" />
                                       </SelectTrigger>
                                       <SelectContent>
                                           {PLAYER_COLORS.map((color) => (
-                                              <SelectItem key={color} value={color} disabled={selectedColors.includes(color) && selectedColors[index] !== color}>{PLAYER_CONFIG[color].name}</SelectItem>
+                                              <SelectItem 
+                                                key={color} 
+                                                value={color} 
+                                                disabled={selectedOfflineColors.includes(color) && selectedOfflineColors[index] !== color}
+                                              >
+                                                {PLAYER_CONFIG[color].name}
+                                              </SelectItem>
                                           ))}
                                       </SelectContent>
                                   </Select>
@@ -659,7 +662,18 @@ export default function LudoPage() {
                       ))}
                   </div>
               )}
-              <Button onClick={handleStartGame} disabled={!selectedMode || !selectedNumPlayers || (selectedMode === 'ai' && humanPlayerName.trim() === "") || (selectedMode === 'offline' && offlinePlayerNames.slice(0,selectedNumPlayers).some(name => name.trim() === ""))} className="w-full text-lg py-3 bg-accent hover:bg-accent/90 text-accent-foreground">
+              <Button 
+                onClick={handleStartGame} 
+                disabled={!selectedMode || !selectedNumPlayers || 
+                    (selectedMode === 'ai' && humanPlayerName.trim() === "") || 
+                    (selectedMode === 'offline' && (
+                        offlinePlayerNames.slice(0,selectedNumPlayers).some(name => name.trim() === "") || 
+                        selectedOfflineColors.slice(0,selectedNumPlayers).some(c => c === null) ||
+                        new Set(selectedOfflineColors.slice(0,selectedNumPlayers).filter(c=>c!==null)).size !== selectedOfflineColors.slice(0,selectedNumPlayers).filter(c=>c!==null).length
+                    ))
+                } 
+                className="w-full text-lg py-3 bg-accent hover:bg-accent/90 text-accent-foreground"
+               >
                 Start Game
               </Button>
             </CardContent>
@@ -673,50 +687,48 @@ export default function LudoPage() {
     <>
       <title>Ludo Game | Shravya Playhouse</title>
       <meta name="description" content="Play the classic game of Ludo online." />
-      <div className="relative flex flex-col items-center justify-center min-h-screen w-full p-2 sm:p-4 bg-gradient-to-br from-primary/30 to-background overflow-hidden">
+      <div className="relative flex flex-col items-center justify-start min-h-screen w-full p-2 sm:p-4 bg-gradient-to-br from-primary/30 to-background overflow-x-hidden">
         
         {/* Player Info Panels - Absolutely Positioned */}
         {players.map((p, idx) => {
           const playerSpecificConfig = PLAYER_CONFIG[p.color];
+          let panelPositionClass = playerSpecificConfig.cornerPosition;
+
+          if (players.length === 2) {
+            if (idx === 0) panelPositionClass = PLAYER_CONFIG.red.cornerPosition; // Player 1 (Red)
+            if (idx === 1) panelPositionClass = PLAYER_CONFIG.yellow.cornerPosition; // Player 2 (Green, visually in Yellow's spot)
+          }
+          
           const isCurrentPlayerTurn = currentPlayerIndex === idx;
-          let DiceIconToRender = Dice6;
+          let DiceIconToRender = Dice6; // Default
           let diceButtonStyling = "text-muted-foreground opacity-50";
           let isDiceButtonClickable = false;
 
           if (isCurrentPlayerTurn && currentPlayer) {
-            if (isRolling && diceValue) {
+            if (isRolling && diceValue) { // Mid-roll animation
               DiceIconToRender = DICE_ICONS[diceValue - 1] || Dice6;
               diceButtonStyling = "text-muted-foreground animate-spin";
-            } else if (diceValue) {
+            } else if (diceValue) { // Roll finished, showing result
               DiceIconToRender = DICE_ICONS[diceValue - 1] || Dice6;
               diceButtonStyling = cn("animate-gentle-bounce", playerSpecificConfig.textClass);
-            } else {
+            } else { // Ready to roll
               DiceIconToRender = Dice6;
               diceButtonStyling = cn("cursor-pointer hover:opacity-75", playerSpecificConfig.textClass);
             }
-            if (!currentPlayer.isAI && gameState !== 'gameOver' && !isRolling) {
-              if (diceValue === null || currentPlayer.hasRolledSix) {
-                isDiceButtonClickable = true;
-              }
+            // Only human current player can click to roll IF diceValue is null (needs to roll) OR hasRolledSix (gets another roll)
+            if (!currentPlayer.isAI && gameState !== 'gameOver' && !isRolling && (diceValue === null || currentPlayer.hasRolledSix)) {
+              isDiceButtonClickable = true;
             }
-          } else {
+          } else { // Not current player's turn
              DiceIconToRender = Dice6; 
              diceButtonStyling = "text-muted-foreground opacity-30";
           }
 
           return (
             <div key={p.color} className={cn(
-              "absolute p-2 sm:p-3 rounded-lg shadow-xl border-2 border-primary/50 backdrop-blur-sm bg-card/80 w-32 sm:w-40",
-              players.length === 2
-                ? (p.color === 'red'
-                  ? "top-4 left-4" // Position Red top-left
-                  : p.color === 'green'
-                    ? "bottom-4 right-4" // Position Green bottom-right
-                    : playerSpecificConfig.cornerPosition // Fallback for other colors if somehow present in 2-player
-                )
-                : playerSpecificConfig.cornerPosition // Use default for other player counts
+              "absolute p-2 sm:p-3 rounded-lg shadow-xl border-2 border-primary/50 backdrop-blur-sm bg-card/80 w-32 sm:w-40 z-10",
+              panelPositionClass
             )}>
-
               <p className={cn("text-xs sm:text-sm font-semibold truncate text-center mb-1 sm:mb-2", playerSpecificConfig.textClass)} title={p.name}>
                 {p.name} {p.isAI && <Cpu size={14} className="inline ml-1"/>}
               </p>
@@ -725,6 +737,7 @@ export default function LudoPage() {
                   size="icon"
                   className={cn(
                     "border-2 border-dashed rounded-lg shadow-sm mx-auto flex items-center justify-center",
+                    // Current human player's dice button is larger
                     isCurrentPlayerTurn && !p.isAI ? "h-10 w-10 sm:h-12 sm:w-12" : "h-8 w-8 sm:h-10 sm:w-10",
                     isDiceButtonClickable 
                         ? cn("cursor-pointer", playerSpecificConfig.baseClass + "/30", `hover:${playerSpecificConfig.baseClass}/50`) 
@@ -743,7 +756,7 @@ export default function LudoPage() {
         })}
 
         {/* Central Game Area */}
-        <div className="flex flex-col items-center justify-center z-0">
+        <div className="flex flex-col items-center justify-center z-0 mt-16 sm:mt-24 md:mt-32 mb-10 w-full"> {/* Added margin top to avoid overlap with top panels */}
             <div className="mb-2 sm:mb-4 p-2 sm:p-3 rounded-lg shadow-md bg-card/90 backdrop-blur-sm max-w-md text-center">
                 <h2 className="text-lg sm:text-xl font-semibold text-primary">
                     {gameState === 'gameOver' ? "Game Over!" : (currentPlayer ? `Turn: ${currentPlayer.name}` : "Loading...")}
@@ -752,7 +765,7 @@ export default function LudoPage() {
             </div>
 
             <div
-              className="grid gap-px border-2 border-neutral-700 rounded overflow-hidden shadow-lg bg-neutral-300 w-[calc(100vw-4rem)] sm:w-[calc(100vw-8rem)] md:w-auto max-w-[600px] max-h-[600px] aspect-square"
+              className="grid gap-px border-2 border-neutral-700 rounded overflow-hidden shadow-lg bg-neutral-300 w-[calc(100vw-2rem)] sm:w-[calc(100vw-4rem)] md:w-auto max-w-[540px] max-h-[540px] sm:max-w-[600px] sm:max-h-[600px] aspect-square" // Adjusted max-w for slightly smaller board
               style={{ gridTemplateColumns: `repeat(${BOARD_GRID_SIZE}, minmax(0, 1fr))` }}
               aria-label="Ludo board"
             >
@@ -761,6 +774,9 @@ export default function LudoPage() {
                 const colIndex = cellFlatIndex % BOARD_GRID_SIZE;
                 const tokensOnThisCell = getTokenForCell(rowIndex, colIndex);
                 const cellBg = getCellBackgroundColor(rowIndex, colIndex);
+                const pathIndex = MAIN_PATH_COORDINATES.findIndex(p => p.row === rowIndex && p.col === colIndex);
+                const isSafe = SAFE_SQUARE_INDICES.includes(pathIndex);
+                const isStart = Object.values(PLAYER_CONFIG).some(pc => pc.pathStartIndex === pathIndex);
                 
                 return (
                   <div
@@ -771,7 +787,10 @@ export default function LudoPage() {
                       "border-px border-neutral-400/30" 
                     )}
                   >
-                    {tokensOnThisCell.map((token, idx) => (
+                    {isSafe && !isStart && <Star size={12} className="absolute text-yellow-500/70 opacity-70 z-0"/>}
+                    {isStart && <Star size={16} className={cn("absolute z-0 opacity-80", PLAYER_CONFIG[PLAYER_COLORS.find(c => PLAYER_CONFIG[c].pathStartIndex === pathIndex)!].textClass)}/>}
+
+                    {tokensOnThisCell.slice(0, 2).map((token, idx) => ( // Display max 2 tokens visually, then a count
                          <button
                             key={token.color + token.id}
                             onClick={() => currentPlayer && !currentPlayer.isAI && diceValue && handleTokenClick(PLAYER_COLORS.indexOf(token.color), token.id)}
@@ -782,42 +801,41 @@ export default function LudoPage() {
                                 !diceValue || 
                                 currentPlayer.isAI || 
                                 gameState === 'gameOver' ||
-                                (token.position === -1 && diceValue !==6) || 
-                                token.position >=200 || 
-                                (diceValue && !getMovableTokens(currentPlayer,diceValue).some(mt => mt.id === token.id && mt.color === token.color)) || 
-                                (diceValue === 6 && currentPlayer.tokens.some(t => t.position === -1) && token.position !== -1) 
+                                !getMovableTokens(currentPlayer,diceValue).some(mt => mt.id === token.id && mt.color === token.color) ||
+                                (diceValue === 6 && currentPlayer.tokens.some(t => t.position === -1 && getMovableTokens(currentPlayer, diceValue).some(m_t => m_t.position === -1)) && token.position !== -1 )
+
                             }
                             className={cn(
-                                "w-3/4 h-3/4 rounded-full flex items-center justify-center border-2 hover:ring-2 hover:ring-offset-1 absolute shadow-md",
+                                "rounded-full flex items-center justify-center border-2 hover:ring-2 hover:ring-offset-1 absolute shadow-md",
                                 PLAYER_CONFIG[token.color].baseClass, 
                                 (currentPlayer && PLAYER_COLORS.indexOf(token.color) === currentPlayerIndex && diceValue && !currentPlayer.isAI && 
-                                 getMovableTokens(currentPlayer,diceValue).some(mt => mt.id === token.id && mt.color === token.color) && 
-                                 !(diceValue === 6 && currentPlayer.tokens.some(t => t.position === -1) && token.position !== -1) 
+                                 getMovableTokens(currentPlayer,diceValue).some(mt => mt.id === token.id && mt.color === token.color) &&
+                                  !(diceValue === 6 && currentPlayer.tokens.some(t => t.position === -1 && getMovableTokens(currentPlayer, diceValue).some(m_t => m_t.position === -1)) && token.position !== -1 )
                                 ) ? "cursor-pointer ring-2 ring-offset-1 ring-black" : "cursor-default", 
-                                "text-white font-bold text-[calc(min(2vw,1rem))] z-10" // Responsive text size
+                                "text-white font-bold text-[calc(min(1.5vw,0.8rem))] z-10" 
                             )}
                             style={{ 
-                                transform: tokensOnThisCell.length > 1 ? (idx === 0 ? 'translateX(-15%) translateY(-15%) scale(0.8)' : 'translateX(15%) translateY(15%) scale(0.8)') : 'scale(0.9)',
-                                width: tokensOnThisCell.length > 1 ? '60%' : '70%',
-                                height: tokensOnThisCell.length > 1 ? '60%' : '70%',
+                                transform: tokensOnThisCell.length > 1 ? (idx === 0 ? 'translateX(-20%) translateY(-20%) scale(0.75)' : 'translateX(20%) translateY(20%) scale(0.75)') : 'scale(0.85)',
+                                width: tokensOnThisCell.length > 1 ? '65%' : '75%',
+                                height: tokensOnThisCell.length > 1 ? '65%' : '75%',
                             }}
-                            aria-label={`Token ${token.color} ${token.id + 1} at ${getTokenDisplayInfo(token)}`}
+                            aria-label={`Token ${token.color} ${token.id + 1} at ${getTokenDisplayInfo(token).text}`}
                             >
-                            {/* Display token ID or a small icon if preferred over blank circles */}
-                            {/* {token.id + 1}  */}
+                            {/* Token ID or icon can go here if desired */}
                         </button>
                     ))}
+                    {tokensOnThisCell.length > 2 && (
+                        <span className="absolute bottom-0 right-0 text-xs bg-black/50 text-white px-1 rounded-tl-md z-20">
+                            +{tokensOnThisCell.length -2}
+                        </span>
+                    )}
                   </div>
                 );
               })}
             </div>
-             <p className="mt-2 text-center text-xs text-muted-foreground max-w-md">
-              Note: Full token path rendering on the grid is a future enhancement. Current visual is simplified (shows base & start positions). Click tokens on board to move if eligible.
-            </p>
         </div>
 
-        {/* Reset Button - Example Positioning */}
-        <div className="absolute bottom-4 right-1/2 translate-x-1/2 sm:right-4 sm:translate-x-0 z-20">
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20">
              <Button onClick={resetGame} variant="outline" className="shadow-lg bg-card/80 hover:bg-card">
               <RotateCcw className="mr-2 h-4 w-4" /> Reset Game
             </Button>
