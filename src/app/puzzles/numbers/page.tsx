@@ -13,6 +13,7 @@ import { MATH_PUZZLE_TYPES, type MathPuzzleType } from "@/lib/constants";
 import GuessTheNumberGame from "@/components/number-puzzles/GuessTheNumberGame";
 import ArithmeticChallengeGame from "@/components/number-puzzles/ArithmeticChallengeGame";
 import NumberSequenceGame from "@/components/number-puzzles/NumberSequenceGame";
+import MissingNumberGame from "@/components/number-puzzles/MissingNumberGame"; // Import new component
 import PlaceholderPuzzleGame from "@/components/number-puzzles/PlaceholderPuzzleGame";
 
 // Client component to inject metadata
@@ -89,8 +90,11 @@ export default function NumberPuzzlesPage() {
         {currentView === "numberSequence" && (
           <NumberSequenceGame onBack={onBackToSelect} />
         )}
+        {currentView === "missingNumber" && ( // Add this case
+          <MissingNumberGame onBack={onBackToSelect} />
+        )}
         {selectedPuzzleDetails && 
-         !["guessTheNumber", "arithmeticChallenge", "numberSequence"].includes(currentView) && (
+         !["guessTheNumber", "arithmeticChallenge", "numberSequence", "missingNumber"].includes(currentView) && ( // Add "missingNumber" here too
           <PlaceholderPuzzleGame puzzle={selectedPuzzleDetails} onBack={onBackToSelect} />
         )}
          {!selectedPuzzleDetails && currentView !== "selectPuzzle" && (
@@ -105,3 +109,4 @@ export default function NumberPuzzlesPage() {
     </>
   );
 }
+
