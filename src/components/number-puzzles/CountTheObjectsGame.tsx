@@ -45,9 +45,29 @@ export default function CountTheObjectsGame({ onBack }: CountTheObjectsGameProps
   const [isGameOver, setIsGameOver] = useState<boolean>(false);
   const { toast } = useToast();
 
-  const generateProblem = useCallback((): CountTheObjectsProblem => {
-    const randomIconIndex = Math.floor(Math.random() * OBJECT_ICONS.length);
-    const selectedObject = OBJECT_ICONS[randomIconIndex];
+  const [usedIconsInCurrentCycle, setUsedIconsInCurrentCycle] = useState<string[]>([]);
+
+  const generateProblemInternal = useCallback((iconsToExclude: string[]): CountTheObjectsProblem => {
+    let R_OBJECT_ICONS = OBJECT_ICONS.filter(icon => !iconsToExclude.includes(icon.name));
+
+    if (R_OBJECT_ICONS.length === 0 && OBJECT_ICONS.length > 0) {
+      R_OBJECT_ICONS = OBJECT_ICONS; // Allow picking any icon again if all have been used in this cycle
+    }
+    
+    if (R_OBJECT_ICONS.length === 0) {
+        const fallbackIcon = { name: "HelpCircle", Icon: HelpCircle, color: "text-gray-500" };
+        console.warn("No icons available for problem generation (this should not happen if OBJECT_ICONS is populated). Using fallback.");
+        return {
+            id: `cto-fallback-${Date.now()}`,
+            ObjectIcon: fallbackIcon.Icon,
+            iconName: fallbackIcon.name,
+            iconColor: fallbackIcon.color,
+            count: 1,
+        };
+    }
+
+    const randomIconIndex = Math.floor(Math.random() * R_OBJECT_ICONS.length);
+    const selectedObject = R_OBJECT_ICONS[randomIconIndex];
     const count = Math.floor(Math.random() * (MAX_OBJECTS - MIN_OBJECTS + 1)) + MIN_OBJECTS;
 
     return {
@@ -59,23 +79,65 @@ export default function CountTheObjectsGame({ onBack }: CountTheObjectsGameProps
     };
   }, []);
 
+
   const loadNewProblem = useCallback(() => {
-    const newProblem = generateProblem();
+    let iconsToFilter = usedIconsInCurrentCycle;
+    let nextUsedIcons = [...usedIconsInCurrentCycle];
+
+    if (usedIconsInCurrentCycle.length >= OBJECT_ICONS.length && OBJECT_ICONS.length > 0) {
+      // All unique icons shown, reset cycle
+      nextUsedIcons = [];
+      iconsToFilter = []; 
+    }
+
+    const newProblem = generateProblemInternal(iconsToFilter);
     setCurrentProblem(newProblem);
+    
+    // Add current problem's icon to the new list of used icons for the cycle
+    // If the cycle was just reset (nextUsedIcons is empty), this starts a new list.
+    setUsedIconsInCurrentCycle([...nextUsedIcons, newProblem.iconName]);
+    
     setUserAnswer("");
     setFeedback(null);
-  }, [generateProblem]);
+  }, [usedIconsInCurrentCycle, generateProblemInternal]);
 
   const resetGame = useCallback(() => {
     setScore(0);
     setQuestionsAnswered(0);
     setIsGameOver(false);
-    loadNewProblem();
-  }, [loadNewProblem]);
+    setFeedback(null);
+    setUserAnswer("");
+    setUsedIconsInCurrentCycle([]); // Reset for the new game
+    // loadNewProblem will be called by the useEffect below due to state changes
+  }, []);
 
+  // Effect for initial game load and subsequent problem loads after reset or question answered
+  useEffect(() => {
+    if (!isGameOver && (questionsAnswered === 0 || (questionsAnswered > 0 && questionsAnswered < QUESTIONS_PER_ROUND))) {
+        // Only load if not game over and (it's the first question OR it's an intermediate question)
+        // This condition prevents loading a new problem after the last question before game over message is fully processed.
+        if (currentProblem === null || feedback !== null || questionsAnswered === 0) {
+            // This complex condition ensures we only load a new problem when truly needed:
+            // - Initial load (currentProblem is null)
+            // - After feedback is processed (feedback is not null, indicating previous question completed)
+            // - Explicit first question (questionsAnswered is 0) - covered by currentProblem === null for initial
+            if(questionsAnswered === 0 && !currentProblem){ // Initial very first load
+                 loadNewProblem();
+            } else if (feedback !== null && !isGameOver) { // Subsequent loads after an answer
+                 loadNewProblem();
+            }
+        }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [questionsAnswered, isGameOver, feedback]); // Key dependencies that trigger problem loading logic
+
+
+  // Effect for initial setup (calls resetGame once on mount)
   useEffect(() => {
     resetGame();
-  }, [resetGame]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
 
   const handleSubmitAnswer = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -100,16 +162,16 @@ export default function CountTheObjectsGame({ onBack }: CountTheObjectsGameProps
       toast({ variant: "destructive", title: "Incorrect!", description: `The correct count was ${currentProblem.count}.` });
     }
     
-    setFeedback(currentFeedbackMsg);
-    const newQuestionsAnswered = questionsAnswered + 1;
+    setFeedback(currentFeedbackMsg); // Set feedback immediately
 
     setTimeout(() => {
-      setQuestionsAnswered(newQuestionsAnswered);
+      const newQuestionsAnswered = questionsAnswered + 1;
       if (newQuestionsAnswered >= QUESTIONS_PER_ROUND) {
         setIsGameOver(true);
+        // Update feedback directly for game over, don't rely on another setFeedback in this path
         setFeedback(isCorrect ? `Correct! Final Score: ${score + 1}/${QUESTIONS_PER_ROUND}` : `Not quite. There were ${currentProblem.count} ${currentProblem.iconName.toLowerCase()}s. Final Score: ${score}/${QUESTIONS_PER_ROUND}`);
       } else {
-        loadNewProblem();
+        setQuestionsAnswered(newQuestionsAnswered); // This will trigger the useEffect to load a new problem
       }
     }, isCorrect ? 1500 : 3000);
   };
@@ -127,7 +189,7 @@ export default function CountTheObjectsGame({ onBack }: CountTheObjectsGameProps
           </Button>
         </div>
         <CardDescription className="text-center text-md text-foreground/80 pt-2">
-          How many objects do you see? Score: {score}/{QUESTIONS_PER_ROUND}
+          How many objects do you see? Score: {score}/{QUESTIONS_PER_ROUND} (Question: {Math.min(questionsAnswered + 1, QUESTIONS_PER_ROUND)})
         </CardDescription>
       </CardHeader>
       <CardContent className="p-6 space-y-6">
@@ -168,6 +230,7 @@ export default function CountTheObjectsGame({ onBack }: CountTheObjectsGameProps
                   placeholder="Enter your count"
                   className="text-base"
                   disabled={isGameOver || !!feedback}
+                  autoFocus
                 />
               </div>
               <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isGameOver || !!feedback || !userAnswer.trim()}>
@@ -195,3 +258,4 @@ export default function CountTheObjectsGame({ onBack }: CountTheObjectsGameProps
     </Card>
   );
 }
+
