@@ -9,9 +9,9 @@ interface CustomChatIconProps {
   className?: string;
   /**
    * The path to your icon in the `public` folder or a remote URL.
-   * IMPORTANT: Place your `custom-chat-icon.png` (or other named PNG)
-   * in the `public/icons/` directory for local usage.
-   * Example: If your icon is at `public/icons/my-chat-avatar.png`,
+   * IMPORTANT: Place your `custom-chat-icon.png` in the `public/images/` directory
+   * for local usage.
+   * Example: If your icon is at `public/images/my-chat-avatar.png`,
    * then this prop should be `/icons/my-chat-avatar.png`.
    */
   src?: string;
@@ -23,7 +23,7 @@ const CustomChatIcon = ({
   size = 24,
   className,
   // Default src uses a placeholder.
-  // For a local icon, ensure `public/icons/custom-chat-icon.png` exists.
+  // For a local icon, ensure `public/images/custom-chat-icon.png` exists.
   src = 'https://placehold.co/64x64.png',
   alt = 'Chat Icon',
   'data-ai-hint': dataAiHint = 'chatbot avatar', // Default hint

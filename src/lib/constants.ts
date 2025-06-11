@@ -125,14 +125,14 @@ export const PUZZLE_TYPES: PuzzleType[] = [
 // For example, if your image is in public/images/avatars/avatar_sun.png,
 // the src should be "/images/avatars/avatar_sun.png"
 export const AVATARS: { src: string; alt: string; hint: string }[] = [
-  { src: '/images/avatars/avatar_sun.png', alt: 'Sun avatar', hint: 'sun happy' },
-  { src: '/images/avatars/avatar_robot.png', alt: 'Robot avatar', hint: 'robot friendly' },
-  { src: '/images/avatars/avatar_star.png', alt: 'Star avatar', hint: 'star cute' },
-  { src: '/images/avatars/avatar_cat_playful.png', alt: 'Playful Cat avatar', hint: 'cat playful' },
-  { src: '/images/avatars/avatar_dog_loyal.png', alt: 'Loyal Dog avatar', hint: 'dog loyal' },
-  { src: '/images/avatars/avatar_alien_friendly.png', alt: 'Friendly Alien avatar', hint: 'alien space' },
-  { src: '/images/avatars/avatar_boy_modern.png', alt: 'Modern Boy avatar', hint: 'boy modern' },
-  { src: '/images/avatars/avatar_girl_modern.png', alt: 'Modern Girl avatar', hint: 'girl modern' },
+  { src: '/avatar_sun.png', alt: 'Sun avatar', hint: 'sun happy' },
+  { src: '/avatar_robot.png', alt: 'Robot avatar', hint: 'robot friendly' },
+  { src: '/avatar_star.png', alt: 'Star avatar', hint: 'star cute' },
+  { src: '/avatar_cat_playful.png', alt: 'Playful Cat avatar', hint: 'cat playful' },
+  { src: '/avatar_dog_loyal.png', alt: 'Loyal Dog avatar', hint: 'dog loyal' },
+  { src: '/avatar_alien_friendly.png', alt: 'Friendly Alien avatar', hint: 'alien space' },
+  { src: '/avatar_boy_modern.png', alt: 'Modern Boy avatar', hint: 'boy modern' },
+  { src: '/avatar_girl_modern.png', alt: 'Modern Girl avatar', hint: 'girl modern' },
 ];
 
 export interface NavItem {

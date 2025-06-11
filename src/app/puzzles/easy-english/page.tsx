@@ -9,6 +9,7 @@ import { BookMarked, ArrowLeft, Lightbulb, Sparkles, XCircle, CheckCircle, Rotat
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { searchImages } from "../../../services/pixabay";
 
 interface PuzzleItemBase {
   id: string;
@@ -143,7 +144,7 @@ export default function EasyEnglishPuzzlePage() {
 
   const MAX_QUESTIONS = 5;
 
-  const loadNextPuzzle = useCallback(() => {
+  const loadNextPuzzle = useCallback(async () => {
     if (questionsAnswered >= MAX_QUESTIONS) {
       setFeedback({ message: `Game Over! Your final score: ${score}/${MAX_QUESTIONS}`, type: "info" });
       setCurrentPuzzle(null);
@@ -154,19 +155,50 @@ export default function EasyEnglishPuzzlePage() {
     const availablePuzzles = PUZZLE_DATA.filter(p => p.id !== currentPuzzleIdToAvoid);
     const puzzlePool = availablePuzzles.length > 0 ? availablePuzzles : PUZZLE_DATA;
     const nextPuzzle = puzzlePool[Math.floor(Math.random() * puzzlePool.length)];
+    
+    const apiKey = process.env.NEXT_PUBLIC_PIXABAY_API_KEY;
+    let imageSrc = nextPuzzle.imageSrc; // Default to hardcoded image
+    let imageAlt = nextPuzzle.imageAlt; // Default to hardcoded alt
 
-    setCurrentPuzzle(nextPuzzle);
+    let category = undefined;
+    if (nextPuzzle.hint.includes("animal")) {
+      category = "animals";
+    } else if (nextPuzzle.hint.includes("fruit") || nextPuzzle.hint.includes("food")) {
+      category = "food";
+    } else if (nextPuzzle.hint.includes("sky") || nextPuzzle.hint.includes("nature")) {
+      category = "nature";
+    }
+    if (apiKey) {
+
+      try {
+        const images = await searchImages(nextPuzzle.hint, apiKey, { category });
+        if (images && images.length > 0) {
+          // Use the first image from Pixabay
+          imageSrc = images[0].webformatURL;
+          imageAlt = images[0].tags; // Pixabay provides tags
+        } else {
+           console.warn(`No images found on Pixabay for hint: ${nextPuzzle.hint}. Using fallback image.`);
+        }
+      } catch (error) {
+        console.error("Error fetching image from Pixabay:", error);
+        console.warn(`Using fallback image for hint: ${nextPuzzle.hint} due to API error.`);
+      }
+    } else {
+       console.warn("Pixabay API key not set. Using fallback image.");
+    }
+    setCurrentPuzzle({...nextPuzzle, imageSrc, imageAlt});
     setShuffledOptions(shuffleArray(nextPuzzle.options));
-    setFeedback(null);
     setIsAnswered(false);
-  }, [questionsAnswered, score, currentPuzzle, MAX_QUESTIONS]);
+    setFeedback(null); // Clear previous feedback
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [questionsAnswered, score, MAX_QUESTIONS]); // currentPuzzle removed from deps to avoid potential loops if it contains complex objects that change identity. Logic relies on questionsAnswered.
 
   useEffect(() => {
     if (questionsAnswered === 0) {
       loadNextPuzzle();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [questionsAnswered, MAX_QUESTIONS]);
+  }, [questionsAnswered, MAX_QUESTIONS]); // loadNextPuzzle removed to break potential cycle as per error diagnosis.
 
   const handleAnswer = (selectedOption: string) => {
     if (!currentPuzzle || isAnswered) return;
@@ -186,8 +218,10 @@ export default function EasyEnglishPuzzlePage() {
       correctDetail = `The correct letter was "${currentPuzzle.correctLetter}". The word is "${currentPuzzle.fullWord}".`;
     }
 
+    let newScore = score;
     if (isCorrect) {
-      setScore((prevScore) => prevScore + 1);
+      newScore = score + 1;
+      setScore(newScore);
       setFeedback({ message: "Correct! Well done!", type: "correct" });
       toast({
         title: "Great Job!",
@@ -210,8 +244,7 @@ export default function EasyEnglishPuzzlePage() {
       if (newQuestionsAnswered < MAX_QUESTIONS) {
         loadNextPuzzle();
       } else {
-        const finalScore = isCorrect ? score + 1 : score;
-        setFeedback({ message: `Game Over! Your final score: ${finalScore}/${MAX_QUESTIONS}`, type: "info" });
+        setFeedback({ message: `Game Over! Your final score: ${newScore}/${MAX_QUESTIONS}`, type: "info" });
         setCurrentPuzzle(null);
       }
     }, isCorrect ? 1500 : 3000);
@@ -219,7 +252,9 @@ export default function EasyEnglishPuzzlePage() {
 
   const resetGame = () => {
     setScore(0);
-    setQuestionsAnswered(0);
+    setQuestionsAnswered(0); // This will trigger the useEffect to load a new puzzle
+    setFeedback(null);
+    setIsAnswered(false);
   };
 
   const getPuzzleTitle = () => {
@@ -245,7 +280,7 @@ export default function EasyEnglishPuzzlePage() {
               <CardTitle className="text-3xl font-bold text-primary">{getPuzzleTitle()}</CardTitle>
             </div>
             <CardDescription className="text-center text-md text-foreground/80 pt-2 min-h-[3em]">
-              Score: {score} / {questionsAnswered < MAX_QUESTIONS ? questionsAnswered : MAX_QUESTIONS} (Max: {MAX_QUESTIONS})
+              Score: {score} / {questionsAnswered < MAX_QUESTIONS ? MAX_QUESTIONS : MAX_QUESTIONS} (Round: {questionsAnswered < MAX_QUESTIONS ? questionsAnswered + 1 : MAX_QUESTIONS})
               {currentPuzzle && questionsAnswered < MAX_QUESTIONS && (
                  <p className="text-sm text-muted-foreground mt-1">{getPuzzleInstruction()}</p>
               )}
@@ -259,7 +294,7 @@ export default function EasyEnglishPuzzlePage() {
                     src={currentPuzzle.imageSrc}
                     alt={currentPuzzle.imageAlt}
                     layout="fill"
-                    objectFit="contain" // Changed to contain to ensure full image visibility
+                    objectFit="contain" 
                     data-ai-hint={currentPuzzle.hint}
                     priority
                   />
@@ -344,3 +379,6 @@ export default function EasyEnglishPuzzlePage() {
     </>
   );
 }
+
+
+    
