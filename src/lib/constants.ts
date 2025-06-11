@@ -1,6 +1,6 @@
 
 import type { LucideIcon } from 'lucide-react';
-import { HomeIcon, LayoutGrid, Puzzle, BookOpen, UserCircle, Settings, BarChart3, Zap, Apple, Banana, Cherry, Grape, Carrot, Pizza, CakeSlice, IceCream2, Swords, Bot, Search, Sigma, Brain, ToyBrick, Star as StarIcon, Coins as CoinsIcon, BookMarked } from 'lucide-react';
+import { HomeIcon, LayoutGrid, Puzzle, BookOpen, UserCircle, Settings, BarChart3, Zap, Apple, Banana, Cherry, Grape, Carrot, Pizza, CakeSlice, IceCream2, Swords, Bot, Search, Sigma, Brain, ToyBrick, Star as StarIcon, Coins as CoinsIcon, BookMarked, Target, Calculator, ListOrdered } from 'lucide-react';
 
 export type GameCategory = 'Strategy' | 'Puzzles' | 'Learning';
 
@@ -122,17 +122,15 @@ export const PUZZLE_TYPES: PuzzleType[] = [
 ];
 
 // Define your avatar image paths here, relative to the /public directory
-// For example, if your image is in public/images/avatars/avatar_sun.png,
-// the src should be "/images/avatars/avatar_sun.png"
 export const AVATARS: { src: string; alt: string; hint: string }[] = [
-  { src: '/avatar_sun.png', alt: 'Sun avatar', hint: 'sun happy' },
-  { src: '/avatar_robot.png', alt: 'Robot avatar', hint: 'robot friendly' },
-  { src: '/avatar_star.png', alt: 'Star avatar', hint: 'star cute' },
-  { src: '/avatar_cat_playful.png', alt: 'Playful Cat avatar', hint: 'cat playful' },
-  { src: '/avatar_dog_loyal.png', alt: 'Loyal Dog avatar', hint: 'dog loyal' },
-  { src: '/avatar_alien_friendly.png', alt: 'Friendly Alien avatar', hint: 'alien space' },
-  { src: '/avatar_boy_modern.png', alt: 'Modern Boy avatar', hint: 'boy modern' },
-  { src: '/avatar_girl_modern.png', alt: 'Modern Girl avatar', hint: 'girl modern' },
+  { src: '/images/avatars/avatar_sun.png', alt: 'Sun avatar', hint: 'sun happy' },
+  { src: '/images/avatars/avatar_robot.png', alt: 'Robot avatar', hint: 'robot friendly' },
+  { src: '/images/avatars/avatar_star.png', alt: 'Star avatar', hint: 'star cute' },
+  { src: '/images/avatars/avatar_cat_playful.png', alt: 'Playful Cat avatar', hint: 'cat playful' },
+  { src: '/images/avatars/avatar_dog_loyal.png', alt: 'Loyal Dog avatar', hint: 'dog loyal' },
+  { src: '/images/avatars/avatar_alien_friendly.png', alt: 'Friendly Alien avatar', hint: 'alien space' },
+  { src: '/images/avatars/avatar_boy_modern.png', alt: 'Modern Boy avatar', hint: 'boy modern' },
+  { src: '/images/avatars/avatar_girl_modern.png', alt: 'Modern Girl avatar', hint: 'girl modern' },
 ];
 
 export interface NavItem {
@@ -144,7 +142,6 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { href: '/', label: 'Games', Icon: HomeIcon },
   { href: '/puzzles', label: 'Puzzles', Icon: Puzzle },
-  // Shravya AI is now a floating button, not a nav item
   { href: '/profile', label: 'Profile', Icon: UserCircle },
 ];
 
@@ -156,7 +153,7 @@ export const MEMORY_ICONS: LucideIcon[] = [
 // For Profile Progress Tab (Placeholder Icons)
 export const CATEGORY_ICONS_MAP: Record<GameCategory, LucideIcon> = {
     Strategy: Brain,
-    Puzzles: ToyBrick, // Puzzle icon is already used in nav, ToyBrick for variety
+    Puzzles: ToyBrick,
     Learning: BookOpen,
 };
 
@@ -166,3 +163,49 @@ export const S_COINS_ICON = CoinsIcon;
 export const LOCAL_STORAGE_S_POINTS_KEY = 'shravyaPlayhouse_sPoints';
 export const LOCAL_STORAGE_S_COINS_KEY = 'shravyaPlayhouse_sCoins';
 
+// Type for Number Puzzles
+export interface MathPuzzleType {
+  id: string;
+  name: string;
+  description: string;
+  Icon: LucideIcon;
+  color: string;
+}
+
+export const MATH_PUZZLE_TYPES: MathPuzzleType[] = [
+  {
+    id: "guessTheNumber",
+    name: "Guess the Number",
+    description: "I'm thinking of a number. Can you find it with the fewest guesses?",
+    Icon: Target,
+    color: "text-blue-500",
+  },
+  {
+    id: "arithmeticChallenge",
+    name: "Arithmetic Challenge",
+    description: "Solve quick math problems. How many can you get right?",
+    Icon: Calculator,
+    color: "text-green-500",
+  },
+  {
+    id: "numberSequence",
+    name: "Number Sequence",
+    description: "What comes next? Figure out the pattern in the number sequence.",
+    Icon: ListOrdered,
+    color: "text-purple-500",
+  },
+  {
+    id: "missingNumber",
+    name: "Missing Number",
+    description: "Find the missing number in the sequence or equation.",
+    Icon: Search,
+    color: "text-orange-500",
+  },
+  {
+    id: "countTheObjects",
+    name: "Count the Objects",
+    description: "How many items can you count on the screen?",
+    Icon: Sigma,
+    color: "text-pink-500",
+  },
+];
