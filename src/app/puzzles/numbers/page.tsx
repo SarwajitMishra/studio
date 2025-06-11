@@ -98,7 +98,9 @@ const GuessTheNumberGame = ({ onBack }: { onBack: () => void }) => {
   }, [generateNewSecretNumber]);
 
   useEffect(() => {
-    resetGame();
+ resetGame();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [resetGame]);
 
   const handleGuessSubmit = (e: FormEvent<HTMLFormElement>) => {
@@ -236,7 +238,7 @@ const ArithmeticChallengeGame = ({ onBack }: { onBack: () => void }) => {
   const { toast } = useToast();
 
   const generateProblem = useCallback(() => {
-    const num1 = Math.floor(Math.random() * 20) + 1;
+    let num1 = Math.floor(Math.random() * 20) + 1;
     let num2 = Math.floor(Math.random() * 20) + 1;
     const operator = Math.random() > 0.5 ? "+" : "-";
     let answer: number;
@@ -265,7 +267,8 @@ const ArithmeticChallengeGame = ({ onBack }: { onBack: () => void }) => {
   }, [generateProblem]);
 
   useEffect(() => {
-    resetGame();
+ resetGame();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetGame]);
 
   const handleSubmitAnswer = (e: FormEvent<HTMLFormElement>) => {
@@ -398,8 +401,7 @@ const NumberSequenceGame = ({ onBack }: { onBack: () => void }) => {
   const loadNewSequence = useCallback(() => {
     let availableSequences = SAMPLE_SEQUENCES.filter(s => !usedSequenceIds.includes(s.id));
     if (availableSequences.length === 0) {
-      setUsedSequenceIds([]); // Reset if all used
-      availableSequences = SAMPLE_SEQUENCES;
+ availableSequences = SAMPLE_SEQUENCES; // Reset if all used
     }
     const randomIndex = Math.floor(Math.random() * availableSequences.length);
     const newSequence = availableSequences[randomIndex];
@@ -417,9 +419,10 @@ const NumberSequenceGame = ({ onBack }: { onBack: () => void }) => {
     loadNewSequence();
   }, [loadNewSequence]);
 
-  useEffect(() => {
+  useEffect(() => { 
     resetGame();
-  }, [resetGame]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSubmitAnswer = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -558,6 +561,7 @@ export default function NumberPuzzlesPage() {
   const [currentView, setCurrentView] = useState<string>("selectPuzzle"); 
 
   const selectedPuzzleDetails = MATH_PUZZLE_TYPES.find(p => p.id === currentView);
+  const onBackToSelect = () => setCurrentView("selectPuzzle");
 
   if (currentView === "selectPuzzle") {
     return (
@@ -604,16 +608,17 @@ export default function NumberPuzzlesPage() {
       <HeadMetadata puzzleName={selectedPuzzleDetails?.name} />
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] py-8">
         {currentView === "guessTheNumber" && (
-          <GuessTheNumberGame onBack={() => setCurrentView("selectPuzzle")} />
+          <GuessTheNumberGame onBack={onBackToSelect} />
         )}
         {currentView === "arithmeticChallenge" && (
-          <ArithmeticChallengeGame onBack={() => setCurrentView("selectPuzzle")} />
+          <ArithmeticChallengeGame onBack={onBackToSelect} />
         )}
         {currentView === "numberSequence" && (
-          <NumberSequenceGame onBack={() => setCurrentView("selectPuzzle")} />
+          <NumberSequenceGame onBack={onBackToSelect} />
         )}
-        {selectedPuzzleDetails && !["guessTheNumber", "arithmeticChallenge", "numberSequence"].includes(currentView) && (
-          <PlaceholderPuzzleGame puzzle={selectedPuzzleDetails} onBack={() => setCurrentView("selectPuzzle")} />
+        {selectedPuzzleDetails && 
+         !["guessTheNumber", "arithmeticChallenge", "numberSequence"].includes(currentView) && (
+          <PlaceholderPuzzleGame puzzle={selectedPuzzleDetails} onBack={onBackToSelect} />
         )}
       </div>
     </>
