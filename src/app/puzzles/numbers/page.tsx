@@ -13,7 +13,8 @@ import { MATH_PUZZLE_TYPES, type MathPuzzleType } from "@/lib/constants";
 import GuessTheNumberGame from "@/components/number-puzzles/GuessTheNumberGame";
 import ArithmeticChallengeGame from "@/components/number-puzzles/ArithmeticChallengeGame";
 import NumberSequenceGame from "@/components/number-puzzles/NumberSequenceGame";
-import MissingNumberGame from "@/components/number-puzzles/MissingNumberGame"; // Import new component
+import MissingNumberGame from "@/components/number-puzzles/MissingNumberGame";
+import CountTheObjectsGame from "@/components/number-puzzles/CountTheObjectsGame"; // Import new component
 import PlaceholderPuzzleGame from "@/components/number-puzzles/PlaceholderPuzzleGame";
 
 // Client component to inject metadata
@@ -90,13 +91,16 @@ export default function NumberPuzzlesPage() {
         {currentView === "numberSequence" && (
           <NumberSequenceGame onBack={onBackToSelect} />
         )}
-        {currentView === "missingNumber" && ( // Add this case
+        {currentView === "missingNumber" && ( 
           <MissingNumberGame onBack={onBackToSelect} />
         )}
-        {selectedPuzzleDetails && 
-         !["guessTheNumber", "arithmeticChallenge", "numberSequence", "missingNumber"].includes(currentView) && ( // Add "missingNumber" here too
-          <PlaceholderPuzzleGame puzzle={selectedPuzzleDetails} onBack={onBackToSelect} />
+        {currentView === "countTheObjects" && ( // Add this case
+          <CountTheObjectsGame onBack={onBackToSelect} />
         )}
+        {selectedPuzzleDetails && 
+         !["guessTheNumber", "arithmeticChallenge", "numberSequence", "missingNumber", "countTheObjects"].includes(currentView) && 
+          <PlaceholderPuzzleGame puzzle={selectedPuzzleDetails} onBack={onBackToSelect} />
+        }
          {!selectedPuzzleDetails && currentView !== "selectPuzzle" && (
           <div className="text-center">
             <p className="text-xl text-destructive">Error: Puzzle not found.</p>
@@ -109,4 +113,3 @@ export default function NumberPuzzlesPage() {
     </>
   );
 }
-
