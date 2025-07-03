@@ -112,27 +112,6 @@ export default function LudoPage() {
       setCurrentPlayerIndex(nextIndex);
   }, [players, currentPlayerIndex]);
 
-  // AI Turn Trigger
-  useEffect(() => {
-    if (gameView === 'playing' && currentPlayer?.isAI) {
-      if (diceValue === null && !isRolling) {
-          // AI needs to roll
-          setTimeout(() => handleDiceRoll(), 1500);
-      } else if (diceValue !== null) {
-          // AI has rolled, needs to move
-          setTimeout(() => {
-            const tokenId = getAIMove(players, currentPlayerIndex, diceValue);
-            if (tokenId !== null) {
-              handleTokenMove(currentPlayerIndex, tokenId, diceValue);
-            } else {
-              passTurn(diceValue !== 6);
-            }
-          }, 1500);
-      }
-    }
-  }, [gameView, currentPlayer, diceValue, isRolling, players, currentPlayerIndex, passTurn, handleDiceRoll, handleTokenMove]);
-
-
   const handleTokenMove = useCallback((playerIndex: number, tokenId: number, roll: number) => {
     const { newPlayers, captured } = moveTokenEngine(players, playerIndex, tokenId, roll);
     setPlayers(newPlayers);
@@ -209,6 +188,27 @@ export default function LudoPage() {
       }
     }, 100);
   }, [isRolling, players, currentPlayerIndex, diceValue, processDiceRoll]);
+
+  // AI Turn Trigger
+  useEffect(() => {
+    if (gameView === 'playing' && currentPlayer?.isAI) {
+      if (diceValue === null && !isRolling) {
+          // AI needs to roll
+          setTimeout(() => handleDiceRoll(), 1500);
+      } else if (diceValue !== null) {
+          // AI has rolled, needs to move
+          setTimeout(() => {
+            const tokenId = getAIMove(players, currentPlayerIndex, diceValue);
+            if (tokenId !== null) {
+              handleTokenMove(currentPlayerIndex, tokenId, diceValue);
+            } else {
+              passTurn(diceValue !== 6);
+            }
+          }, 1500);
+      }
+    }
+  }, [gameView, currentPlayer, diceValue, isRolling, players, currentPlayerIndex, passTurn, handleDiceRoll, handleTokenMove]);
+
 
   const handleTokenClick = (playerIndex: number, tokenId: number) => {
     const player = players[playerIndex];
