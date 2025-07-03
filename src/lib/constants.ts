@@ -123,14 +123,12 @@ export const PUZZLE_TYPES: PuzzleType[] = [
 
 // Define your avatar image paths here, relative to the /public directory
 export const AVATARS: { src: string; alt: string; hint: string }[] = [
-  { src: '/images/avatars/avatar_sun.png', alt: 'Sun avatar', hint: 'sun happy' },
-  { src: '/images/avatars/avatar_robot.png', alt: 'Robot avatar', hint: 'robot friendly' },
-  { src: '/images/avatars/avatar_star.png', alt: 'Star avatar', hint: 'star cute' },
-  { src: '/images/avatars/avatar_cat_playful.png', alt: 'Playful Cat avatar', hint: 'cat playful' },
-  { src: '/images/avatars/avatar_dog_loyal.png', alt: 'Loyal Dog avatar', hint: 'dog loyal' },
-  { src: '/images/avatars/avatar_alien_friendly.png', alt: 'Friendly Alien avatar', hint: 'alien space' },
-  { src: '/images/avatars/avatar_boy_modern.png', alt: 'Modern Boy avatar', hint: 'boy modern' },
-  { src: '/images/avatars/avatar_girl_modern.png', alt: 'Modern Girl avatar', hint: 'girl modern' },
+  { src: '/images/avatars/african_girl.png', alt: 'African girl avatar', hint: 'african girl' },
+  { src: '/images/avatars/african_women.png', alt: 'African women avatar', hint: 'african women' },
+  { src: '/images/avatars/indian_boy.png', alt: 'Indian boy avatar', hint: 'indian boy' },
+  { src: '/images/avatars/indian_girl.png', alt: 'Indian girl avatar', hint: 'indian girl' },
+  { src: '/images/avatars/indian_man.png', alt: 'Indian man avatar', hint: 'indian man' },
+  { src: '/images/avatars/modern_girl.png', alt: 'Modern girl avatar', hint: 'modern girl' },
 ];
 
 export interface NavItem {
