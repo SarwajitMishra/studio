@@ -1,3 +1,4 @@
+
 // src/services/pixabay.ts
 
 interface PixabayImage {
@@ -12,10 +13,6 @@ interface PixabayImage {
   webformatWidth: number;
   webformatHeight: number;
   largeImageURL: string;
-  largeImageWidth: number;
-  largeImageHeight: number;
-  fullHDURL: string;
-  imageURL: string;
   imageWidth: number;
   imageHeight: number;
   views: number;
@@ -53,7 +50,22 @@ export async function searchImages(
     apiUrl += `&per_page=${options.perPage}`;
   }
 
-  const res = await fetch(apiUrl);
-  const data = await res.json();
-  return data.hits;
+  try {
+    const res = await fetch(apiUrl);
+
+    // Check if the HTTP response status is OK (e.g., 200)
+    if (!res.ok) {
+      console.error(`Pixabay API error for query "${query}": ${res.status} ${res.statusText}`);
+      // Return an empty array to prevent the app from crashing on a non-JSON response.
+      return [];
+    }
+
+    const data: PixabayResponse = await res.json();
+    return data.hits;
+
+  } catch (error) {
+    // This will catch network errors or if res.json() fails for other reasons
+    console.error(`Failed to fetch or parse from Pixabay for query "${query}":`, error);
+    return [];
+  }
 }
