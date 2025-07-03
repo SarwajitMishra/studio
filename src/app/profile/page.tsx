@@ -97,8 +97,7 @@ export default function ProfilePage() {
   const { toast } = useToast();
   const [isUploading, setIsUploading] = useState(false);
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const previousUserIdRef = useRef<string | null | undefined>(undefined);
-
+  const previousUserIdRef = useRef<string | null>(null);
 
   const [theme, setTheme] = useState<string>('light');
   const [favoriteColor, setFavoriteColor] = useState<string>('default');
@@ -127,14 +126,8 @@ export default function ProfilePage() {
     if (storedColor) {
       setFavoriteColor(storedColor);
     }
-
-    const localUserName = localStorage.getItem(LOCAL_STORAGE_USER_NAME_KEY);
-    setEditingUserName(localUserName || DEFAULT_USER_NAME);
-
-    const localAvatar = localStorage.getItem(LOCAL_STORAGE_AVATAR_KEY);
-    setSelectedAvatar(localAvatar || DEFAULT_AVATAR_SRC);
     
-    // Load S-Points and S-Coins - this will be updated by auth state if user logs in
+    // Load local currency values initially. These will be overwritten by the auth listener if logged in.
     setSPoints(getStoredGameCurrency(LOCAL_STORAGE_S_POINTS_KEY));
     setSCoins(getStoredGameCurrency(LOCAL_STORAGE_S_COINS_KEY));
 
@@ -145,13 +138,10 @@ export default function ProfilePage() {
         highScore: 'N/A',
     }));
     setGameStats(initialStats);
-
   }, []);
 
-
-  // Effect for Firebase Auth state changes
+  // Simplified, single effect for handling Firebase Auth state changes
   useEffect(() => {
-    // Config validation first
     const authDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
     const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 
@@ -164,15 +154,23 @@ export default function ProfilePage() {
         description: "Login is disabled. See console for details.",
         duration: 8000,
       });
-      return; // Stop the rest of the effect from running if config is bad
+      return;
     }
     
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-        const isNewLogin = !!user && previousUserIdRef.current === undefined;
-        previousUserIdRef.current = user?.uid;
+        // Check if the user is logging in (i.e., user exists and is different from the last known user)
+        if (user && user.uid !== previousUserIdRef.current) {
+          toast({ title: "Logged In!", description: `Welcome back, ${user.displayName || 'User'}!` });
+        }
+        
+        // Update the current user state
         setCurrentUser(user);
 
+        // Update the ref to the new user's UID (or null if logged out)
+        previousUserIdRef.current = user?.uid ?? null;
+
         if (user) { 
+            // User is logged in, sync state from Firebase profile or fall back to local storage/defaults
             const firebaseDisplayName = user.displayName ?? localStorage.getItem(LOCAL_STORAGE_USER_NAME_KEY) ?? DEFAULT_USER_NAME;
             setEditingUserName(firebaseDisplayName);
             localStorage.setItem(LOCAL_STORAGE_USER_NAME_KEY, firebaseDisplayName);
@@ -191,11 +189,10 @@ export default function ProfilePage() {
                 highScore: Math.floor(Math.random() * 1000),
             }));
             setGameStats(onlineStats);
-
-            if (isNewLogin) {
-              toast({ title: "Logged In!", description: `Welcome back, ${user.displayName || 'User'}!` });
-            }
         } else { 
+            // User is logged out, load state from local storage or use defaults
+            setEditingUserName(localStorage.getItem(LOCAL_STORAGE_USER_NAME_KEY) || DEFAULT_USER_NAME);
+            setSelectedAvatar(localStorage.getItem(LOCAL_STORAGE_AVATAR_KEY) || DEFAULT_AVATAR_SRC);
             setSPoints(getStoredGameCurrency(LOCAL_STORAGE_S_POINTS_KEY));
             setSCoins(getStoredGameCurrency(LOCAL_STORAGE_S_COINS_KEY));
             
@@ -209,10 +206,8 @@ export default function ProfilePage() {
         }
     });
 
-    return () => {
-      unsubscribe();
-    };
-  }, [toast]);
+    return () => unsubscribe();
+  }, [toast]); // Dependency on toast is fine as it's a stable function from a hook
 
   const handleAutoSaveAvatar = useCallback(async (avatarToSave: string) => {
       if (!currentUser) return;
@@ -230,7 +225,7 @@ export default function ProfilePage() {
         }
         await updateProfile(currentUser, { photoURL: photoURLToSave });
         localStorage.setItem(LOCAL_STORAGE_AVATAR_KEY, photoURLToSave);
-        setSelectedAvatar(photoURLToSave); // Ensure state is synced with the final URL
+        setSelectedAvatar(photoURLToSave);
         toast({ title: "Avatar Auto-Saved!", description: "Your new avatar has been saved to your profile." });
       } catch (error: any) {
         console.error("Error auto-saving avatar:", error);
@@ -285,7 +280,6 @@ export default function ProfilePage() {
   const actualSignInWithGoogle = async () => {
     try {
       const result = await signInWithPopup(auth, googleProvider);
-      // The onAuthStateChanged listener will handle the UI update.
       console.log("DIAGNOSTIC: Google sign-in with popup successful.", result.user.displayName);
     } catch (error: any) {
       console.error("Error during Google sign-in with popup:", error);
@@ -664,5 +658,6 @@ export default function ProfilePage() {
     
 
     
+
 
 
