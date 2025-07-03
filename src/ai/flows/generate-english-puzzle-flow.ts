@@ -85,6 +85,8 @@ const puzzleGenerationPrompt = ai.definePrompt({
   output: { schema: EnglishPuzzleOutputSchema },
   prompt: `You are an expert puzzle creator for a kids' English learning app. Your task is to generate a single new puzzle based on the requested type and difficulty.
 
+**Crucially, all words you generate for any puzzle must be simple, common, concrete nouns that can be easily represented by a picture (e.g., 'apple', 'house', 'dog', 'car'). Avoid abstract concepts, verbs, or adjectives (e.g., 'bright', 'happy', 'run').**
+
 - **Difficulty levels:**
   - **easy:** Simple, common words (3-4 letters).
   - **medium:** Slightly more complex words (5-7 letters).
