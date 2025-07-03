@@ -5,7 +5,7 @@
  *
  * - generateEnglishPuzzle - A function that creates a new puzzle on demand.
  * - GenerateEnglishPuzzleInput - The input type for the puzzle generation.
- *   - puzzleType: 'matchWord' or 'missingLetter'.
+ *   - puzzleType: 'matchWord', 'missingLetter', 'sentenceScramble', or 'oddOneOut'.
  *   - difficulty: 'easy', 'medium', or 'hard'.
  *   - wordsToExclude: An optional array of words to avoid repetition.
  * - EnglishPuzzleItem - The output type, representing a single puzzle.
@@ -14,11 +14,10 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import type { EnglishPuzzleItem } from '@/lib/constants';
-import { searchImages } from '@/services/pixabay';
 
 // Define Zod schemas that match the existing types for validation and structured output.
 const GenerateEnglishPuzzleInputSchema = z.object({
-  puzzleType: z.enum(['matchWord', 'missingLetter']),
+  puzzleType: z.enum(['matchWord', 'missingLetter', 'sentenceScramble', 'oddOneOut']),
   difficulty: z.enum(['easy', 'medium', 'hard']),
   wordsToExclude: z
     .array(z.string())
@@ -43,7 +42,20 @@ const MissingLetterPuzzleSchema = z.object({
   hint: z.string().describe('A short, simple hint or an alternative meaning for the word to help the user guess.'),
 });
 
-const EnglishPuzzleOutputSchema = z.union([WordMatchPuzzleSchema, MissingLetterPuzzleSchema]);
+const SentenceScramblePuzzleSchema = z.object({
+  type: z.enum(['sentenceScramble']).describe("The type of puzzle, which must be 'sentenceScramble' for this schema."),
+  scrambledWords: z.array(z.string()).describe("An array of words in a scrambled order."),
+  correctSentence: z.string().describe("The grammatically correct sentence formed by the words."),
+});
+
+const OddOneOutPuzzleSchema = z.object({
+  type: z.enum(['oddOneOut']).describe("The type of puzzle, which must be 'oddOneOut' for this schema."),
+  options: z.array(z.string()).length(4).describe("An array of 4 words."),
+  oddWordOut: z.string().describe("The one word from the options that does not belong with the others."),
+  category: z.string().describe("The category that the other three words belong to."),
+});
+
+const EnglishPuzzleOutputSchema = z.union([WordMatchPuzzleSchema, MissingLetterPuzzleSchema, SentenceScramblePuzzleSchema, OddOneOutPuzzleSchema]);
 
 // This is the main function that the client will call.
 export async function generateEnglishPuzzle(input: GenerateEnglishPuzzleInput): Promise<EnglishPuzzleItem> {
@@ -53,14 +65,13 @@ export async function generateEnglishPuzzle(input: GenerateEnglishPuzzleInput): 
     return {
       id: `ai-${Date.now()}`,
       difficulty: input.difficulty,
-      imageSrc: 'https://placehold.co/400x300.png', // Default placeholder
+      imageSrc: `https://placehold.co/400x300.png`,
       imageAlt: llmResponse.correctWord,
-      imageQuery: llmResponse.correctWord,
       type: 'matchWord',
       correctWord: llmResponse.correctWord,
       options: llmResponse.options,
     };
-  } else { // 'missingLetter'
+  } else if (llmResponse.type === 'missingLetter') {
     return {
       id: `ai-${Date.now()}`,
       difficulty: input.difficulty,
@@ -70,6 +81,23 @@ export async function generateEnglishPuzzle(input: GenerateEnglishPuzzleInput): 
       correctLetter: llmResponse.correctLetter,
       options: llmResponse.options,
       hint: llmResponse.hint,
+    };
+  } else if (llmResponse.type === 'sentenceScramble') {
+    return {
+      id: `ai-${Date.now()}`,
+      difficulty: input.difficulty,
+      type: 'sentenceScramble',
+      scrambledWords: llmResponse.scrambledWords,
+      correctSentence: llmResponse.correctSentence,
+    };
+  } else { // oddOneOut
+    return {
+      id: `ai-${Date.now()}`,
+      difficulty: input.difficulty,
+      type: 'oddOneOut',
+      options: llmResponse.options,
+      correctAnswer: llmResponse.oddWordOut,
+      category: llmResponse.category,
     };
   }
 }
@@ -81,12 +109,12 @@ const puzzleGenerationPrompt = ai.definePrompt({
   output: { schema: EnglishPuzzleOutputSchema },
   prompt: `You are an expert puzzle creator for a kids' English learning app. Your task is to generate a single new puzzle based on the requested type and difficulty.
 
-**Crucially, for 'matchWord' puzzles, all words you generate must be simple, common, concrete nouns that can be easily represented by a picture (e.g., 'apple', 'house', 'dog', 'car'). Avoid abstract concepts, verbs, or adjectives (e.g., 'bright', 'happy', 'run'). For 'missingLetter' puzzles, the words can be slightly more varied but should still be age-appropriate.**
+**Crucially, for 'matchWord' puzzles, all words you generate must be simple, common, concrete nouns that can be easily represented by a picture (e.g., 'apple', 'house', 'dog', 'car'). Avoid abstract concepts, verbs, or adjectives (e.g., 'bright', 'happy', 'run'). For all other puzzles, words can be more varied but should still be age-appropriate.**
 
 - **Difficulty levels:**
-  - **easy:** Simple, common words (3-4 letters).
-  - **medium:** Slightly more complex words (5-7 letters).
-  - **hard:** Longer or less common words (8+ letters).
+  - **easy:** Simple, common words (3-4 letters). Short sentences (3-4 words).
+  - **medium:** Slightly more complex words (5-7 letters). Medium sentences (5-6 words).
+  - **hard:** Longer or less common words (8+ letters). Longer sentences (7-8 words).
 
 - **Word Exclusion:**
   - If a list of words to exclude is provided, you MUST NOT use any of those words.
@@ -102,10 +130,17 @@ const puzzleGenerationPrompt = ai.definePrompt({
     - **Your output JSON 'type' field must be 'matchWord'.**
   - If the puzzle type is 'missingLetter':
     - **Task:** Generate a word matching the difficulty. Create a pattern by replacing ONE letter with an underscore. Provide the correct letter and three distractor letters as options. The final 'options' array must contain exactly 4 single letters and must include the correct letter.
-    - **IMPORTANT:** You MUST also provide a short, simple hint or an alternative meaning for the word in the 'hint' field to help the user. For example, if the word is "ELEPHANT", a good hint would be "A very large gray animal with a trunk."
+    - **IMPORTANT:** You MUST also provide a short, simple hint or an alternative meaning for the word in the 'hint' field. For example, if the word is "ELEPHANT", a good hint would be "A very large gray animal with a trunk."
     - **Your output JSON 'type' field must be 'missingLetter'.**
+  - If the puzzle type is 'sentenceScramble':
+    - **Task:** Generate a simple, grammatically correct sentence appropriate for the difficulty. Then provide the words of that sentence in a scrambled array. The sentence should NOT end with punctuation.
+    - **Your output JSON 'type' field must be 'sentenceScramble'.**
+  - If the puzzle type is 'oddOneOut':
+    - **Task:** Generate a set of 4 words where 3 belong to a common, simple category and one is the "odd one out". Provide the category of the other three words. All words should be appropriate for the difficulty level.
+    - **Example:** Options: ["Apple", "Car", "Banana", "Orange"], Odd Word Out: "Car", Category: "The others are fruits".
+    - **Your output JSON 'type' field must be 'oddOneOut'.**
 
-- **Final Output:** Your response must be a single JSON object matching the requested output schema. Do NOT create an image query.
+- **Final Output:** Your response must be a single JSON object matching the requested output schema.
 
 **Puzzle Request:**
 - **Puzzle Type:** {{puzzleType}}

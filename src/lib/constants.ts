@@ -1,6 +1,6 @@
 
 import type { LucideIcon } from 'lucide-react';
-import { HomeIcon, LayoutGrid, Puzzle, BookOpen, UserCircle, Settings, BarChart3, Zap, Apple, Banana, Cherry, Grape, Carrot, Pizza, CakeSlice, IceCream2, Swords, Bot, Search, Sigma, Brain, ToyBrick, Star as StarIcon, Coins as CoinsIcon, BookMarked, Target, Calculator, ListOrdered, SpellCheck, CaseLower, MousePointerSquare } from 'lucide-react';
+import { HomeIcon, LayoutGrid, Puzzle, BookOpen, UserCircle, Settings, BarChart3, Zap, Apple, Banana, Cherry, Grape, Carrot, Pizza, CakeSlice, IceCream2, Swords, Bot, Search, Sigma, Brain, ToyBrick, Star as StarIcon, Coins as CoinsIcon, BookMarked, Target, Calculator, ListOrdered, SpellCheck, CaseLower, AlignJustify, Filter } from 'lucide-react';
 
 export type GameCategory = 'Strategy' | 'Puzzles' | 'Learning';
 
@@ -209,7 +209,7 @@ export const MATH_PUZZLE_TYPES: MathPuzzleType[] = [
 ];
 
 // Types for English Puzzles
-export type EnglishPuzzleSubtype = 'matchWord' | 'missingLetter';
+export type EnglishPuzzleSubtype = 'matchWord' | 'missingLetter' | 'sentenceScramble' | 'oddOneOut';
 export type Difficulty = 'easy' | 'medium' | 'hard';
 
 export interface EnglishPuzzleType {
@@ -234,6 +234,20 @@ export const ENGLISH_PUZZLE_TYPES: EnglishPuzzleType[] = [
         description: "Figure out which letter is missing to complete the word.",
         Icon: CaseLower,
         color: "text-green-500"
+    },
+    {
+        id: "sentenceScramble",
+        name: "Sentence Scramble",
+        description: "Arrange the words to form a correct sentence.",
+        Icon: AlignJustify,
+        color: "text-orange-500"
+    },
+    {
+        id: "oddOneOut",
+        name: "Odd One Out",
+        description: "Find the word that doesn't belong in the group.",
+        Icon: Filter,
+        color: "text-teal-500"
     }
 ];
 
@@ -248,7 +262,6 @@ interface WordMatchPuzzle extends EnglishPuzzleItemBase {
   options: string[];
   imageAlt: string;
   imageSrc: string;
-  imageQuery?: string;
 }
 
 interface MissingLetterPuzzle extends EnglishPuzzleItemBase {
@@ -257,7 +270,20 @@ interface MissingLetterPuzzle extends EnglishPuzzleItemBase {
   correctLetter: string;
   options: string[];
   fullWord: string;
-  hint?: string;
+  hint: string;
 }
 
-export type EnglishPuzzleItem = WordMatchPuzzle | MissingLetterPuzzle;
+interface SentenceScramblePuzzle extends EnglishPuzzleItemBase {
+  type: "sentenceScramble";
+  scrambledWords: string[];
+  correctSentence: string;
+}
+
+interface OddOneOutPuzzle extends EnglishPuzzleItemBase {
+  type: "oddOneOut";
+  options: string[];
+  correctAnswer: string;
+  category: string; // e.g., "The others are all fruits."
+}
+
+export type EnglishPuzzleItem = WordMatchPuzzle | MissingLetterPuzzle | SentenceScramblePuzzle | OddOneOutPuzzle;

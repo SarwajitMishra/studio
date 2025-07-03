@@ -5,13 +5,12 @@ import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Sparkles, XCircle, CheckCircle, RotateCcw, HelpCircle, Loader2, Lightbulb } from "lucide-react";
+import { ArrowLeft, Sparkles, XCircle, CheckCircle, RotateCcw, Lightbulb, Loader2, Eraser } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import type { EnglishPuzzleItem, EnglishPuzzleSubtype, Difficulty } from "@/lib/constants";
 import { generateEnglishPuzzle, type GenerateEnglishPuzzleInput } from "@/ai/flows/generate-english-puzzle-flow";
-import { searchImages } from "@/services/pixabay";
 
 const shuffleArray = <T,>(array: T[]): T[] => {
   const newArray = [...array];
@@ -43,6 +42,10 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
   const [isRoundOver, setIsRoundOver] = useState(false);
   const [isGenerating, setIsGenerating] = useState(true);
 
+  // State for Sentence Scramble
+  const [builtSentence, setBuiltSentence] = useState<string[]>([]);
+  const [scrambledWordsBank, setScrambledWordsBank] = useState<string[]>([]);
+
   const { toast } = useToast();
   const sessionKey = `usedEnglishWords_${puzzleType}_${difficulty}`;
 
@@ -69,6 +72,7 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
     setIsGenerating(true);
     setFeedback(null);
     setCurrentPuzzle(null);
+    setBuiltSentence([]);
 
     try {
       const usedWords = getUsedWordsFromSession();
@@ -82,23 +86,18 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
 
       if (puzzleData.type === 'matchWord') {
         addUsedWordToSession(puzzleData.correctWord);
-        let finalImageUrl = puzzleData.imageSrc; // Default placeholder from flow
-        const apiKey = process.env.NEXT_PUBLIC_PIXABAY_API_KEY;
-
-        if (apiKey && puzzleData.imageQuery) {
-          const imageResults = await searchImages(puzzleData.imageQuery, apiKey, { perPage: 3, image_type: 'illustration' });
-          if (imageResults.length > 0) {
-            finalImageUrl = imageResults[0].webformatURL;
-          } else {
-            console.warn(`No Pixabay results for query: "${puzzleData.imageQuery}". Using placeholder.`);
-          }
-        }
-        
-        const puzzleWithImage = { ...puzzleData, imageSrc: finalImageUrl };
-        setCurrentPuzzle(puzzleWithImage);
-        setShuffledOptions(shuffleArray(puzzleWithImage.options));
-      } else { // 'missingLetter' puzzle
+        setCurrentPuzzle(puzzleData);
+        setShuffledOptions(shuffleArray(puzzleData.options));
+      } else if (puzzleData.type === 'missingLetter') {
         addUsedWordToSession(puzzleData.fullWord);
+        setCurrentPuzzle(puzzleData);
+        setShuffledOptions(shuffleArray(puzzleData.options));
+      } else if (puzzleData.type === 'sentenceScramble') {
+        addUsedWordToSession(puzzleData.correctSentence);
+        setCurrentPuzzle(puzzleData);
+        setScrambledWordsBank(shuffleArray(puzzleData.scrambledWords));
+      } else if (puzzleData.type === 'oddOneOut') {
+        addUsedWordToSession(puzzleData.correctAnswer);
         setCurrentPuzzle(puzzleData);
         setShuffledOptions(shuffleArray(puzzleData.options));
       }
@@ -134,20 +133,8 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
     startNewRound();
   }, [startNewRound]);
 
-
-  const handleAnswer = (selectedOption: string) => {
-    if (!currentPuzzle || isAnswered) return;
+  const processAnswerResult = useCallback((isCorrect: boolean) => {
     setIsAnswered(true);
-    setSelectedAnswer(selectedOption);
-
-    let isCorrect = false;
-
-    if (currentPuzzle.type === "matchWord") {
-      isCorrect = selectedOption === currentPuzzle.correctWord;
-    } else if (currentPuzzle.type === "missingLetter") {
-      isCorrect = selectedOption === currentPuzzle.correctLetter;
-    }
-
     let newScore = score;
     if (isCorrect) {
       newScore = score + 1;
@@ -159,14 +146,21 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
         className: "bg-green-500 text-white",
       });
     } else {
-      const incorrectFeedback = currentPuzzle.type === 'matchWord'
-        ? `The correct word was "${currentPuzzle.correctWord}".`
-        : `The correct letter was "${currentPuzzle.correctLetter}". The word is "${currentPuzzle.fullWord}".`;
+      let incorrectFeedback = "That wasn't the right answer. Keep learning!";
+      if(currentPuzzle?.type === 'matchWord') {
+        incorrectFeedback = `The correct word was "${currentPuzzle.correctWord}".`
+      } else if (currentPuzzle?.type === 'missingLetter') {
+        incorrectFeedback = `The correct letter was "${currentPuzzle.correctLetter}". The word is "${currentPuzzle.fullWord}".`;
+      } else if (currentPuzzle?.type === 'oddOneOut') {
+        incorrectFeedback = `Correct answer was "${currentPuzzle.correctAnswer}". ${currentPuzzle.category}`;
+      } else if (currentPuzzle?.type === 'sentenceScramble') {
+        incorrectFeedback = `The correct sentence is: "${currentPuzzle.correctSentence}"`;
+      }
       setFeedback({ message: `Not quite! ${incorrectFeedback}`, type: "incorrect" });
       toast({
         variant: "destructive",
         title: "Try Again!",
-        description: `That wasn't the right match. Keep learning!`,
+        description: incorrectFeedback,
       });
     }
 
@@ -182,14 +176,52 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
         loadNextPuzzle();
       }
     }, isCorrect ? 1500 : 3000);
+  }, [score, questionsAnswered, currentPuzzle, toast, loadNextPuzzle]);
+  
+
+  const handleOptionSelect = (selectedOption: string) => {
+    if (!currentPuzzle || isAnswered || currentPuzzle.type === 'sentenceScramble') return;
+    setSelectedAnswer(selectedOption);
+
+    let isCorrect = false;
+    if (currentPuzzle.type === "matchWord") {
+      isCorrect = selectedOption === currentPuzzle.correctWord;
+    } else if (currentPuzzle.type === "missingLetter") {
+      isCorrect = selectedOption === currentPuzzle.correctLetter;
+    } else if (currentPuzzle.type === "oddOneOut") {
+      isCorrect = selectedOption === currentPuzzle.correctAnswer;
+    }
+    processAnswerResult(isCorrect);
   };
   
+  const handleSentenceWordClick = (word: string, index: number) => {
+    setBuiltSentence(prev => [...prev, word]);
+    setScrambledWordsBank(prev => prev.filter((_, i) => i !== index));
+  };
+  
+  const handleBuiltWordClick = (word: string, index: number) => {
+    setBuiltSentence(prev => prev.filter((_, i) => i !== index));
+    setScrambledWordsBank(prev => [...prev, word]);
+  };
+  
+  const handleCheckSentence = () => {
+    if (!currentPuzzle || currentPuzzle.type !== 'sentenceScramble') return;
+    const userAnswer = builtSentence.join(' ');
+    const correctAnswer = currentPuzzle.correctSentence.replace(/[.?!,]/g, '');
+    const isCorrect = userAnswer.toLowerCase() === correctAnswer.toLowerCase();
+    processAnswerResult(isCorrect);
+  }
+
   const getPuzzleInstruction = () => {
     if (isGenerating) return "Generating a new puzzle...";
     if (!currentPuzzle) return "Loading...";
-    return currentPuzzle.type === "matchWord" 
-      ? "Which word matches the picture?" 
-      : `What letter is missing from "${currentPuzzle.wordPattern.replace(/_/g, ' _ ')}"?`;
+    switch(currentPuzzle.type) {
+      case "matchWord": return "Which word matches the picture?";
+      case "missingLetter": return `What letter is missing from "${currentPuzzle.wordPattern.replace(/_/g, ' _ ')}"?`;
+      case "sentenceScramble": return "Click the words in the correct order to make a sentence.";
+      case "oddOneOut": return "Which word does not belong with the others?";
+      default: return "Solve the puzzle!";
+    }
   };
 
   const renderGameOverView = () => (
@@ -211,6 +243,115 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
       <p className="text-lg text-muted-foreground">Generating a fun new puzzle for you...</p>
     </div>
   );
+
+  const renderOptionsBasedPuzzle = () => {
+    if (!currentPuzzle || (currentPuzzle.type !== 'matchWord' && currentPuzzle.type !== 'missingLetter' && currentPuzzle.type !== 'oddOneOut')) return null;
+
+    return (
+      <>
+        {currentPuzzle.type === 'matchWord' && (
+          <div className="relative w-full h-48 sm:h-64 rounded-lg overflow-hidden shadow-md border-2 border-primary/30 bg-slate-100">
+            <Image
+              src={currentPuzzle.imageSrc}
+              alt={currentPuzzle.imageAlt}
+              fill
+              style={{ objectFit: 'contain' }}
+              data-ai-hint={currentPuzzle.correctWord}
+              priority
+              unoptimized={!currentPuzzle.imageSrc.startsWith('https://placehold.co')}
+            />
+          </div>
+        )}
+
+        {currentPuzzle.type === "missingLetter" && (
+          <>
+            <p className="text-3xl sm:text-4xl font-bold tracking-wider my-4">
+              {currentPuzzle.wordPattern.split('').map((char, idx) => (
+                <span key={idx} className={char === '_' ? 'text-destructive mx-1' : 'mx-0.5'}>
+                  {char === '_' ? ' __ ' : char}
+                </span>
+              ))}
+            </p>
+            <div className="mt-2 mb-4 p-3 bg-yellow-100/70 border border-yellow-400/50 rounded-lg text-yellow-800 text-sm flex items-center justify-center">
+                <Lightbulb size={18} className="mr-2 flex-shrink-0" />
+                <span><strong>Hint:</strong> {currentPuzzle.hint}</span>
+            </div>
+          </>
+        )}
+
+        {currentPuzzle.type === 'oddOneOut' && (
+            <div className="mt-2 mb-4 p-3 bg-yellow-100/70 border border-yellow-400/50 rounded-lg text-yellow-800 text-sm flex items-center justify-center">
+              <Lightbulb size={18} className="mr-2 flex-shrink-0" />
+              <span><strong>Hint:</strong> Three of the words are related.</span>
+            </div>
+        )}
+
+        <div className="grid grid-cols-2 gap-3">
+          {shuffledOptions.map((option) => {
+            const isCorrectOption = (currentPuzzle.type === "matchWord" && option === currentPuzzle.correctWord) ||
+                                    (currentPuzzle.type === "missingLetter" && option === currentPuzzle.correctLetter) ||
+                                    (currentPuzzle.type === "oddOneOut" && option === currentPuzzle.correctAnswer);
+            const isSelectedIncorrect = isAnswered && selectedAnswer === option && !isCorrectOption;
+
+            return (
+              <Button
+                key={option}
+                onClick={() => handleOptionSelect(option)}
+                disabled={isAnswered}
+                variant="outline"
+                className={cn(
+                  "text-lg py-3 h-auto transition-all duration-200 ease-in-out",
+                  "hover:bg-accent/20 focus:ring-2 focus:ring-accent",
+                  isAnswered && isCorrectOption && "bg-green-100 border-green-600 text-green-700 hover:bg-green-100/80 ring-2 ring-green-500",
+                  isSelectedIncorrect && "bg-red-100 border-red-600 text-red-700 hover:bg-red-100/80 ring-2 ring-red-500",
+                  isAnswered && !isCorrectOption && option !== selectedAnswer && "opacity-60"
+                )}
+              >
+                {option}
+              </Button>
+            )
+          })}
+        </div>
+      </>
+    );
+  };
+  
+  const renderSentenceScramblePuzzle = () => {
+    if (!currentPuzzle || currentPuzzle.type !== 'sentenceScramble') return null;
+    return (
+      <div className="flex flex-col gap-6">
+        <div>
+          <h3 className="font-semibold mb-2 text-foreground/80">Your Sentence:</h3>
+          <div className="min-h-[6rem] p-3 border-2 border-dashed rounded-lg bg-muted/50 flex flex-wrap gap-2 items-center justify-center">
+            {builtSentence.length === 0 && !isAnswered && <p className="text-muted-foreground">Click words from the word bank below.</p>}
+            {builtSentence.map((word, index) => (
+              <Button key={`${word}-${index}`} variant="secondary" className="shadow-sm" onClick={() => !isAnswered && handleBuiltWordClick(word, index)}>
+                {word}
+              </Button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <h3 className="font-semibold mb-2 text-foreground/80">Word Bank:</h3>
+          <div className="min-h-[6rem] p-3 flex flex-wrap gap-2 items-center justify-center">
+            {scrambledWordsBank.map((word, index) => (
+              <Button key={`${word}-${index}`} variant="outline" className="text-base" onClick={() => handleSentenceWordClick(word, index)} disabled={isAnswered}>
+                {word}
+              </Button>
+            ))}
+          </div>
+        </div>
+        <div className="flex justify-center gap-4">
+            <Button onClick={() => { setBuiltSentence([]); setScrambledWordsBank(currentPuzzle.scrambledWords); }} disabled={isAnswered || builtSentence.length === 0} variant="ghost">
+                <Eraser className="mr-2"/> Clear
+            </Button>
+            <Button onClick={handleCheckSentence} disabled={isAnswered || builtSentence.length === 0} className="bg-accent text-accent-foreground hover:bg-accent/90">
+                Check Answer
+            </Button>
+        </div>
+      </div>
+    )
+  };
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] py-8">
@@ -235,65 +376,9 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
             renderLoadingView()
           ) : currentPuzzle && !isRoundOver ? (
             <>
-              {currentPuzzle.type === 'matchWord' && (
-                <div className="relative w-full h-48 sm:h-64 rounded-lg overflow-hidden shadow-md border-2 border-primary/30 bg-slate-100">
-                  <Image
-                    src={currentPuzzle.imageSrc}
-                    alt={currentPuzzle.imageAlt}
-                    fill
-                    style={{ objectFit: 'contain' }}
-                    data-ai-hint={currentPuzzle.imageQuery}
-                    priority
-                    unoptimized={currentPuzzle.imageSrc.startsWith('https://cdn.pixabay.com') || currentPuzzle.imageSrc.startsWith('https://pixabay.com')}
-                  />
-                </div>
-              )}
+              { (currentPuzzle.type === 'matchWord' || currentPuzzle.type === 'missingLetter' || currentPuzzle.type === 'oddOneOut') && renderOptionsBasedPuzzle() }
+              { currentPuzzle.type === 'sentenceScramble' && renderSentenceScramblePuzzle() }
 
-              {currentPuzzle.type === "missingLetter" && (
-                <>
-                  <p className="text-3xl sm:text-4xl font-bold tracking-wider my-4">
-                    {currentPuzzle.wordPattern.split('').map((char, idx) => (
-                      <span key={idx} className={char === '_' ? 'text-destructive mx-1' : 'mx-0.5'}>
-                        {char === '_' ? ' __ ' : char}
-                      </span>
-                    ))}
-                  </p>
-                  {currentPuzzle.hint && (
-                    <div className="mt-2 mb-4 p-3 bg-yellow-100/70 border border-yellow-400/50 rounded-lg text-yellow-800 text-sm flex items-center justify-center">
-                        <Lightbulb size={18} className="mr-2 flex-shrink-0" />
-                        <span><strong>Hint:</strong> {currentPuzzle.hint}</span>
-                    </div>
-                  )}
-                </>
-              )}
-
-              <div className={cn(
-                "grid gap-3",
-                currentPuzzle.options.length <=3 ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-2"
-              )}>
-                {shuffledOptions.map((option) => {
-                  const isCorrectOption = currentPuzzle.type === "matchWord" ? option === currentPuzzle.correctWord : option === currentPuzzle.correctLetter;
-                  const isSelectedIncorrect = isAnswered && selectedAnswer === option && !isCorrectOption;
-
-                  return (
-                    <Button
-                      key={option}
-                      onClick={() => handleAnswer(option)}
-                      disabled={isAnswered}
-                      variant="outline"
-                      className={cn(
-                        "text-lg py-3 h-auto transition-all duration-200 ease-in-out",
-                        "hover:bg-accent/20 focus:ring-2 focus:ring-accent",
-                        isAnswered && isCorrectOption && "bg-green-100 border-green-600 text-green-700 hover:bg-green-100/80 ring-2 ring-green-500",
-                        isSelectedIncorrect && "bg-red-100 border-red-600 text-red-700 hover:bg-red-100/80 ring-2 ring-red-500",
-                        isAnswered && !isCorrectOption && option !== selectedAnswer && "opacity-60"
-                      )}
-                    >
-                      {option}
-                    </Button>
-                  )
-                })}
-              </div>
               {feedback && !isRoundOver && (
                 <div
                   className={cn(
