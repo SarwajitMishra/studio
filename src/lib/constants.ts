@@ -1,6 +1,6 @@
 
 import type { LucideIcon } from 'lucide-react';
-import { HomeIcon, LayoutGrid, Puzzle, BookOpen, UserCircle, Settings, BarChart3, Zap, Apple, Banana, Cherry, Grape, Carrot, Pizza, CakeSlice, IceCream2, Swords, Bot, Search, Sigma, Brain, ToyBrick, Star as StarIcon, Coins as CoinsIcon, BookMarked, Target, Calculator, ListOrdered, SpellCheck, CaseLower, AlignJustify, Filter, Keyboard } from 'lucide-react';
+import { HomeIcon, LayoutGrid, Puzzle, BookOpen, UserCircle, Settings, BarChart3, Zap, Apple, Banana, Cherry, Grape, Carrot, Pizza, CakeSlice, IceCream2, Swords, Bot, Search, Sigma, Brain, ToyBrick, Star as StarIcon, Coins as CoinsIcon, BookMarked, Target, Calculator, ListOrdered, SpellCheck, CaseLower, AlignJustify, Filter, Keyboard, Gamepad2 } from 'lucide-react';
 
 export type GameCategory = 'Strategy' | 'Puzzles' | 'Learning';
 
@@ -145,7 +145,7 @@ export const NAV_ITEMS: NavItem[] = [
 
 // Icons for Memory Match game
 export const MEMORY_ICONS: LucideIcon[] = [
-  Apple, Banana, Cherry, Grape, Carrot, Pizza, CakeSlice, IceCream2
+  Apple, Banana, Cherry, Grape, Carrot, Pizza, CakeSlice, IceCream2, ToyBrick, Gamepad2
 ];
 
 // For Profile Progress Tab (Placeholder Icons)
@@ -269,7 +269,6 @@ interface WordMatchPuzzle extends EnglishPuzzleItemBase {
   options: string[];
   imageAlt: string;
   imageSrc: string;
-  hint?: string;
 }
 
 interface MissingLetterPuzzle extends EnglishPuzzleItemBase {
