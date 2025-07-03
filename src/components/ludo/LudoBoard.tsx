@@ -3,7 +3,7 @@
 
 import React from 'react';
 import { cn } from '@/lib/utils';
-import type { Player, Token } from '@/lib/ludo/types';
+import type { Player, Token, PlayerColor } from '@/lib/ludo/types';
 import { 
     BOARD_GRID_SIZE, 
     MAIN_PATH_COORDINATES, 
@@ -99,7 +99,14 @@ export const LudoBoard: React.FC<LudoBoardProps> = ({ players, onTokenClick, cur
         const cellBg = getCellBackgroundColor(rowIndex, colIndex);
         const pathIndex = MAIN_PATH_COORDINATES.findIndex(p => p.row === rowIndex && p.col === colIndex);
         const isSafe = SAFE_SQUARE_INDICES.includes(pathIndex);
-        const isStart = Object.values(PLAYER_CONFIG).some(pc => pc.pathStartIndex === pathIndex);
+
+        // Find which color this start square belongs to
+        const startColor = (Object.keys(PLAYER_CONFIG) as PlayerColor[]).find(
+          (color) => PLAYER_CONFIG[color].pathStartIndex === pathIndex
+        );
+        
+        // A start square only shows its star if a player of that color is in the game.
+        const isStart = startColor && players.some(p => p.color === startColor);
 
         return (
           <div
@@ -107,7 +114,7 @@ export const LudoBoard: React.FC<LudoBoardProps> = ({ players, onTokenClick, cur
             className={cn("aspect-square flex items-center justify-center text-xs relative", cellBg, "border border-neutral-400/30")}
           >
             {isSafe && !isStart && <Star size={12} className="absolute text-yellow-500/70 opacity-70 z-0"/>}
-            {isStart && <Star size={16} className={cn("absolute z-0 opacity-80", PLAYER_CONFIG[players.find(p => PLAYER_CONFIG[p.color].pathStartIndex === pathIndex)!.color].textClass)}/>}
+            {isStart && <Star size={16} className={cn("absolute z-0 opacity-80", PLAYER_CONFIG[startColor!].textClass)}/>}
 
             {tokensOnThisCell.map((token, idx) => {
                  const playerOfToken = players.find(p => p.color === token.color);
