@@ -9,8 +9,15 @@ import { Label } from "@/components/ui/label";
 import { Calculator, Hash, RotateCcw, Award, ArrowLeft, CheckCircle, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import type { Difficulty } from "@/lib/constants";
 
 const QUESTIONS_PER_ROUND = 5;
+
+const DIFFICULTY_CONFIG = {
+    easy: { maxNum: 10, operators: ["+"] },
+    medium: { maxNum: 25, operators: ["+", "-"] },
+    hard: { maxNum: 50, operators: ["+", "-"] },
+};
 
 interface ArithmeticProblem {
   num1: number;
@@ -22,9 +29,10 @@ interface ArithmeticProblem {
 
 interface ArithmeticChallengeGameProps {
   onBack: () => void;
+  difficulty: Difficulty;
 }
 
-export default function ArithmeticChallengeGame({ onBack }: ArithmeticChallengeGameProps) {
+export default function ArithmeticChallengeGame({ onBack, difficulty }: ArithmeticChallengeGameProps) {
   const [currentProblem, setCurrentProblem] = useState<ArithmeticProblem | null>(null);
   const [userAnswer, setUserAnswer] = useState<string>("");
   const [score, setScore] = useState<number>(0);
@@ -34,9 +42,10 @@ export default function ArithmeticChallengeGame({ onBack }: ArithmeticChallengeG
   const { toast } = useToast();
 
   const generateProblem = useCallback(() => {
-    let num1 = Math.floor(Math.random() * 20) + 1;
-    let num2 = Math.floor(Math.random() * 20) + 1;
-    const operator = Math.random() > 0.5 ? "+" : "-";
+    const config = DIFFICULTY_CONFIG[difficulty];
+    let num1 = Math.floor(Math.random() * config.maxNum) + 1;
+    let num2 = Math.floor(Math.random() * config.maxNum) + 1;
+    const operator = config.operators[Math.floor(Math.random() * config.operators.length)] as "+" | "-";
     let answer: number;
     let problemString: string;
 
@@ -53,7 +62,7 @@ export default function ArithmeticChallengeGame({ onBack }: ArithmeticChallengeG
     setCurrentProblem({ num1, num2, operator, answer, problemString });
     setUserAnswer("");
     setFeedback(null);
-  }, []);
+  }, [difficulty]);
 
   const resetGame = useCallback(() => {
     setScore(0);
@@ -113,7 +122,7 @@ export default function ArithmeticChallengeGame({ onBack }: ArithmeticChallengeG
           </Button>
         </div>
         <CardDescription className="text-center text-md text-foreground/80 pt-2">
-          Solve {QUESTIONS_PER_ROUND} math problems. Score: {score}/{QUESTIONS_PER_ROUND}
+          Solve {QUESTIONS_PER_ROUND} math problems. Score: {score}/{QUESTIONS_PER_ROUND} | Difficulty: <span className="capitalize">{difficulty}</span>
         </CardDescription>
       </CardHeader>
       <CardContent className="p-6 space-y-6">

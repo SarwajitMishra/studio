@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { ListOrdered, Hash, RotateCcw, Award, ArrowLeft, CheckCircle, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import type { Difficulty } from "@/lib/constants";
 
 const QUESTIONS_PER_ROUND = 5;
 
@@ -19,55 +20,82 @@ interface SequenceProblem {
   description?: string; 
 }
 
-const SAMPLE_SEQUENCES: SequenceProblem[] = [
-  { id: "s1", sequence: [2, 4, 6, 8], nextNumber: 10, description: "Add 2 to each number." },
-  { id: "s2", sequence: [1, 3, 5, 7], nextNumber: 9, description: "Add 2 to each number (odd numbers)." },
-  { id: "s3", sequence: [5, 10, 15, 20], nextNumber: 25, description: "Multiples of 5." },
-  { id: "s4", sequence: [10, 9, 8, 7], nextNumber: 6, description: "Subtract 1 from each number." },
-  { id: "s5", sequence: [3, 6, 9, 12], nextNumber: 15, description: "Multiples of 3." },
-  { id: "s6", sequence: [1, 2, 4, 8], nextNumber: 16, description: "Multiply by 2 each time (powers of 2 starting from 2^0)." },
-  { id: "s7", sequence: [1, 4, 9, 16], nextNumber: 25, description: "Square numbers (1x1, 2x2, 3x3...)." },
-];
-
 interface NumberSequenceGameProps {
   onBack: () => void;
+  difficulty: Difficulty;
 }
 
-export default function NumberSequenceGame({ onBack }: NumberSequenceGameProps) {
+const generateSequenceProblem = (difficulty: Difficulty): SequenceProblem => {
+    let start = 1, diff = 2, length = 4;
+    let description = "Add 2 to each number.";
+    const type = Math.random();
+
+    switch (difficulty) {
+        case 'easy':
+            start = Math.floor(Math.random() * 10) + 1;
+            diff = Math.floor(Math.random() * 3) + 2; // 2, 3, 4
+            description = `Add ${diff} to each number.`;
+            break;
+        case 'medium':
+            start = Math.floor(Math.random() * 20);
+            if (type > 0.5) { // Subtraction
+                diff = (Math.floor(Math.random() * 4) + 2) * -1; // -2, -3, -4, -5
+                description = `Subtract ${Math.abs(diff)} from each number.`;
+            } else { // Addition
+                diff = Math.floor(Math.random() * 5) + 3; // 3, 4, 5, 6, 7
+                description = `Add ${diff} to each number.`;
+            }
+            break;
+        case 'hard':
+            length = 5;
+            start = Math.floor(Math.random() * 10);
+            if (type > 0.6) { // Geometric
+                diff = Math.floor(Math.random() * 2) + 2; // 2 or 3
+                let seq = [start];
+                for (let i = 1; i < length; i++) seq.push(seq[i-1] * diff);
+                description = `Multiply by ${diff} each time.`
+                return { id: `g-${Date.now()}`, sequence: seq.slice(0, length - 1), nextNumber: seq[length-1], description };
+            } else { // Complex Arithmetic
+                diff = Math.floor(Math.random() * 10) + 5;
+                if (Math.random() > 0.5) diff *= -1;
+                description = diff > 0 ? `Add ${diff}.` : `Subtract ${Math.abs(diff)}.`;
+            }
+            break;
+    }
+
+    const sequence = Array.from({length: length - 1}, (_, i) => start + i * diff);
+    const nextNumber = start + (length-1) * diff;
+
+    return { id: `a-${Date.now()}`, sequence, nextNumber, description };
+};
+
+
+export default function NumberSequenceGame({ onBack, difficulty }: NumberSequenceGameProps) {
   const [currentSequence, setCurrentSequence] = useState<SequenceProblem | null>(null);
   const [userAnswer, setUserAnswer] = useState<string>("");
   const [score, setScore] = useState<number>(0);
   const [questionsAnswered, setQuestionsAnswered] = useState<number>(0);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [isGameOver, setIsGameOver] = useState<boolean>(false);
-  const [usedSequenceIds, setUsedSequenceIds] = useState<string[]>([]);
   const { toast } = useToast();
 
   const loadNewSequence = useCallback(() => {
-    let availableSequences = SAMPLE_SEQUENCES.filter(s => !usedSequenceIds.includes(s.id));
-    if (availableSequences.length === 0) {
-      setUsedSequenceIds([]); // Reset used IDs if all have been shown
-      availableSequences = SAMPLE_SEQUENCES; 
-    }
-    const randomIndex = Math.floor(Math.random() * availableSequences.length);
-    const newSequence = availableSequences[randomIndex];
+    const newSequence = generateSequenceProblem(difficulty);
     setCurrentSequence(newSequence);
-    setUsedSequenceIds(prev => [...prev, newSequence.id]);
     setUserAnswer("");
     setFeedback(null);
-  }, [usedSequenceIds]);
+  }, [difficulty]);
 
   const resetGame = useCallback(() => {
     setScore(0);
     setQuestionsAnswered(0);
     setIsGameOver(false);
-    setUsedSequenceIds([]);
     loadNewSequence();
   }, [loadNewSequence]);
 
   useEffect(() => { 
     resetGame();
-  }, [resetGame]);
+  }, [resetGame, difficulty]);
 
   const handleSubmitAnswer = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -116,7 +144,7 @@ export default function NumberSequenceGame({ onBack }: NumberSequenceGameProps) 
           </Button>
         </div>
         <CardDescription className="text-center text-md text-foreground/80 pt-2">
-          Find the next number in the sequence. Score: {score}/{QUESTIONS_PER_ROUND}
+          Find the next number. Score: {score}/{QUESTIONS_PER_ROUND} | Difficulty: <span className="capitalize">{difficulty}</span>
         </CardDescription>
       </CardHeader>
       <CardContent className="p-6 space-y-6">
@@ -173,4 +201,3 @@ export default function NumberSequenceGame({ onBack }: NumberSequenceGameProps) 
     </Card>
   );
 }
-

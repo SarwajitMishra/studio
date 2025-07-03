@@ -1,383 +1,154 @@
 
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import Image from "next/image";
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { BookMarked, ArrowLeft, Sparkles, XCircle, CheckCircle, RotateCcw, HelpCircle } from "lucide-react";
-import Link from "next/link";
+import { BookMarked, ArrowLeft, Shield, Star, Gem, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast";
-import { searchImages } from "../../../services/pixabay";
+import { ENGLISH_PUZZLE_TYPES, type EnglishPuzzleSubtype, type Difficulty, type EnglishPuzzleType } from "@/lib/constants";
+import EnglishPuzzleGame from "@/components/english-puzzles/EnglishPuzzleGame";
 
-interface PuzzleItemBase {
-  id: string;
-  imageAlt: string;
-  // imageSrc is now a fallback
-  imageSrc: string;
-}
-
-interface WordMatchPuzzle extends PuzzleItemBase {
-  type: "matchWord";
-  correctWord: string;
-  options: string[]; // Full words
-}
-
-interface MissingLetterPuzzle extends PuzzleItemBase {
-  type: "missingLetter";
-  wordPattern: string; // e.g., "App_e" or "B_ll"
-  correctLetter: string; // The letter that fills the blank
-  options: string[]; // Letter choices, including the correctLetter
-  fullWord: string; // The full word for display in feedback
-}
-
-type PuzzleItem = WordMatchPuzzle | MissingLetterPuzzle;
-
-const PUZZLE_DATA: PuzzleItem[] = [
-  {
-    id: "1",
-    type: "matchWord",
-    imageSrc: "https://placehold.co/300x200.png",
-    imageAlt: "An apple",
-    correctWord: "Apple",
-    options: ["Apple", "Banana", "Carrot"],
-  },
-  {
-    id: "2",
-    type: "matchWord",
-    imageSrc: "https://placehold.co/300x200.png",
-    imageAlt: "A ball",
-    correctWord: "Ball",
-    options: ["Ball", "Box", "Book"],
-  },
-  {
-    id: "3",
-    type: "matchWord",
-    imageSrc: "https://placehold.co/300x200.png",
-    imageAlt: "A cat",
-    correctWord: "Cat",
-    options: ["Cat", "Dog", "Car"],
-  },
-  {
-    id: "ml1",
-    type: "missingLetter",
-    imageSrc: "https://placehold.co/300x200.png",
-    imageAlt: "A dog",
-    wordPattern: "D _ G",
-    correctLetter: "O",
-    options: ["A", "O", "U"],
-    fullWord: "DOG",
-  },
-  {
-    id: "ml2",
-    type: "missingLetter",
-    imageSrc: "https://placehold.co/300x200.png",
-    imageAlt: "The sun",
-    wordPattern: "S _ N",
-    correctLetter: "U",
-    options: ["A", "U", "I"],
-    fullWord: "SUN",
-  },
-  {
-    id: "4",
-    type: "matchWord",
-    imageSrc: "https://placehold.co/300x200.png",
-    imageAlt: "A dog",
-    correctWord: "Dog",
-    options: ["Dog", "Duck", "Door"],
-  },
-  {
-    id: "5",
-    type: "matchWord",
-    imageSrc: "https://placehold.co/300x200.png",
-    imageAlt: "A sun",
-    correctWord: "Sun",
-    options: ["Sun", "Star", "Moon"],
-  },
-  {
-    id: "ml3",
-    type: "missingLetter",
-    imageSrc: "https://placehold.co/300x200.png",
-    imageAlt: "A bed",
-    wordPattern: "B _ D",
-    correctLetter: "E",
-    options: ["A", "E", "I"],
-    fullWord: "BED",
-  },
-];
-
-const shuffleArray = <T,>(array: T[]): T[] => {
-  const newArray = [...array];
-  for (let i = newArray.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
-  }
-  return newArray;
-};
-
-const HeadMetadata = () => {
+// Client component to inject metadata
+const HeadMetadata = ({ puzzleName }: { puzzleName?: string }) => {
+  const baseTitle = "Easy English Fun | Shravya Playhouse";
+  const title = puzzleName ? `${puzzleName} - ${baseTitle}` : baseTitle;
+  const description = puzzleName
+    ? `Play ${puzzleName} to improve your English vocabulary!`
+    : "Choose a fun English puzzle to play, like matching words to pictures or finding missing letters!";
   return (
     <>
-      <title>Easy English Fun | Shravya Playhouse</title>
-      <meta name="description" content="Learn basic English words by matching them to pictures or filling in missing letters!" />
+      <title>{title}</title>
+      <meta name="description" content={description} />
     </>
   );
 };
 
-export default function EasyEnglishPuzzlePage() {
-  const [currentPuzzle, setCurrentPuzzle] = useState<PuzzleItem | null>(null);
-  const [score, setScore] = useState(0);
-  const [questionsAnswered, setQuestionsAnswered] = useState(0);
-  const [feedback, setFeedback] = useState<{ message: string; type: "correct" | "incorrect" | "info" } | null>(null);
-  const [shuffledOptions, setShuffledOptions] = useState<string[]>([]);
-  const [isAnswered, setIsAnswered] = useState(false);
-  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
-  const [usedPuzzleIds, setUsedPuzzleIds] = useState<string[]>([]);
-  const { toast } = useToast();
+const DIFFICULTY_LEVELS: { level: Difficulty, label: string, Icon: React.ElementType }[] = [
+    { level: "easy", label: "Easy", Icon: Shield },
+    { level: "medium", label: "Medium", Icon: Star },
+    { level: "hard", label: "Hard", Icon: Gem },
+];
 
-  const MAX_QUESTIONS = 5;
+export default function EasyEnglishPuzzlesPage() {
+  const [view, setView] = useState<'selectPuzzle' | 'selectDifficulty' | 'playing'>('selectPuzzle');
+  const [selectedPuzzleType, setSelectedPuzzleType] = useState<EnglishPuzzleType | null>(null);
+  const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty | null>(null);
 
-  const loadNextPuzzle = useCallback(async () => {
-    if (questionsAnswered >= MAX_QUESTIONS) {
-      setFeedback({ message: `Game Over! Your final score: ${score}/${MAX_QUESTIONS}`, type: "info" });
-      setCurrentPuzzle(null);
-      return;
-    }
-    
-    let availablePuzzles = PUZZLE_DATA.filter(p => !usedPuzzleIds.includes(p.id));
-    if (availablePuzzles.length === 0) {
-      availablePuzzles = PUZZLE_DATA;
-      setUsedPuzzleIds([]);
-    }
-    
-    const nextPuzzle = availablePuzzles[Math.floor(Math.random() * availablePuzzles.length)];
-    setUsedPuzzleIds(prev => [...prev, nextPuzzle.id]);
-    
-    const apiKey = process.env.NEXT_PUBLIC_PIXABAY_API_KEY;
-    let imageSrc = nextPuzzle.imageSrc;
-    let imageAlt = nextPuzzle.imageAlt;
-
-    const searchQuery = nextPuzzle.type === 'matchWord' ? nextPuzzle.correctWord : nextPuzzle.fullWord;
-
-    if (apiKey) {
-      try {
-        const images = await searchImages(searchQuery, apiKey, { perPage: 5 });
-        if (images && images.length > 0) {
-          imageSrc = images[0].largeImageURL;
-          imageAlt = images[0].tags;
-        } else {
-           console.warn(`No images found on Pixabay for query: ${searchQuery}. Using fallback image.`);
-        }
-      } catch (error) {
-        console.error("Error fetching image from Pixabay:", error);
-        console.warn(`Using fallback image for query: ${searchQuery} due to API error.`);
-      }
-    } else {
-       console.warn("Pixabay API key not set. Using fallback image.");
-    }
-    setCurrentPuzzle({...nextPuzzle, imageSrc, imageAlt});
-    setShuffledOptions(shuffleArray(nextPuzzle.options));
-    setIsAnswered(false);
-    setSelectedAnswer(null);
-    setFeedback(null);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [questionsAnswered, score, MAX_QUESTIONS]); 
-
-  useEffect(() => {
-    loadNextPuzzle();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run only once on mount
-
-  const handleAnswer = (selectedOption: string) => {
-    if (!currentPuzzle || isAnswered) return;
-    setIsAnswered(true);
-    setSelectedAnswer(selectedOption);
-
-    let isCorrect = false;
-    let correctValue = "";
-
-    if (currentPuzzle.type === "matchWord") {
-      correctValue = currentPuzzle.correctWord;
-      if (selectedOption === correctValue) {
-        isCorrect = true;
-      }
-    } else if (currentPuzzle.type === "missingLetter") {
-      correctValue = currentPuzzle.correctLetter;
-      if (selectedOption === correctValue) {
-        isCorrect = true;
-      }
-    }
-
-    let newScore = score;
-    if (isCorrect) {
-      newScore = score + 1;
-      setScore(newScore);
-      setFeedback({ message: "Correct! Well done!", type: "correct" });
-      toast({
-        title: "Great Job!",
-        description: `That's right!`,
-        className: "bg-green-500 text-white",
-      });
-    } else {
-      const incorrectFeedback = currentPuzzle.type === 'matchWord'
-        ? `The correct word was "${currentPuzzle.correctWord}".`
-        : `The correct letter was "${currentPuzzle.correctLetter}". The word is "${currentPuzzle.fullWord}".`;
-      setFeedback({ message: `Not quite! ${incorrectFeedback}`, type: "incorrect" });
-      toast({
-        variant: "destructive",
-        title: "Try Again!",
-        description: `That wasn't the right match. Keep learning!`,
-      });
-    }
-
-    setTimeout(() => {
-      const newQuestionsAnswered = questionsAnswered + 1;
-      setQuestionsAnswered(newQuestionsAnswered);
-
-      if (newQuestionsAnswered < MAX_QUESTIONS) {
-        loadNextPuzzle();
-      } else {
-        setFeedback({ message: `Game Over! Your final score: ${newScore}/${MAX_QUESTIONS}`, type: "info" });
-        setCurrentPuzzle(null);
-      }
-    }, isCorrect ? 1500 : 3000);
+  const handlePuzzleSelect = (puzzleType: EnglishPuzzleType) => {
+    setSelectedPuzzleType(puzzleType);
+    setView('selectDifficulty');
   };
 
-  const resetGame = () => {
-    setScore(0);
-    setQuestionsAnswered(0);
-    setFeedback(null);
-    setIsAnswered(false);
-    setSelectedAnswer(null);
-    setUsedPuzzleIds([]);
-    loadNextPuzzle();
+  const handleDifficultySelect = (difficulty: Difficulty) => {
+    setSelectedDifficulty(difficulty);
+    setView('playing');
   };
 
-  const getPuzzleTitle = () => {
-    if (!currentPuzzle) return "Easy English Fun";
-    return currentPuzzle.type === "matchWord" ? "Match the Word" : "Find the Missing Letter";
-  };
-  
-  const getPuzzleInstruction = () => {
-    if (!currentPuzzle) return "Loading...";
-    return currentPuzzle.type === "matchWord" 
-      ? "Which word matches the picture?" 
-      : `What letter is missing from "${currentPuzzle.wordPattern.replace(/_/g, ' _ ')}"?`;
+  const handleBack = () => {
+    if (view === 'playing') {
+      setView('selectDifficulty');
+    } else if (view === 'selectDifficulty') {
+      setView('selectPuzzle');
+      setSelectedPuzzleType(null);
+    }
   };
 
+  if (view === 'playing' && selectedPuzzleType && selectedDifficulty) {
+    return (
+      <>
+        <HeadMetadata puzzleName={selectedPuzzleType.name} />
+        <EnglishPuzzleGame
+          puzzleType={selectedPuzzleType.id}
+          difficulty={selectedDifficulty}
+          onBack={handleBack}
+          puzzleName={selectedPuzzleType.name}
+          Icon={selectedPuzzleType.Icon}
+        />
+      </>
+    );
+  }
+
+  if (view === 'selectDifficulty' && selectedPuzzleType) {
+    return (
+      <>
+        <HeadMetadata puzzleName={selectedPuzzleType.name} />
+        <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] py-8">
+            <Card className="w-full max-w-lg shadow-xl">
+                 <CardHeader className="bg-primary/10">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                            <selectedPuzzleType.Icon size={28} className={cn("text-primary", selectedPuzzleType.color)} />
+                            <CardTitle className="text-2xl font-bold text-primary">{selectedPuzzleType.name}</CardTitle>
+                        </div>
+                        <Button variant="outline" size="sm" onClick={handleBack}>
+                            <ArrowLeft size={16} className="mr-1" /> Back
+                        </Button>
+                    </div>
+                    <CardDescription className="text-center text-lg text-foreground/80 pt-3">
+                        Select your challenge level!
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="p-6 grid grid-cols-1 gap-4">
+                     {DIFFICULTY_LEVELS.map((diff) => (
+                        <Button
+                            key={diff.level}
+                            variant="outline"
+                            className="h-auto py-4 text-left flex items-start space-y-1 hover:bg-accent/10 group"
+                            onClick={() => handleDifficultySelect(diff.level)}
+                        >
+                             <div className="flex items-center w-full">
+                                <diff.Icon size={24} className="mr-3 transition-colors duration-200"/>
+                                <div className="flex-grow">
+                                    <p className="text-lg font-semibold">{diff.label}</p>
+                                </div>
+                                <CheckCircle size={24} className="text-transparent group-hover:text-accent transition-colors duration-200" />
+                            </div>
+                        </Button>
+                     ))}
+                </CardContent>
+            </Card>
+        </div>
+      </>
+    );
+  }
+
+  // Default view: selectPuzzle
   return (
     <>
       <HeadMetadata />
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] py-8">
-        <Card className="w-full max-w-lg shadow-xl">
+        <Card className="w-full max-w-2xl shadow-xl">
           <CardHeader className="bg-primary/10">
             <div className="flex items-center justify-center space-x-3">
-              <BookMarked size={36} className="text-indigo-500" />
-              <CardTitle className="text-3xl font-bold text-primary">{getPuzzleTitle()}</CardTitle>
+              <BookMarked size={36} className="text-primary" />
+              <CardTitle className="text-3xl font-bold text-primary">Easy English Puzzles</CardTitle>
             </div>
-            <CardDescription className="text-center text-md text-foreground/80 pt-2 min-h-[3em]">
-              Score: {score} / {MAX_QUESTIONS} (Round: {Math.min(questionsAnswered + 1, MAX_QUESTIONS)})
-              {currentPuzzle && questionsAnswered < MAX_QUESTIONS && (
-                 <p className="text-sm text-muted-foreground mt-1">{getPuzzleInstruction()}</p>
-              )}
+            <CardDescription className="text-center text-xl text-foreground/80 pt-3">
+              Choose a fun way to learn!
             </CardDescription>
           </CardHeader>
-          <CardContent className="p-6 text-center space-y-6">
-            {currentPuzzle && questionsAnswered < MAX_QUESTIONS ? (
-              <>
-                <div className="relative w-full h-48 sm:h-64 rounded-lg overflow-hidden shadow-md border-2 border-primary/30 bg-slate-100">
-                  <Image
-                    src={currentPuzzle.imageSrc}
-                    alt={currentPuzzle.imageAlt}
-                    layout="fill"
-                    objectFit="contain" 
-                    data-ai-hint={currentPuzzle.type === 'matchWord' ? currentPuzzle.correctWord : currentPuzzle.fullWord}
-                    priority
-                    unoptimized={currentPuzzle.imageSrc.includes('pixabay.com')}
-                  />
-                </div>
-
-                {currentPuzzle.type === "missingLetter" && (
-                  <p className="text-3xl sm:text-4xl font-bold tracking-wider my-4">
-                    {currentPuzzle.wordPattern.split('').map((char, idx) => (
-                      <span key={idx} className={char === '_' ? 'text-destructive mx-1' : 'mx-0.5'}>
-                        {char === '_' ? ' __ ' : char}
-                      </span>
-                    ))}
-                  </p>
-                )}
-
-                <div className={cn(
-                  "grid gap-3",
-                  currentPuzzle.options.length <=3 ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-2 sm:grid-cols-4"
-                )}>
-                  {shuffledOptions.map((option) => {
-                    const isCorrectOption = currentPuzzle.type === "matchWord" ? option === currentPuzzle.correctWord : option === currentPuzzle.correctLetter;
-                    const isSelectedIncorrect = isAnswered && selectedAnswer === option && !isCorrectOption;
-
-                    return (
-                      <Button
-                        key={option}
-                        onClick={() => handleAnswer(option)}
-                        disabled={isAnswered}
-                        variant="outline"
-                        className={cn(
-                          "text-lg py-3 h-auto transition-all duration-200 ease-in-out",
-                          "hover:bg-accent/20 focus:ring-2 focus:ring-accent",
-                          isAnswered && isCorrectOption && "bg-green-100 border-green-600 text-green-700 hover:bg-green-100/80 ring-2 ring-green-500",
-                          isSelectedIncorrect && "bg-red-100 border-red-600 text-red-700 hover:bg-red-100/80 ring-2 ring-red-500",
-                          isAnswered && !isCorrectOption && option !== selectedAnswer && "opacity-60"
-                        )}
-                      >
-                        {option}
-                      </Button>
-                    )
-                  })}
-                </div>
-                {feedback && (feedback.type !== "info" || questionsAnswered >= MAX_QUESTIONS) && (
-                  <div
-                    className={cn(
-                      "mt-4 p-3 rounded-md text-center font-medium",
-                      feedback.type === "correct" && "bg-green-100 text-green-700",
-                      feedback.type === "incorrect" && "bg-red-100 text-red-700",
-                      feedback.type === "info" && "bg-blue-100 text-blue-700"
-                    )}
-                  >
-                    {feedback.type === "correct" && <CheckCircle className="inline mr-2" />}
-                    {feedback.type === "incorrect" && <XCircle className="inline mr-2" />}
-                    {feedback.type === "info" && <HelpCircle className="inline mr-2" />}
-                    {feedback.message}
+          <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+            {ENGLISH_PUZZLE_TYPES.map((puzzle) => (
+              <Button
+                key={puzzle.id}
+                variant="outline"
+                className="h-auto py-4 text-left flex flex-col items-start space-y-1 hover:bg-accent/10 group"
+                onClick={() => handlePuzzleSelect(puzzle)}
+              >
+                <div className="flex items-center w-full">
+                  <puzzle.Icon size={24} className={cn("mr-3 transition-colors duration-200", puzzle.color)} />
+                  <div className="flex-grow">
+                    <p className={cn("text-lg font-semibold", puzzle.color)}>{puzzle.name}</p>
+                    <p className="text-sm text-muted-foreground">{puzzle.description}</p>
                   </div>
-                )}
-              </>
-            ) : (
-              <div className="space-y-4">
-                <Sparkles size={64} className="mx-auto text-yellow-500" />
-                <p className="text-2xl font-semibold text-accent">
-                  {questionsAnswered >= MAX_QUESTIONS && feedback?.type === "info"
-                    ? feedback.message
-                    : "Loading Puzzles..."}
-                </p>
-                {questionsAnswered >= MAX_QUESTIONS && (
-                  <Button onClick={resetGame} className="bg-accent text-accent-foreground hover:bg-accent/90">
-                    <RotateCcw className="mr-2" /> Play Again
-                  </Button>
-                )}
-              </div>
-            )}
-            <div className="mt-8 pt-6 border-t">
-              <Button asChild variant="outline" className="w-full sm:w-auto">
-                <Link href="/puzzles">
-                  <ArrowLeft size={16} className="mr-2" /> Back to All Puzzles
-                </Link>
+                  <ArrowLeft size={24} className="text-transparent rotate-180 group-hover:text-accent transition-colors duration-200" />
+                </div>
               </Button>
-            </div>
+            ))}
           </CardContent>
         </Card>
       </div>
     </>
   );
 }
-
-    

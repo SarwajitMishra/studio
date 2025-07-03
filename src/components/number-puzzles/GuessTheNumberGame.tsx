@@ -9,14 +9,20 @@ import { Label } from "@/components/ui/label";
 import { Target, RotateCcw, Lightbulb, Award, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import type { Difficulty } from "@/lib/constants";
 
-const MAX_NUMBER_GUESS_GAME = 100;
+const DIFFICULTY_CONFIG = {
+  easy: { max: 20 },
+  medium: { max: 100 },
+  hard: { max: 500 },
+};
 
 interface GuessTheNumberGameProps {
   onBack: () => void;
+  difficulty: Difficulty;
 }
 
-export default function GuessTheNumberGame({ onBack }: GuessTheNumberGameProps) {
+export default function GuessTheNumberGame({ onBack, difficulty }: GuessTheNumberGameProps) {
   const [secretNumber, setSecretNumber] = useState<number | null>(null);
   const [currentGuess, setCurrentGuess] = useState<string>("");
   const [feedback, setFeedback] = useState<string>("Make your first guess!");
@@ -25,34 +31,36 @@ export default function GuessTheNumberGame({ onBack }: GuessTheNumberGameProps) 
   const [showHint, setShowHint] = useState<boolean>(false);
   const { toast } = useToast();
 
+  const maxNumber = DIFFICULTY_CONFIG[difficulty].max;
+
   const generateNewSecretNumber = useCallback(() => {
-    setSecretNumber(Math.floor(Math.random() * MAX_NUMBER_GUESS_GAME) + 1);
-  }, []);
+    setSecretNumber(Math.floor(Math.random() * maxNumber) + 1);
+  }, [maxNumber]);
 
   const resetGame = useCallback(() => {
     generateNewSecretNumber();
     setCurrentGuess("");
-    setFeedback(`I'm thinking of a number between 1 and ${MAX_NUMBER_GUESS_GAME}.`);
+    setFeedback(`I'm thinking of a number between 1 and ${maxNumber}.`);
     setAttempts(0);
     setIsGameWon(false);
     setShowHint(false);
-  }, [generateNewSecretNumber]);
+  }, [generateNewSecretNumber, maxNumber]);
 
   useEffect(() => {
     resetGame();
-  }, [resetGame]);
+  }, [resetGame, difficulty]);
 
   const handleGuessSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (isGameWon || secretNumber === null) return;
     const guessNum = parseInt(currentGuess, 10);
 
-    if (isNaN(guessNum) || guessNum < 1 || guessNum > MAX_NUMBER_GUESS_GAME) {
-      setFeedback(`Please enter a valid number between 1 and ${MAX_NUMBER_GUESS_GAME}.`);
+    if (isNaN(guessNum) || guessNum < 1 || guessNum > maxNumber) {
+      setFeedback(`Please enter a valid number between 1 and ${maxNumber}.`);
       toast({
         variant: "destructive",
         title: "Invalid Guess",
-        description: `Your guess must be a number from 1 to ${MAX_NUMBER_GUESS_GAME}.`,
+        description: `Your guess must be a number from 1 to ${maxNumber}.`,
       });
       return;
     }
@@ -96,7 +104,7 @@ export default function GuessTheNumberGame({ onBack }: GuessTheNumberGameProps) 
           </Button>
         </div>
         <CardDescription className="text-center text-md text-foreground/80 pt-2">
-          I'm thinking of a number between 1 and {MAX_NUMBER_GUESS_GAME}. Can you guess it?
+          I'm thinking of a number between 1 and {maxNumber}. Can you guess it?
         </CardDescription>
       </CardHeader>
       <CardContent className="p-6 space-y-6">
@@ -120,11 +128,11 @@ export default function GuessTheNumberGame({ onBack }: GuessTheNumberGameProps) 
                 type="number"
                 value={currentGuess}
                 onChange={(e) => setCurrentGuess(e.target.value)}
-                placeholder={`Enter a number (1-${MAX_NUMBER_GUESS_GAME})`}
+                placeholder={`Enter a number (1-${maxNumber})`}
                 className="text-base"
                 disabled={isGameWon || secretNumber === null}
                 min="1"
-                max={MAX_NUMBER_GUESS_GAME}
+                max={maxNumber}
               />
             </div>
             <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isGameWon || secretNumber === null}>

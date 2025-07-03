@@ -1,6 +1,6 @@
 
 import type { LucideIcon } from 'lucide-react';
-import { HomeIcon, LayoutGrid, Puzzle, BookOpen, UserCircle, Settings, BarChart3, Zap, Apple, Banana, Cherry, Grape, Carrot, Pizza, CakeSlice, IceCream2, Swords, Bot, Search, Sigma, Brain, ToyBrick, Star as StarIcon, Coins as CoinsIcon, BookMarked, Target, Calculator, ListOrdered } from 'lucide-react';
+import { HomeIcon, LayoutGrid, Puzzle, BookOpen, UserCircle, Settings, BarChart3, Zap, Apple, Banana, Cherry, Grape, Carrot, Pizza, CakeSlice, IceCream2, Swords, Bot, Search, Sigma, Brain, ToyBrick, Star as StarIcon, Coins as CoinsIcon, BookMarked, Target, Calculator, ListOrdered, SpellCheck, CaseLower, MousePointerSquare } from 'lucide-react';
 
 export type GameCategory = 'Strategy' | 'Puzzles' | 'Learning';
 
@@ -206,4 +206,78 @@ export const MATH_PUZZLE_TYPES: MathPuzzleType[] = [
     Icon: Sigma,
     color: "text-pink-500",
   },
+];
+
+// Types for English Puzzles
+export type EnglishPuzzleSubtype = 'matchWord' | 'missingLetter';
+export type Difficulty = 'easy' | 'medium' | 'hard';
+
+export interface EnglishPuzzleType {
+  id: EnglishPuzzleSubtype;
+  name: string;
+  description: string;
+  Icon: LucideIcon;
+  color: string;
+}
+
+export const ENGLISH_PUZZLE_TYPES: EnglishPuzzleType[] = [
+    {
+        id: "matchWord",
+        name: "Match the Word",
+        description: "Choose the correct word for the picture shown.",
+        Icon: SpellCheck,
+        color: "text-blue-500"
+    },
+    {
+        id: "missingLetter",
+        name: "Find Missing Letter",
+        description: "Figure out which letter is missing to complete the word.",
+        Icon: CaseLower,
+        color: "text-green-500"
+    }
+];
+
+interface EnglishPuzzleItemBase {
+  id: string;
+  imageAlt: string;
+  imageSrc: string; // fallback
+  difficulty: Difficulty;
+}
+
+interface WordMatchPuzzle extends EnglishPuzzleItemBase {
+  type: "matchWord";
+  correctWord: string;
+  options: string[];
+}
+
+interface MissingLetterPuzzle extends EnglishPuzzleItemBase {
+  type: "missingLetter";
+  wordPattern: string;
+  correctLetter: string;
+  options: string[];
+  fullWord: string;
+}
+
+export type EnglishPuzzleItem = WordMatchPuzzle | MissingLetterPuzzle;
+
+
+export const ENGLISH_PUZZLE_DATA: EnglishPuzzleItem[] = [
+  { id: "1", type: "matchWord", imageSrc: "https://placehold.co/300x200.png", imageAlt: "An apple", correctWord: "Apple", options: ["Apple", "Banana", "Carrot"], difficulty: "easy" },
+  { id: "2", type: "matchWord", imageSrc: "https://placehold.co/300x200.png", imageAlt: "A ball", correctWord: "Ball", options: ["Ball", "Box", "Book"], difficulty: "easy" },
+  { id: "3", type: "matchWord", imageSrc: "https://placehold.co/300x200.png", imageAlt: "A cat", correctWord: "Cat", options: ["Cat", "Dog", "Car"], difficulty: "easy" },
+  { id: "4", type: "matchWord", imageSrc: "https://placehold.co/300x200.png", imageAlt: "A dog", correctWord: "Dog", options: ["Dog", "Duck", "Door"], difficulty: "easy" },
+  { id: "5", type: "matchWord", imageSrc: "https://placehold.co/300x200.png", imageAlt: "The sun", correctWord: "Sun", options: ["Sun", "Star", "Moon"], difficulty: "easy" },
+
+  { id: "ml1", type: "missingLetter", imageSrc: "https://placehold.co/300x200.png", imageAlt: "A dog", wordPattern: "D _ G", correctLetter: "O", options: ["A", "O", "U"], fullWord: "DOG", difficulty: "easy" },
+  { id: "ml2", type: "missingLetter", imageSrc: "https://placehold.co/300x200.png", imageAlt: "The sun", wordPattern: "S _ N", correctLetter: "U", options: ["A", "U", "I"], fullWord: "SUN", difficulty: "easy" },
+  { id: "ml3", type: "missingLetter", imageSrc: "https://placehold.co/300x200.png", imageAlt: "A bed", wordPattern: "B _ D", correctLetter: "E", options: ["A", "E", "I"], fullWord: "BED", difficulty: "easy" },
+  
+  { id: "6", type: "matchWord", imageSrc: "https://placehold.co/300x200.png", imageAlt: "A car", correctWord: "Car", options: ["Car", "Bus", "Bike", "Cart"], difficulty: "medium" },
+  { id: "7", type: "matchWord", imageSrc: "https://placehold.co/300x200.png", imageAlt: "A house", correctWord: "House", options: ["House", "Mouse", "Horse", "Cloud"], difficulty: "medium" },
+  { id: "ml4", type: "missingLetter", imageSrc: "https://placehold.co/300x200.png", imageAlt: "A chair", wordPattern: "CH _ IR", correctLetter: "A", options: ["E", "A", "O"], fullWord: "CHAIR", difficulty: "medium" },
+  { id: "ml5", type: "missingLetter", imageSrc: "https://placehold.co/300x200.png", imageAlt: "A table", wordPattern: "TA _ LE", correctLetter: "B", options: ["B", "P", "D"], fullWord: "TABLE", difficulty: "medium" },
+
+  { id: "8", type: "matchWord", imageSrc: "https://placehold.co/300x200.png", imageAlt: "An elephant", correctWord: "Elephant", options: ["Elephant", "Alligator", "Antelope", "Hippo"], difficulty: "hard" },
+  { id: "9", type: "matchWord", imageSrc: "https://placehold.co/300x200.png", imageAlt: "A computer", correctWord: "Computer", options: ["Computer", "Calculator", "Television", "Commuter"], difficulty: "hard" },
+  { id: "ml6", type: "missingLetter", imageSrc: "https://placehold.co/300x200.png", imageAlt: "A banana", wordPattern: "B _ N _ NA", correctLetter: "A", options: ["A", "E", "I", "O", "U"], fullWord: "BANANA", difficulty: "hard" }, // This is an example, logic might need adjustment for multi-blanks
 ];

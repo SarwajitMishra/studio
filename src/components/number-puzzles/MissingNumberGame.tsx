@@ -9,67 +9,69 @@ import { Label } from "@/components/ui/label";
 import { Search, Hash, RotateCcw, Award, ArrowLeft, CheckCircle, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import type { Difficulty } from "@/lib/constants";
 
 const QUESTIONS_PER_ROUND = 5;
-const SEQUENCE_LENGTH = 5; // e.g., 4 numbers shown, 1 blank
+const SEQUENCE_LENGTH = 5; 
+
+const DIFFICULTY_CONFIG = {
+    easy: { startRange: 10, diffRange: 3 },
+    medium: { startRange: 20, diffRange: 5 },
+    hard: { startRange: 50, diffRange: 10 },
+};
 
 interface MissingNumberProblem {
   id: string;
-  displaySequence: (number | string)[]; // e.g., [2, 4, '_', 8, 10]
+  displaySequence: (number | string)[]; 
   answer: number;
-  description?: string; // e.g., "The numbers increase by 2 each time."
+  description?: string; 
 }
 
 interface MissingNumberGameProps {
   onBack: () => void;
+  difficulty: Difficulty;
 }
 
-export default function MissingNumberGame({ onBack }: MissingNumberGameProps) {
+export default function MissingNumberGame({ onBack, difficulty }: MissingNumberGameProps) {
   const [currentProblem, setCurrentProblem] = useState<MissingNumberProblem | null>(null);
   const [userAnswer, setUserAnswer] = useState<string>("");
   const [score, setScore] = useState<number>(0);
   const [questionsAnswered, setQuestionsAnswered] = useState<number>(0);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [isGameOver, setIsGameOver] = useState<boolean>(false);
-  const [usedProblemIds, setUsedProblemIds] = useState<string[]>([]);
   const { toast } = useToast();
 
   const generateProblem = useCallback((): MissingNumberProblem => {
-    const start = Math.floor(Math.random() * 10) + 1; // 1 to 10
-    let diff = Math.floor(Math.random() * 5) + 1; // 1 to 5
-    if (Math.random() < 0.3) diff *= -1; // 30% chance of decreasing sequence
+    const config = DIFFICULTY_CONFIG[difficulty];
+    const start = Math.floor(Math.random() * config.startRange) + 1;
+    let diff = Math.floor(Math.random() * config.diffRange) + 1;
+    if (Math.random() < 0.4) diff *= -1; // 40% chance of decreasing sequence
 
     const fullSequence: number[] = [];
     for (let i = 0; i < SEQUENCE_LENGTH; i++) {
       fullSequence.push(start + i * diff);
     }
 
-    // Ensure missing index is not the first or last for a clearer "missing middle"
-    const missingIndex = Math.floor(Math.random() * (SEQUENCE_LENGTH - 2)) + 1; // Index 1, 2, or 3 for length 5
+    const missingIndex = Math.floor(Math.random() * (SEQUENCE_LENGTH - 2)) + 1;
     const answer = fullSequence[missingIndex];
 
     const displaySequence = fullSequence.map((num, idx) =>
       idx === missingIndex ? "_" : num
     );
     
-    let description = "";
-    if (diff > 0) {
-        description = `The numbers are increasing. Common difference is ${diff}.`;
-    } else {
-        description = `The numbers are decreasing. Common difference is ${Math.abs(diff)}.`;
-    }
-
+    let description = diff > 0 
+      ? `The numbers are increasing by ${diff}.`
+      : `The numbers are decreasing by ${Math.abs(diff)}.`;
 
     return {
-      id: `mn-${Date.now()}-${Math.random()}`, // Simple unique ID
+      id: `mn-${Date.now()}-${Math.random()}`,
       displaySequence,
       answer,
       description,
     };
-  }, []);
+  }, [difficulty]);
 
   const loadNewProblem = useCallback(() => {
-    // For now, always generate a new one. Could expand to a predefined list later.
     const newProblem = generateProblem();
     setCurrentProblem(newProblem);
     setUserAnswer("");
@@ -80,13 +82,12 @@ export default function MissingNumberGame({ onBack }: MissingNumberGameProps) {
     setScore(0);
     setQuestionsAnswered(0);
     setIsGameOver(false);
-    setUsedProblemIds([]);
     loadNewProblem();
   }, [loadNewProblem]);
 
   useEffect(() => {
     resetGame();
-  }, [resetGame]);
+  }, [resetGame, difficulty]);
 
   const handleSubmitAnswer = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -118,7 +119,6 @@ export default function MissingNumberGame({ onBack }: MissingNumberGameProps) {
       setQuestionsAnswered(newQuestionsAnswered);
       if (newQuestionsAnswered >= QUESTIONS_PER_ROUND) {
         setIsGameOver(true);
-        // Update feedback for game over state
         setFeedback(isCorrect ? `Correct! Final Score: ${score + 1}/${QUESTIONS_PER_ROUND}` : `Not quite. The missing number was ${currentProblem.answer}. ${currentProblem.description || ''} Final Score: ${score}/${QUESTIONS_PER_ROUND}`);
       } else {
         loadNewProblem();
@@ -139,7 +139,7 @@ export default function MissingNumberGame({ onBack }: MissingNumberGameProps) {
           </Button>
         </div>
         <CardDescription className="text-center text-md text-foreground/80 pt-2">
-          Find the missing number in the sequence. Score: {score}/{QUESTIONS_PER_ROUND}
+          Find the missing number. Score: {score}/{QUESTIONS_PER_ROUND} | Difficulty: <span className="capitalize">{difficulty}</span>
         </CardDescription>
       </CardHeader>
       <CardContent className="p-6 space-y-6">
@@ -164,7 +164,7 @@ export default function MissingNumberGame({ onBack }: MissingNumberGameProps) {
                 ))}
               </p>
               {currentProblem.description && !feedback && (
-                 <p className="text-sm text-muted-foreground mt-2">Hint: {currentProblem.description}</p>
+                 <p className="text-sm text-muted-foreground mt-2">Hint: Look at the pattern!</p>
               )}
             </div>
             <form onSubmit={handleSubmitAnswer} className="space-y-4">
