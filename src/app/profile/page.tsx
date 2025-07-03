@@ -21,7 +21,7 @@ import {
   LOCAL_STORAGE_S_POINTS_KEY,
   LOCAL_STORAGE_S_COINS_KEY
 } from "@/lib/constants";
-import { UserCircle, BarChart3, Settings, CheckCircle, LogIn, LogOut, UploadCloud, Edit3, User as UserIcon, Palette, Sun, Moon, Trophy, Gamepad2, Star, Coins, AlertTriangle } from 'lucide-react';
+import { UserCircle, BarChart3, Settings, CheckCircle, LogIn, LogOut, UploadCloud, Edit3, User as UserIcon, Palette, Sun, Moon, Trophy, Gamepad2, Star, Coins, AlertTriangle, Loader2 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -96,6 +96,8 @@ export default function ProfilePage() {
   const avatarFileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const [isUploading, setIsUploading] = useState(false);
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
 
   const [theme, setTheme] = useState<string>('light');
   const [favoriteColor, setFavoriteColor] = useState<string>('default');
@@ -227,20 +229,77 @@ export default function ProfilePage() {
     };
   }, [toast, currentUser]);
 
+  const handleAutoSaveAvatar = useCallback(async (avatarToSave: string) => {
+      if (!currentUser) return;
 
-  const handleUserNameChange = (name: string) => {
-    setEditingUserName(name);
-    localStorage.setItem(LOCAL_STORAGE_USER_NAME_KEY, name);
-  }
+      const isDataUrl = avatarToSave.startsWith('data:image');
+      
+      // No need to check for changes, as this is only called on a new selection.
+      // if (!isDataUrl && avatarToSave === currentUser.photoURL) return;
 
-  const handleSelectedAvatarChange = (avatarSrc: string) => {
-    setSelectedAvatar(avatarSrc);
-    localStorage.setItem(LOCAL_STORAGE_AVATAR_KEY, avatarSrc);
-     if (!currentUser) {
+      setIsUploading(true);
+      try {
+        let photoURLToSave = avatarToSave;
+        if (isDataUrl) {
+          const avatarPath = `avatars/${currentUser.uid}/profileImage.png`;
+          const imageRef = storageRef(storage, avatarPath);
+          await uploadString(imageRef, avatarToSave, 'data_url');
+          photoURLToSave = await getDownloadURL(imageRef);
+        }
+        await updateProfile(currentUser, { photoURL: photoURLToSave });
+        localStorage.setItem(LOCAL_STORAGE_AVATAR_KEY, photoURLToSave);
+        setSelectedAvatar(photoURLToSave); // Ensure state is synced with the final URL
+        toast({ title: "Avatar Auto-Saved!", description: "Your new avatar has been saved to your profile." });
+      } catch (error: any) {
+        console.error("Error auto-saving avatar:", error);
+        toast({ variant: "destructive", title: "Avatar Save Failed", description: error.message || "Could not save avatar." });
+      } finally {
+        setIsUploading(false);
+      }
+    }, [currentUser, toast]);
+
+    const handleSelectedAvatarChange = (avatarSrc: string) => {
+      setSelectedAvatar(avatarSrc);
+      localStorage.setItem(LOCAL_STORAGE_AVATAR_KEY, avatarSrc);
+      if (currentUser) {
+        handleAutoSaveAvatar(avatarSrc);
+      } else {
         toast({ title: "Avatar Preview Changed", description: "Log in to save this avatar to your profile." });
-    }
-  }
+      }
+    };
+
+    useEffect(() => {
+      if (!currentUser || editingUserName === (currentUser.displayName ?? DEFAULT_USER_NAME)) {
+        return;
+      }
   
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+  
+      debounceTimeoutRef.current = setTimeout(async () => {
+        if (editingUserName.trim() === "") {
+          toast({ variant: "destructive", title: "Invalid Name", description: "Username cannot be empty." });
+          return;
+        }
+        try {
+          await updateProfile(currentUser, { displayName: editingUserName });
+          localStorage.setItem(LOCAL_STORAGE_USER_NAME_KEY, editingUserName);
+          toast({ title: "Username Auto-Saved!", description: `Your display name is now ${editingUserName}.` });
+        } catch (error: any) {
+          console.error("Error auto-saving username:", error);
+          toast({ variant: "destructive", title: "Update Failed", description: error.message || "Could not update username." });
+        }
+      }, 1500);
+  
+      return () => {
+        if (debounceTimeoutRef.current) {
+          clearTimeout(debounceTimeoutRef.current);
+        }
+      };
+    }, [editingUserName, currentUser, toast]);
+
+
   const actualSignInWithGoogle = async () => {
     try {
       const result = await signInWithPopup(auth, googleProvider);
@@ -273,25 +332,6 @@ export default function ProfilePage() {
     }
   };
 
-  const handleUserNameSave = async () => {
-    if (!currentUser) {
-      toast({ variant: "destructive", title: "Not Logged In", description: "Please log in to save your username." });
-      return;
-    }
-    if (editingUserName.trim() === "") {
-      toast({ variant: "destructive", title: "Invalid Name", description: "Username cannot be empty." });
-      return;
-    }
-    try {
-      await updateProfile(currentUser, { displayName: editingUserName });
-      localStorage.setItem(LOCAL_STORAGE_USER_NAME_KEY, editingUserName);
-      toast({ title: "Username Updated!", description: `Your display name is now ${editingUserName}.` });
-    } catch (error: any) {
-      console.error("Error updating username:", error);
-      toast({ variant: "destructive", title: "Update Failed", description: error.message || "Could not update username." });
-    }
-  };
-
   const handleAvatarFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -312,42 +352,6 @@ export default function ProfilePage() {
     }
   };
 
-  const handleSaveAvatar = async () => {
-    if (!currentUser) {
-      toast({ variant: "destructive", title: "Not Logged In", description: "Please log in to save your avatar." });
-      return;
-    }
-    if (!selectedAvatar) {
-        toast({ variant: "destructive", title: "No Avatar Selected", description: "Please select or upload an avatar." });
-        return;
-    }
-    const isDataUrl = selectedAvatar.startsWith('data:image');
-    const hasChangedFromProfile = selectedAvatar !== currentUser.photoURL;
-    if (!isDataUrl && !hasChangedFromProfile) {
-         toast({ title: "No Change", description: "Avatar is already up to date with your profile." });
-         return;
-    }
-    setIsUploading(true);
-    try {
-      let photoURLToSave = selectedAvatar;
-      if (isDataUrl) {
-        const avatarPath = `avatars/${currentUser.uid}/profileImage.png`;
-        const imageRef = storageRef(storage, avatarPath);
-        await uploadString(imageRef, selectedAvatar, 'data_url');
-        photoURLToSave = await getDownloadURL(imageRef);
-      }
-      await updateProfile(currentUser, { photoURL: photoURLToSave });
-      localStorage.setItem(LOCAL_STORAGE_AVATAR_KEY, photoURLToSave);
-      setSelectedAvatar(photoURLToSave);
-      toast({ title: "Avatar Saved!", description: "Your new avatar has been saved to your profile." });
-    } catch (error: any) {
-      console.error("Error saving avatar:", error);
-      toast({ variant: "destructive", title: "Avatar Save Failed", description: error.message || "Could not save avatar." });
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
   const handleThemeChange = (newTheme: string) => {
     setTheme(newTheme);
     localStorage.setItem('theme', newTheme);
@@ -365,15 +369,13 @@ export default function ProfilePage() {
     toast({ title: "Favorite Color Set", description: `Your favorite color is now ${FAVORITE_COLOR_OPTIONS.find(c => c.value === newColor)?.label || newColor}.` });
   };
 
-  const isSaveNameDisabled = !currentUser || isUploading || editingUserName === (currentUser?.displayName);
-  const isSaveAvatarDisabled = !currentUser || isUploading || (selectedAvatar === (currentUser?.photoURL) && !selectedAvatar?.startsWith('data:image'));
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle className="text-2xl font-bold">Account Information</CardTitle>
-          <CardDescription>Manage your login status and username. Changes are saved locally and can be synced to your profile when logged in.</CardDescription>
+          <CardDescription>Manage your login status and username. Changes for logged-in users are auto-saved to your online profile.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center gap-3">
@@ -382,14 +384,11 @@ export default function ProfilePage() {
               id="username"
               type="text"
               value={editingUserName}
-              onChange={(e) => handleUserNameChange(e.target.value)}
+              onChange={(e) => setEditingUserName(e.target.value)}
               className="max-w-xs text-base"
               aria-label="Edit display name"
               placeholder="Enter your display name"
             />
-            <Button onClick={handleUserNameSave} size="sm" variant="outline" disabled={isSaveNameDisabled}>
-              <Edit3 className="mr-2 h-4 w-4" /> Save to Profile
-            </Button>
           </div>
           {isConfigMissing ? (
             <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-md text-destructive text-sm space-y-1">
@@ -421,15 +420,17 @@ export default function ProfilePage() {
       </Card>
 
       <header className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-6 p-6 bg-primary/10 rounded-lg shadow">
-        {selectedAvatar ? (
+        {isUploading ? (
+          <div className="h-24 w-24 rounded-full border-4 border-accent shadow-md flex items-center justify-center bg-muted">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : (
           <Avatar className="h-24 w-24 border-4 border-accent shadow-md">
             <AvatarImage src={selectedAvatar} alt={`${editingUserName}'s Avatar`} data-ai-hint="avatar character" />
             <AvatarFallback className="text-3xl bg-muted text-muted-foreground">
               {editingUserName.substring(0, 2).toUpperCase()}
             </AvatarFallback>
           </Avatar>
-        ) : (
-          <UserIcon size={96} className="text-primary" />
         )}
         <div className="text-center sm:text-left">
           <h1 className="text-3xl font-bold text-foreground">My Profile</h1>
@@ -472,7 +473,7 @@ export default function ProfilePage() {
           <Card className="shadow-lg">
             <CardHeader>
               <CardTitle>Choose Your Avatar</CardTitle>
-              <CardDescription>Select a predefined avatar or upload your own (max 2MB). Changes are saved locally. Log in and click "Save to Profile" to update your online profile.</CardDescription>
+              <CardDescription>Select a predefined avatar or upload your own (max 2MB). Changes are saved locally and auto-saved to your online profile if you are logged in.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div>
@@ -525,12 +526,8 @@ export default function ProfilePage() {
                 >
                   <UploadCloud className="mr-2 h-5 w-5" /> Upload Image
                 </Button>
-                <p className="text-xs text-muted-foreground mt-2">Max file size: 2MB. PNG, JPG, GIF accepted. Avatar is saved locally.</p>
+                <p className="text-xs text-muted-foreground mt-2">Max file size: 2MB. PNG, JPG, GIF accepted. Changes auto-save when logged in.</p>
               </div>
-
-              <Button onClick={handleSaveAvatar} className="w-full sm:w-auto bg-accent text-accent-foreground hover:bg-accent/90 mt-4" disabled={isSaveAvatarDisabled}>
-                {isUploading ? "Saving..." : "Save to Profile"}
-              </Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -685,3 +682,4 @@ export default function ProfilePage() {
     
 
     
+
