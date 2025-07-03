@@ -8,8 +8,6 @@ import { Puzzle as PuzzleIcon, CheckCircle, Shield, Gem, Star, ArrowLeft, Timer,
 import Link from "next/link";
 import NextImage from "next/image";
 import { cn } from "@/lib/utils";
-import { searchImages } from "../../../services/pixabay";
-import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 
@@ -28,8 +26,6 @@ interface PuzzleImage {
   src: string;
   alt: string;
   hint: string;
-  width?: number;
-  height?: number;
 }
 
 interface PuzzlePiece {
@@ -49,17 +45,19 @@ const DIFFICULTY_LEVELS: DifficultyOption[] = [
 
 const PUZZLE_IMAGES_BY_DIFFICULTY: Record<Difficulty, PuzzleImage[]> = {
   beginner: [
-    { src: "https://placehold.co/450x450.png", alt: "A cute cartoon animal", hint: "animal cute" },
-    { src: "https://placehold.co/450x450.png", alt: "A colorful cartoon landscape", hint: "cartoon fun" },
-    { src: "https://placehold.co/450x450.png", alt: "A simple nature scene", hint: "nature simple" },
+    { src: "https://placehold.co/450x450.png", alt: "A cute cartoon animal", hint: "cute animal" },
+    { src: "https://placehold.co/450x450.png", alt: "A colorful cartoon landscape", hint: "cartoon landscape" },
+    { src: "https://placehold.co/450x450.png", alt: "A simple nature scene", hint: "nature scene" },
   ],
   expert: [
-    { src: "https://placehold.co/450x450.png", alt: "A beautiful landscape", hint: "landscape beautiful" },
+    { src: "https://placehold.co/450x450.png", alt: "A beautiful landscape", hint: "beautiful landscape" },
     { src: "https://placehold.co/450x450.png", alt: "A fantasy world illustration", hint: "fantasy world" },
+    { src: "https://placehold.co/450x450.png", alt: "A detailed city", hint: "detailed city" },
   ],
   pro: [
-    { src: "https://placehold.co/450x450.png", alt: "A detailed cityscape", hint: "cityscape detailed" },
-    { src: "https://placehold.co/450x450.png", alt: "A complex abstract pattern", hint: "abstract complex" },
+    { src: "https://placehold.co/450x450.png", alt: "A detailed cityscape", hint: "cityscape" },
+    { src: "https://placehold.co/450x450.png", alt: "A complex abstract pattern", hint: "abstract pattern" },
+    { src: "https://placehold.co/450x450.png", alt: "A busy space scene", hint: "space scene" },
   ],
 };
 
@@ -147,8 +145,6 @@ export default function JigsawPuzzlePage() {
     const boardRef = useRef<HTMLDivElement>(null);
     const [boardSize, setBoardSize] = useState(450); // Default size
 
-    const { toast } = useToast();
-
     // Effect to update board size for calculations
     useEffect(() => {
         const updateBoardSize = () => {
@@ -173,54 +169,15 @@ export default function JigsawPuzzlePage() {
     }, [viewMode, isComplete]);
 
 
-    const handleDifficultySelect = async (difficulty: Difficulty) => {
+    const handleDifficultySelect = (difficulty: Difficulty) => {
         const levelConfig = DIFFICULTY_LEVELS.find(d => d.level === difficulty);
         if (!levelConfig) return;
 
         setSelectedDifficulty(difficulty);
         setGridSize(levelConfig.gridSize);
 
-        const apiKey = process.env.NEXT_PUBLIC_PIXABAY_API_KEY;
-        const fallbackImages = PUZZLE_IMAGES_BY_DIFFICULTY[difficulty];
-        setAvailableImages(fallbackImages); // Default fallback
-
-        if (!apiKey) {
-            console.warn("Pixabay API key not found. Using fallback images.");
-            setViewMode("selectImage");
-            return;
-        }
-
-        const searchQuery = (fallbackImages[0]?.hint || difficulty) + " kids";
-        const categoryMap: Record<Difficulty, string> = {
-            beginner: "animals",
-            expert: "nature",
-            pro: "backgrounds",
-        };
-        const category = categoryMap[difficulty];
-        
-        try {
-            toast({ title: "Fetching Images...", description: "Please wait while we find some cool puzzles." });
-            const pixabayImages = await searchImages(searchQuery, apiKey, {
-                category: category,
-                perPage: 9,
-            });
-
-            if (pixabayImages.length > 0) {
-                 const mappedImages: PuzzleImage[] = pixabayImages.map((img: any) => ({
-                    src: img.largeImageURL, // Use larger images for better quality
-                    alt: img.tags,
-                    hint: img.tags,
-                    width: img.webformatWidth,
-                    height: img.webformatHeight,
-                }));
-                setAvailableImages(mappedImages);
-            } else {
-                 toast({ variant: "destructive", title: "No Images Found", description: "Could not find images from Pixabay, using defaults." });
-            }
-        } catch (err) {
-            console.error("Error fetching from Pixabay. Falling back to default images.", err);
-             toast({ variant: "destructive", title: "API Error", description: "Could not fetch images, using defaults." });
-        }
+        const imagesForDifficulty = PUZZLE_IMAGES_BY_DIFFICULTY[difficulty];
+        setAvailableImages(imagesForDifficulty);
 
         setViewMode("selectImage");
     };
