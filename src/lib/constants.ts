@@ -1,6 +1,6 @@
 
 import type { LucideIcon } from 'lucide-react';
-import { HomeIcon, LayoutGrid, Puzzle, BookOpen, UserCircle, Settings, BarChart3, Zap, Apple, Banana, Cherry, Grape, Carrot, Pizza, CakeSlice, IceCream2, Swords, Bot, Search, Sigma, Brain, ToyBrick, Star as StarIcon, Coins as CoinsIcon, BookMarked, Target, Calculator, ListOrdered, SpellCheck, CaseLower, AlignJustify, Filter } from 'lucide-react';
+import { HomeIcon, LayoutGrid, Puzzle, BookOpen, UserCircle, Settings, BarChart3, Zap, Apple, Banana, Cherry, Grape, Carrot, Pizza, CakeSlice, IceCream2, Swords, Bot, Search, Sigma, Brain, ToyBrick, Star as StarIcon, Coins as CoinsIcon, BookMarked, Target, Calculator, ListOrdered, SpellCheck, CaseLower, AlignJustify, Filter, Keyboard } from 'lucide-react';
 
 export type GameCategory = 'Strategy' | 'Puzzles' | 'Learning';
 
@@ -70,6 +70,15 @@ export const GAMES: Game[] = [
     href: '/puzzles/easy-english',
     color: 'text-indigo-500',
   },
+   {
+    id: 'typing-rush',
+    title: 'Typing Rush',
+    category: 'Learning',
+    Icon: Keyboard,
+    description: 'Test your typing speed as letters and words rain down!',
+    href: '/puzzles/typing-rush',
+    color: 'text-orange-500',
+  },
 ];
 
 export interface PuzzleType {
@@ -117,6 +126,15 @@ export const PUZZLE_TYPES: PuzzleType[] = [
     description: 'Learn basic English words through simple and fun puzzles.',
     color: 'text-indigo-500',
     href: '/puzzles/easy-english',
+    disabled: false,
+  },
+  {
+    id: 'typing-rush',
+    name: 'Typing Rush',
+    Icon: Keyboard,
+    description: 'How fast can you type? Catch the falling letters and words!',
+    color: 'text-orange-500',
+    href: '/puzzles/typing-rush',
     disabled: false,
   },
 ];
