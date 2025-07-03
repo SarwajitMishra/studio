@@ -66,18 +66,9 @@ export const GAMES: Game[] = [
     title: 'Easy English Fun',
     category: 'Learning',
     Icon: BookMarked,
-    description: 'Learn basic English words and concepts in a fun, interactive way!',
+    description: 'Learn basic English words through fun, interactive puzzles!',
     href: '/puzzles/easy-english',
     color: 'text-indigo-500',
-  },
-   {
-    id: 'typing-rush',
-    title: 'Typing Rush',
-    category: 'Learning',
-    Icon: Keyboard,
-    description: 'Test your typing speed as letters and words rain down!',
-    href: '/puzzles/typing-rush',
-    color: 'text-orange-500',
   },
 ];
 
@@ -123,18 +114,9 @@ export const PUZZLE_TYPES: PuzzleType[] = [
     id: 'easy-english',
     name: 'Easy English Fun',
     Icon: BookMarked,
-    description: 'Learn basic English words through simple and fun puzzles.',
+    description: 'Learn basic English words and improve typing skills.',
     color: 'text-indigo-500',
     href: '/puzzles/easy-english',
-    disabled: false,
-  },
-  {
-    id: 'typing-rush',
-    name: 'Typing Rush',
-    Icon: Keyboard,
-    description: 'How fast can you type? Catch the falling letters and words!',
-    color: 'text-orange-500',
-    href: '/puzzles/typing-rush',
     disabled: false,
   },
 ];
@@ -227,7 +209,7 @@ export const MATH_PUZZLE_TYPES: MathPuzzleType[] = [
 ];
 
 // Types for English Puzzles
-export type EnglishPuzzleSubtype = 'matchWord' | 'missingLetter' | 'sentenceScramble' | 'oddOneOut';
+export type EnglishPuzzleSubtype = 'matchWord' | 'missingLetter' | 'sentenceScramble' | 'oddOneOut' | 'typingRush';
 export type Difficulty = 'easy' | 'medium' | 'hard';
 
 export interface EnglishPuzzleType {
@@ -266,6 +248,13 @@ export const ENGLISH_PUZZLE_TYPES: EnglishPuzzleType[] = [
         description: "Find the word that doesn't belong in the group.",
         Icon: Filter,
         color: "text-teal-500"
+    },
+    {
+        id: "typingRush",
+        name: "Typing Rush",
+        description: "How fast can you type? Burst the falling bubbles!",
+        Icon: Keyboard,
+        color: "text-red-500",
     }
 ];
 
@@ -280,6 +269,7 @@ interface WordMatchPuzzle extends EnglishPuzzleItemBase {
   options: string[];
   imageAlt: string;
   imageSrc: string;
+  hint?: string;
 }
 
 interface MissingLetterPuzzle extends EnglishPuzzleItemBase {

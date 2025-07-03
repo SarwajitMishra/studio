@@ -8,6 +8,7 @@ import { BookMarked, ArrowLeft, Shield, Star, Gem, CheckCircle } from "lucide-re
 import { cn } from "@/lib/utils";
 import { ENGLISH_PUZZLE_TYPES, type EnglishPuzzleSubtype, type Difficulty, type EnglishPuzzleType } from "@/lib/constants";
 import EnglishPuzzleGame from "@/components/english-puzzles/EnglishPuzzleGame";
+import TypingRushGame from "@/components/english-puzzles/TypingRushGame";
 
 // Client component to inject metadata
 const HeadMetadata = ({ puzzleName }: { puzzleName?: string }) => {
@@ -15,7 +16,7 @@ const HeadMetadata = ({ puzzleName }: { puzzleName?: string }) => {
   const title = puzzleName ? `${puzzleName} - ${baseTitle}` : baseTitle;
   const description = puzzleName
     ? `Play ${puzzleName} to improve your English vocabulary!`
-    : "Choose a fun English puzzle to play, like matching words to pictures or finding missing letters!";
+    : "Choose a fun English puzzle to play, like matching words to pictures or improving your typing speed!";
   return (
     <>
       <title>{title}</title>
@@ -55,16 +56,43 @@ export default function EasyEnglishPuzzlesPage() {
   };
 
   if (view === 'playing' && selectedPuzzleType && selectedDifficulty) {
+    const commonProps = {
+      difficulty: selectedDifficulty,
+      onBack: handleBack,
+    };
+
+    let gameComponent;
+
+    switch (selectedPuzzleType.id) {
+      case 'typingRush':
+        gameComponent = <TypingRushGame {...commonProps} />;
+        break;
+      
+      case 'matchWord':
+      case 'missingLetter':
+      case 'sentenceScramble':
+      case 'oddOneOut':
+        gameComponent = <EnglishPuzzleGame 
+          puzzleType={selectedPuzzleType.id}
+          puzzleName={selectedPuzzleType.name}
+          Icon={selectedPuzzleType.Icon}
+          {...commonProps} 
+        />;
+        break;
+
+      default:
+        gameComponent = (
+          <div className="text-center">
+            <p>Game not found.</p>
+            <Button onClick={handleBack} className="mt-4">Go Back</Button>
+          </div>
+        );
+    }
+
     return (
       <>
         <HeadMetadata puzzleName={selectedPuzzleType.name} />
-        <EnglishPuzzleGame
-          puzzleType={selectedPuzzleType.id}
-          difficulty={selectedDifficulty}
-          onBack={handleBack}
-          puzzleName={selectedPuzzleType.name}
-          Icon={selectedPuzzleType.Icon}
-        />
+        {gameComponent}
       </>
     );
   }
