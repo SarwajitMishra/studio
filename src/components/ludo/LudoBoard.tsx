@@ -134,20 +134,21 @@ export const LudoBoard: React.FC<LudoBoardProps> = ({ players, onTokenClick, cur
                         (playerOfToken?.isAI)
                     }
                     className={cn(
-                        "rounded-full flex items-center justify-center border-2 hover:ring-2 hover:ring-offset-1 absolute shadow-md",
+                        "rounded-full flex items-center justify-center border-2 md:border-4 border-white/90 hover:ring-2 hover:ring-offset-1 absolute shadow-xl transition-transform duration-200",
                         PLAYER_CONFIG[token.color].baseClass,
-                        isMovable && currentPlayerIndex === playerIndexOfToken && !playerOfToken?.isAI ? "cursor-pointer ring-2 ring-offset-1 ring-black animate-gentle-bounce" : "cursor-default",
-                        "text-white font-bold text-[calc(min(1.5vw,0.8rem))] z-10",
-                        tokensOnThisCell.length > 1 ? 'w-[70%] h-[70%]' : 'w-[80%] h-[80%]',
+                        isMovable && currentPlayerIndex === playerIndexOfToken && !playerOfToken?.isAI ? "cursor-pointer ring-4 ring-yellow-400 ring-offset-2 animate-gentle-bounce" : "cursor-default",
+                        "z-10",
+                        tokensOnThisCell.length > 1 ? 'w-[75%] h-[75%]' : 'w-[85%] h-[85%]',
                     )}
                      style={{
-                        transform: tokensOnThisCell.length === 2 ? (idx === 0 ? 'translateX(-15%)' : 'translateX(15%)') :
-                                   tokensOnThisCell.length === 3 ? (idx === 0 ? 'translateX(-15%) translateY(-15%)' : idx === 1 ? 'translateX(15%) translateY(-15%)' : 'translateY(15%)') :
-                                   tokensOnThisCell.length === 4 ? (idx === 0 ? 'translate(-15%, -15%)' : idx === 1 ? 'translate(15%, -15%)' : idx === 2 ? 'translate(-15%, 15%)' : 'translate(15%, 15%)') : '',
+                        transform: tokensOnThisCell.length === 2 ? (idx === 0 ? 'translateX(-20%)' : 'translateX(20%)') :
+                                   tokensOnThisCell.length === 3 ? (idx === 0 ? 'translateX(-20%) translateY(-15%)' : idx === 1 ? 'translateX(20%) translateY(-15%)' : 'translateY(15%)') :
+                                   tokensOnThisCell.length === 4 ? (idx === 0 ? 'translate(-20%, -20%)' : idx === 1 ? 'translate(20%, -20%)' : idx === 2 ? 'translate(-20%, 20%)' : 'translate(20%, 20%)') : 'translate(0,0)',
                         zIndex: 10 + idx
                     }}
                     aria-label={`Token ${token.color} ${token.id + 1}`}
                     >
+                      <div className="absolute inset-0 rounded-full shadow-inner"/>
                 </button>
             )})}
           </div>

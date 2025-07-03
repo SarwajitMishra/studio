@@ -26,30 +26,20 @@ export const PlayerInfoCard: React.FC<PlayerInfoCardProps> = ({ player, isCurren
   };
   
   let DiceIconToRender = LucideIcons.Dice6;
-  let diceButtonStyling = "text-muted-foreground opacity-50";
   let isDiceButtonClickable = false;
 
   if (isCurrentPlayer && player) {
-    if (isRolling && diceValue) {
+    if (diceValue) {
       DiceIconToRender = DICE_ICONS[diceValue] || LucideIcons.Dice6;
-      diceButtonStyling = "text-muted-foreground animate-spin";
-    } else if (diceValue) {
-      DiceIconToRender = DICE_ICONS[diceValue] || LucideIcons.Dice6;
-      diceButtonStyling = cn("animate-gentle-bounce", playerSpecificConfig.textClass);
-    } else {
-      DiceIconToRender = LucideIcons.Dice6;
-      diceButtonStyling = cn("cursor-pointer hover:opacity-75", playerSpecificConfig.textClass);
     }
     if (!player.isAI && gameView === 'playing' && !isRolling && (diceValue === null || player.hasRolledSix)) {
       isDiceButtonClickable = true;
     }
-  } else {
-    DiceIconToRender = LucideIcons.Dice6;
-    diceButtonStyling = "text-muted-foreground opacity-30";
   }
 
   const panelClasses = cn(
-    "flex flex-col items-center justify-center p-3 sm:p-4 rounded-lg shadow-md border border-primary/30 bg-card/90 backdrop-blur-sm",
+    "flex flex-col items-center justify-center p-3 sm:p-4 rounded-lg shadow-lg border-2 bg-card/90 backdrop-blur-sm transition-all duration-300",
+    isCurrentPlayer ? "border-yellow-400 ring-4 ring-yellow-400/50 animate-pulse" : "border-primary/20",
     playerSpecificConfig.baseClass + "/20",
     "w-36 sm:w-48 h-auto"
   );
@@ -72,7 +62,7 @@ export const PlayerInfoCard: React.FC<PlayerInfoCardProps> = ({ player, isCurren
           "h-10 w-10 sm:h-12 sm:w-12",
           isDiceButtonClickable
             ? cn("cursor-pointer", playerSpecificConfig.baseClass + "/30", `hover:${playerSpecificConfig.baseClass}/50`)
-            : "border-muted-foreground/30 cursor-not-allowed opacity-70"
+            : "border-muted-foreground/30 cursor-not-allowed opacity-70",
         )}
         onClick={() => {
           if (isDiceButtonClickable) onDiceRoll();
@@ -80,7 +70,7 @@ export const PlayerInfoCard: React.FC<PlayerInfoCardProps> = ({ player, isCurren
         disabled={!isDiceButtonClickable || gameView === 'gameOver'}
         aria-label={`Roll dice for ${player.name}`}
       >
-        <DiceIconToRender size={24} className={diceButtonStyling} />
+        <DiceIconToRender size={24} className={cn(isRolling ? "animate-spin text-muted-foreground" : playerSpecificConfig.textClass)} />
       </Button>
     </div>
   );
