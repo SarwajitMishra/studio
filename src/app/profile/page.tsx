@@ -55,7 +55,7 @@ const FAVORITE_COLOR_OPTIONS = [
 
 const LOCAL_STORAGE_USER_NAME_KEY = 'shravyaPlayhouse_userName';
 const LOCAL_STORAGE_AVATAR_KEY = 'shravyaPlayhouse_avatar';
-const DEFAULT_AVATAR_SRC = AVATARS[0]?.src || '/images/avatars/modern_girl.png';
+const DEFAULT_AVATAR_SRC = '/images/avatars/modern_girl.png';
 const DEFAULT_USER_NAME = "Kiddo";
 
 interface GameStat {
@@ -176,11 +176,12 @@ export default function ProfilePage() {
       setCurrentUser(user); // Set current user first
 
       if (user) { 
-        const firebaseDisplayName = user.displayName || localStorage.getItem(LOCAL_STORAGE_USER_NAME_KEY) || DEFAULT_USER_NAME;
+        // Use nullish coalescing (??) to correctly handle empty strings as valid display names
+        const firebaseDisplayName = user.displayName ?? localStorage.getItem(LOCAL_STORAGE_USER_NAME_KEY) ?? DEFAULT_USER_NAME;
         setEditingUserName(firebaseDisplayName);
         localStorage.setItem(LOCAL_STORAGE_USER_NAME_KEY, firebaseDisplayName);
 
-        const firebasePhotoURL = user.photoURL || localStorage.getItem(LOCAL_STORAGE_AVATAR_KEY) || DEFAULT_AVATAR_SRC;
+        const firebasePhotoURL = user.photoURL ?? localStorage.getItem(LOCAL_STORAGE_AVATAR_KEY) ?? DEFAULT_AVATAR_SRC;
         setSelectedAvatar(firebasePhotoURL);
         localStorage.setItem(LOCAL_STORAGE_AVATAR_KEY, firebasePhotoURL);
 
