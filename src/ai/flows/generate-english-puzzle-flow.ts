@@ -26,11 +26,11 @@ const GenerateEnglishPuzzleInputSchema = z.object({
 });
 export type GenerateEnglishPuzzleInput = z.infer<typeof GenerateEnglishPuzzleInputSchema>;
 
+// Schemas for the AI model's direct output. `imageQuery` is removed.
 const WordMatchPuzzleSchema = z.object({
   type: z.enum(['matchWord']).describe("The type of puzzle, which must be 'matchWord' for this schema."),
   correctWord: z.string().describe('The single, correct word for the puzzle.'),
   options: z.array(z.string()).length(4).describe('An array of 4 words, including the correct one and three plausible distractors.'),
-  imageQuery: z.string().describe('A simple, two-word search query suitable for an image search API to find a picture for the correct word (e.g., "cartoon apple").'),
 });
 
 const MissingLetterPuzzleSchema = z.object({
@@ -39,7 +39,6 @@ const MissingLetterPuzzleSchema = z.object({
   wordPattern: z.string().describe('The word with one letter replaced by an underscore (e.g., "AP_LE").'),
   correctLetter: z.string().length(1).describe('The single correct letter that was replaced.'),
   options: z.array(z.string().length(1)).length(4).describe('An array of 4 single letters, including the correct one and three distractors.'),
-  imageQuery: z.string().describe('A simple, two-word search query suitable for an image search API to find a picture for the full word (e.g., "red apple").'),
 });
 
 const EnglishPuzzleOutputSchema = z.union([WordMatchPuzzleSchema, MissingLetterPuzzleSchema]);
@@ -48,13 +47,16 @@ const EnglishPuzzleOutputSchema = z.union([WordMatchPuzzleSchema, MissingLetterP
 export async function generateEnglishPuzzle(input: GenerateEnglishPuzzleInput): Promise<EnglishPuzzleItem> {
   const llmResponse = await generateEnglishPuzzleFlow(input);
   
-  // Construct the final puzzle item object for the client.
-  // The ID and fallback image source are added here.
+  // Determine the word to search for and construct a reliable image query.
+  const queryWord = llmResponse.type === 'matchWord' ? llmResponse.correctWord : llmResponse.fullWord;
+  const imageQuery = `cartoon ${queryWord}`;
+
   const baseItem = {
     id: `ai-${Date.now()}`,
     difficulty: input.difficulty,
     imageSrc: 'https://placehold.co/400x300.png', // Fallback image
-    imageAlt: llmResponse.type === 'matchWord' ? llmResponse.correctWord : llmResponse.fullWord,
+    imageAlt: queryWord,
+    imageQuery: imageQuery, // Use the reliably constructed query
   };
 
   if (llmResponse.type === 'matchWord') {
@@ -63,8 +65,6 @@ export async function generateEnglishPuzzle(input: GenerateEnglishPuzzleInput): 
       type: 'matchWord',
       correctWord: llmResponse.correctWord,
       options: llmResponse.options,
-      // Add imageQuery to the object that is passed around. The component will use it.
-      imageQuery: llmResponse.imageQuery,
     };
   } else {
     return {
@@ -74,12 +74,11 @@ export async function generateEnglishPuzzle(input: GenerateEnglishPuzzleInput): 
       wordPattern: llmResponse.wordPattern,
       correctLetter: llmResponse.correctLetter,
       options: llmResponse.options,
-      imageQuery: llmResponse.imageQuery,
     };
   }
 }
 
-// Define the prompt for the AI model
+// Define the prompt for the AI model. Instructions for `imageQuery` are removed.
 const puzzleGenerationPrompt = ai.definePrompt({
   name: 'englishPuzzleGeneratorPrompt',
   input: { schema: GenerateEnglishPuzzleInputSchema },
@@ -107,9 +106,7 @@ const puzzleGenerationPrompt = ai.definePrompt({
     - **Task:** Generate a word matching the difficulty. Create a pattern by replacing ONE letter with an underscore. Provide the correct letter and three distractor letters as options. The final 'options' array must contain exactly 4 single letters and must include the correct letter.
     - **Your output JSON 'type' field must be 'missingLetter'.**
 
-- **Image Query:** Provide a simple, 2-word, descriptive query for an image search API (like "cute cat" or "red apple").
-
-- **Final Output:** Your response must be a single JSON object matching the requested output schema.
+- **Final Output:** Your response must be a single JSON object matching the requested output schema. Do NOT create an image query.
 
 **Puzzle Request:**
 - **Puzzle Type:** {{puzzleType}}
