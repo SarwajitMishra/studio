@@ -27,9 +27,8 @@ import { useToast } from "@/hooks/use-toast";
 import {
   auth,
   storage,
-  getRedirectResult,
   googleProvider,
-  signInWithRedirect,
+  signInWithPopup,
   signOut as firebaseSignOut,
   onAuthStateChanged,
   updateProfile,
@@ -165,8 +164,6 @@ export default function ProfilePage() {
       return; // Stop the rest of the effect from running if config is bad
     }
 
-    let isMounted = true; 
-
     // Log Firebase config being used by the SDK for diagnostics
     if (auth && auth.app && auth.app.options) {
       console.log("DIAGNOSTIC: Firebase Auth Domain (from SDK):", auth.app.options.authDomain);
@@ -176,8 +173,6 @@ export default function ProfilePage() {
     }
 
     const handleUserUpdate = (user: User | null, isNewLoginEvent: boolean = false) => {
-      if (!isMounted) return;
-
       setCurrentUser(user); // Set current user first
 
       if (user) { 
@@ -192,7 +187,6 @@ export default function ProfilePage() {
         // Simulate fetching points for logged-in user (actual Firestore would go here)
         setSPoints(100); // Mock S-Points for logged-in user
         setSCoins(10);  // Mock S-Coins for logged-in user
-        // TODO: Display a message "Cloud points loaded" or similar
 
         const onlineStats = GAMES.map(game => ({
             gameId: game.id,
@@ -209,7 +203,6 @@ export default function ProfilePage() {
         // User is logged out, revert to local storage for points/coins
         setSPoints(getStoredGameCurrency(LOCAL_STORAGE_S_POINTS_KEY));
         setSCoins(getStoredGameCurrency(LOCAL_STORAGE_S_COINS_KEY));
-        // Username and avatar remain from localStorage (or defaults if nothing there).
         
         const offlineStats = GAMES.map(game => ({
             gameId: game.id,
@@ -220,35 +213,15 @@ export default function ProfilePage() {
         setGameStats(offlineStats);
       }
     };
-
-    const processRedirect = async () => {
-        try {
-            const result = await getRedirectResult(auth);
-            // User data handling will be managed by onAuthStateChanged
-            // If result is not null, a sign-in just completed.
-            if (result && result.user && isMounted) {
-                 console.log("DIAGNOSTIC: Google sign-in redirect successful.", result.user.displayName);
-            }
-        } catch (error: any) {
-            if (isMounted) {
-                console.error("Error during Google sign-in redirect result processing:", error);
-                // Log more details if available
-                if (error.code) console.error("Firebase error code:", error.code);
-                if (error.message) console.error("Firebase error message:", error.message);
-                toast({ variant: "destructive", title: "Login Failed After Redirect", description: error.message || "Could not process sign-in with Google after redirect. Please try again." });
-            }
-        }
-    };
-
-    processRedirect();
-
+    
+    // The onAuthStateChanged listener handles all user state updates,
+    // including those from signInWithPopup.
     const unsubscribe = onAuthStateChanged(auth, (user) => {
         const isNewLogin = !!user && (!currentUser || currentUser.uid !== user.uid); 
         handleUserUpdate(user, isNewLogin);
     });
 
     return () => {
-      isMounted = false;
       unsubscribe();
     };
   }, [toast, currentUser]);
@@ -266,15 +239,17 @@ export default function ProfilePage() {
         toast({ title: "Avatar Preview Changed", description: "Log in to save this avatar to your profile." });
     }
   }
-
+  
   const actualSignInWithGoogle = async () => {
     try {
-      await signInWithRedirect(auth, googleProvider);
+      const result = await signInWithPopup(auth, googleProvider);
+      // The onAuthStateChanged listener will handle the UI update.
+      console.log("DIAGNOSTIC: Google sign-in with popup successful.", result.user.displayName);
     } catch (error: any) {
-      console.error("Error during Google sign-in initiation:", error);
-      if (error.code) console.error("Firebase error code (initiation):", error.code);
-      if (error.message) console.error("Firebase error message (initiation):", error.message);
-      toast({ variant: "destructive", title: "Login Initiation Failed", description: error.message || "Could not start sign in with Google. Please try again." });
+      console.error("Error during Google sign-in with popup:", error);
+      if (error.code !== 'auth/popup-closed-by-user') {
+          toast({ variant: "destructive", title: "Login Failed", description: error.message || "Could not sign in with Google. Please try again." });
+      }
     }
   };
 
@@ -290,7 +265,6 @@ export default function ProfilePage() {
   const handleLogout = async () => {
     try {
       await firebaseSignOut(auth);
-      // onAuthStateChanged will handle setting user to null and reloading local S-Points/Coins.
       toast({ title: "Logged Out", description: "You have been successfully logged out." });
     } catch (error: any)      {
       console.error("Error during sign-out:", error);

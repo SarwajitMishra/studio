@@ -3,8 +3,7 @@ import { initializeApp, getApp, getApps, type FirebaseOptions } from 'firebase/a
 import {
   getAuth,
   GoogleAuthProvider,
-  signInWithRedirect, // Ensure this is imported
-  getRedirectResult,  // Ensure this is imported
+  signInWithPopup, // Changed from signInWithRedirect
   signOut,
   onAuthStateChanged,
   updateProfile,
@@ -54,12 +53,12 @@ export {
   storage,
   db, // Export db
   googleProvider,
-  signInWithRedirect, // Ensure this is exported
-  getRedirectResult,  // Ensure this is exported
+  signInWithPopup, // Changed from signInWithRedirect
   signOut,
   onAuthStateChanged,
   updateProfile,
 };
 export type { User };
+
 
 
