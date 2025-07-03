@@ -30,6 +30,8 @@ interface EnglishPuzzleGameProps {
   Icon: LucideIcon;
 }
 
+const MAX_QUESTIONS = 5;
+
 export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzzleName, Icon }: EnglishPuzzleGameProps) {
   const [currentPuzzle, setCurrentPuzzle] = useState<EnglishPuzzleItem | null>(null);
   const [score, setScore] = useState(0);
@@ -38,34 +40,49 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
   const [shuffledOptions, setShuffledOptions] = useState<string[]>([]);
   const [isAnswered, setIsAnswered] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
-  const [usedPuzzleIds, setUsedPuzzleIds] = useState<string[]>([]);
+  const [isRoundOver, setIsRoundOver] = useState(false);
   const [allPuzzlesCompleted, setAllPuzzlesCompleted] = useState(false);
-  const { toast } = useToast();
 
-  const MAX_QUESTIONS = 5;
+  const { toast } = useToast();
   const sessionKey = `usedEnglishPuzzles_${puzzleType}_${difficulty}`;
 
+  const getUsedPuzzleIdsFromSession = (): string[] => {
+    if (typeof window === 'undefined') return [];
+    const stored = sessionStorage.getItem(sessionKey);
+    return stored ? JSON.parse(stored) : [];
+  };
+
+  const addUsedPuzzleIdToSession = (id: string) => {
+    if (typeof window === 'undefined') return;
+    const currentIds = getUsedPuzzleIdsFromSession();
+    const newIds = [...currentIds, id];
+    sessionStorage.setItem(sessionKey, JSON.stringify(newIds));
+  };
+  
+  const resetSessionHistory = () => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem(sessionKey);
+    }
+  };
+
   const loadNextPuzzle = useCallback(() => {
-    let availablePuzzles = ENGLISH_PUZZLE_DATA.filter(p => 
-        p.type === puzzleType && 
+    const usedIds = getUsedPuzzleIdsFromSession();
+    const availablePuzzles = ENGLISH_PUZZLE_DATA.filter(p =>
+        p.type === puzzleType &&
         p.difficulty === difficulty &&
-        !usedPuzzleIds.includes(p.id)
+        !usedIds.includes(p.id)
     );
-    
+
     if (availablePuzzles.length === 0) {
       setAllPuzzlesCompleted(true);
       setCurrentPuzzle(null);
-      setFeedback({ message: `You've completed all puzzles in this category!`, type: "info" });
+      setFeedback({ message: "You've completed all puzzles in this category!", type: "info" });
+      setIsRoundOver(true); // End the round if no more puzzles are available
       return;
     }
 
     const nextPuzzle = availablePuzzles[Math.floor(Math.random() * availablePuzzles.length)];
-    const newUsedIds = [...usedPuzzleIds, nextPuzzle.id];
-    
-    setUsedPuzzleIds(newUsedIds);
-    if (typeof window !== 'undefined') {
-        sessionStorage.setItem(sessionKey, JSON.stringify(newUsedIds));
-    }
+    addUsedPuzzleIdToSession(nextPuzzle.id);
     
     setCurrentPuzzle(nextPuzzle);
     setShuffledOptions(shuffleArray(nextPuzzle.options));
@@ -84,38 +101,24 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
         console.error("Error fetching image from Pixabay:", error);
       });
     }
-  }, [puzzleType, difficulty, usedPuzzleIds, sessionKey]);
+  }, [puzzleType, difficulty, sessionKey]);
 
-  const resetGame = useCallback((clearSession = false) => {
+  const startNewRound = useCallback((clearHistory = false) => {
+    if (clearHistory) {
+      resetSessionHistory();
+    }
     setScore(0);
     setQuestionsAnswered(0);
+    setIsRoundOver(false);
     setAllPuzzlesCompleted(false);
-
-    let initialUsedIds: string[] = [];
-    if (clearSession) {
-        if(typeof window !== 'undefined') {
-            sessionStorage.removeItem(sessionKey);
-        }
-    } else {
-        if (typeof window !== 'undefined') {
-            const storedUsedIds = sessionStorage.getItem(sessionKey);
-            initialUsedIds = storedUsedIds ? JSON.parse(storedUsedIds) : [];
-        }
-    }
-    setUsedPuzzleIds(initialUsedIds);
-  }, [sessionKey]);
+    setFeedback(null);
+    loadNextPuzzle();
+  }, [loadNextPuzzle]);
 
   useEffect(() => {
-    // This effect runs once on mount or when difficulty/type changes to initialize
-    resetGame(false);
-  }, [difficulty, puzzleType, resetGame]);
+    startNewRound(false);
+  }, [difficulty, puzzleType, startNewRound]);
 
-  useEffect(() => {
-    // This effect loads the first puzzle when the usedPuzzleIds state is initialized/reset
-    if (questionsAnswered === 0 && !currentPuzzle && !allPuzzlesCompleted) {
-      loadNextPuzzle();
-    }
-  }, [questionsAnswered, currentPuzzle, allPuzzlesCompleted, usedPuzzleIds, loadNextPuzzle]);
 
   const handleAnswer = (selectedOption: string) => {
     if (!currentPuzzle || isAnswered) return;
@@ -156,15 +159,16 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
       const newQuestionsAnswered = questionsAnswered + 1;
       setQuestionsAnswered(newQuestionsAnswered);
 
-      if (newQuestionsAnswered < MAX_QUESTIONS) {
-        loadNextPuzzle();
-      } else {
-        setFeedback({ message: `Game Over! Your final score: ${newScore}/${MAX_QUESTIONS}`, type: "info" });
+      if (newQuestionsAnswered >= MAX_QUESTIONS) {
+        setIsRoundOver(true);
+        setFeedback({ message: `Round Over! Your final score: ${newScore}/${MAX_QUESTIONS}`, type: "info" });
         setCurrentPuzzle(null);
+      } else {
+        loadNextPuzzle();
       }
     }, isCorrect ? 1500 : 3000);
   };
-
+  
   const getPuzzleInstruction = () => {
     if (!currentPuzzle) return "Loading...";
     return currentPuzzle.type === "matchWord" 
@@ -172,7 +176,18 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
       : `What letter is missing from "${currentPuzzle.wordPattern.replace(/_/g, ' _ ')}"?`;
   };
 
-  const isRoundOver = questionsAnswered >= MAX_QUESTIONS;
+  const renderGameOverView = () => (
+    <div className="space-y-4">
+      <Sparkles size={64} className="mx-auto text-yellow-500" />
+      <p className="text-2xl font-semibold text-accent">
+        {feedback?.message || "Loading Puzzles..."}
+      </p>
+      <Button onClick={() => startNewRound(allPuzzlesCompleted)} className="bg-accent text-accent-foreground hover:bg-accent/90">
+        <RotateCcw className="mr-2" /> 
+        {allPuzzlesCompleted ? "Play Again (Reset History)" : "Play Again"}
+      </Button>
+    </div>
+  );
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] py-8">
@@ -246,43 +261,33 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
                   )
                 })}
               </div>
-              {feedback && (feedback.type !== "info" || isRoundOver) && (
+              {feedback && !isRoundOver && (
                 <div
                   className={cn(
                     "mt-4 p-3 rounded-md text-center font-medium",
                     feedback.type === "correct" && "bg-green-100 text-green-700",
-                    feedback.type === "incorrect" && "bg-red-100 text-red-700",
-                    feedback.type === "info" && "bg-blue-100 text-blue-700"
+                    feedback.type === "incorrect" && "bg-red-100 text-red-700"
                   )}
                 >
                   {feedback.type === "correct" && <CheckCircle className="inline mr-2" />}
                   {feedback.type === "incorrect" && <XCircle className="inline mr-2" />}
-                  {feedback.type === "info" && <HelpCircle className="inline mr-2" />}
                   {feedback.message}
                 </div>
               )}
             </>
           ) : (
-            <div className="space-y-4">
-              <Sparkles size={64} className="mx-auto text-yellow-500" />
-              <p className="text-2xl font-semibold text-accent">
-                {feedback?.message || "Loading Puzzles..."}
-              </p>
-              {(isRoundOver || allPuzzlesCompleted) && (
-                <Button onClick={() => resetGame(allPuzzlesCompleted)} className="bg-accent text-accent-foreground hover:bg-accent/90">
-                  <RotateCcw className="mr-2" /> 
-                  {allPuzzlesCompleted ? "Play Again (Reset History)" : "Play Again"}
-                </Button>
-              )}
-            </div>
+             renderGameOverView()
           )}
-          <div className="mt-8 pt-6 border-t">
+          
+          {(isRoundOver || (allPuzzlesCompleted && !currentPuzzle)) ? null : (
+            <div className="mt-8 pt-6 border-t">
               <Button asChild variant="outline" className="w-full sm:w-auto">
                 <Link href="/puzzles">
                   <ArrowLeft size={16} className="mr-2" /> Back to All Puzzles
                 </Link>
               </Button>
             </div>
+          )}
         </CardContent>
       </Card>
     </div>

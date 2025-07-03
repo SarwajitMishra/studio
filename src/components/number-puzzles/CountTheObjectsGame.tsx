@@ -48,32 +48,48 @@ export default function CountTheObjectsGame({ onBack, difficulty }: CountTheObje
   const [score, setScore] = useState<number>(0);
   const [questionsAnswered, setQuestionsAnswered] = useState<number>(0);
   const [feedback, setFeedback] = useState<string | null>(null);
-  const [isGameOver, setIsGameOver] = useState<boolean>(false);
+  const [isRoundOver, setIsRoundOver] = useState<boolean>(false);
   const { toast } = useToast();
-  const [usedIcons, setUsedIcons] = useState<string[]>([]);
   const [allIconsUsed, setAllIconsUsed] = useState<boolean>(false);
 
   const sessionKey = `usedCountIcons_${difficulty}`;
 
+  const getUsedIconsFromSession = (): string[] => {
+    if (typeof window === 'undefined') return [];
+    const stored = sessionStorage.getItem(sessionKey);
+    return stored ? JSON.parse(stored) : [];
+  };
+
+  const addUsedIconToSession = (iconName: string) => {
+    if (typeof window === 'undefined') return;
+    const currentIcons = getUsedIconsFromSession();
+    const newIcons = [...currentIcons, iconName];
+    sessionStorage.setItem(sessionKey, JSON.stringify(newIcons));
+  };
+
+  const resetSessionHistory = () => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem(sessionKey);
+    }
+  };
+
   const loadNewProblem = useCallback(() => {
-    let availableIcons = OBJECT_ICONS.filter(icon => !usedIcons.includes(icon.name));
+    const usedIcons = getUsedIconsFromSession();
+    const availableIcons = OBJECT_ICONS.filter(icon => !usedIcons.includes(icon.name));
     
     if (availableIcons.length === 0 && OBJECT_ICONS.length > 0) {
       setAllIconsUsed(true);
       setCurrentProblem(null);
       setFeedback(`You've counted all the different types of objects!`);
+      setIsRoundOver(true);
       return;
     }
 
     const selectedObject = availableIcons[Math.floor(Math.random() * availableIcons.length)];
+    addUsedIconToSession(selectedObject.name);
+
     const config = DIFFICULTY_CONFIG[difficulty];
     const count = Math.floor(Math.random() * (config.max - config.min + 1)) + config.min;
-    
-    const newUsedIcons = [...usedIcons, selectedObject.name];
-    setUsedIcons(newUsedIcons);
-    if(typeof window !== 'undefined') {
-        sessionStorage.setItem(sessionKey, JSON.stringify(newUsedIcons));
-    }
 
     setCurrentProblem({
       id: `cto-${Date.now()}-${Math.random()}`,
@@ -84,43 +100,28 @@ export default function CountTheObjectsGame({ onBack, difficulty }: CountTheObje
     });
     setUserAnswer("");
     setFeedback(null);
-  }, [difficulty, usedIcons, sessionKey]);
+  }, [difficulty, sessionKey]);
 
-  const resetGame = useCallback((clearSession = false) => {
+  const startNewRound = useCallback((clearHistory = false) => {
+    if (clearHistory) {
+      resetSessionHistory();
+    }
     setScore(0);
     setQuestionsAnswered(0);
-    setIsGameOver(false);
-    setFeedback(null);
-    setUserAnswer("");
+    setIsRoundOver(false);
     setAllIconsUsed(false);
-    
-    let initialUsedIcons: string[] = [];
-    if (clearSession) {
-      if (typeof window !== 'undefined') {
-        sessionStorage.removeItem(sessionKey);
-      }
-    } else {
-      if (typeof window !== 'undefined') {
-        const storedUsedIcons = sessionStorage.getItem(sessionKey);
-        initialUsedIcons = storedUsedIcons ? JSON.parse(storedUsedIcons) : [];
-      }
-    }
-    setUsedIcons(initialUsedIcons);
-  }, [sessionKey]);
-
+    setFeedback(null);
+    loadNewProblem();
+  }, [loadNewProblem]);
+  
   useEffect(() => {
-    resetGame();
-  }, [difficulty, resetGame]);
+    startNewRound(false);
+  }, [difficulty, startNewRound]);
 
-  useEffect(() => {
-    if (questionsAnswered === 0 && !currentProblem && !allIconsUsed) {
-      loadNewProblem();
-    }
-  }, [questionsAnswered, currentProblem, allIconsUsed, usedIcons, loadNewProblem]);
 
   const handleSubmitAnswer = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!currentProblem || isGameOver || feedback) return;
+    if (!currentProblem || isRoundOver || feedback) return;
 
     const answerNum = parseInt(userAnswer, 10);
     if (isNaN(answerNum)) {
@@ -131,9 +132,11 @@ export default function CountTheObjectsGame({ onBack, difficulty }: CountTheObje
 
     const isCorrect = answerNum === currentProblem.count;
     let currentFeedbackMsg = "";
+    let newScore = score;
 
     if (isCorrect) {
-      setScore(prev => prev + 1);
+      newScore = score + 1;
+      setScore(newScore);
       currentFeedbackMsg = "Correct!";
       toast({ title: "Correct!", className: "bg-green-500 text-white" });
     } else {
@@ -147,15 +150,26 @@ export default function CountTheObjectsGame({ onBack, difficulty }: CountTheObje
       const newQuestionsAnswered = questionsAnswered + 1;
       setQuestionsAnswered(newQuestionsAnswered);
       if (newQuestionsAnswered >= QUESTIONS_PER_ROUND) {
-        setIsGameOver(true);
-        setFeedback(isCorrect ? `Correct! Final Score: ${score + 1}/${QUESTIONS_PER_ROUND}` : `Not quite. There were ${currentProblem.count} ${currentProblem.iconName.toLowerCase()}s. Final Score: ${score}/${QUESTIONS_PER_ROUND}`);
+        setIsRoundOver(true);
+        setFeedback(isCorrect ? `Correct! Final Score: ${newScore}/${QUESTIONS_PER_ROUND}` : `Not quite. There were ${currentProblem.count} ${currentProblem.iconName.toLowerCase()}s. Final Score: ${score}/${QUESTIONS_PER_ROUND}`);
+        setCurrentProblem(null);
       } else {
         loadNewProblem();
       }
     }, isCorrect ? 1500 : 3000);
   };
-
-  const isRoundOver = questionsAnswered >= QUESTIONS_PER_ROUND;
+  
+  const renderGameOverView = () => (
+     <div className="text-center p-6 bg-pink-100 rounded-lg shadow-inner">
+        <Award className="mx-auto h-16 w-16 text-yellow-500 mb-3" />
+        <h2 className="text-2xl font-bold text-pink-700">Round Over!</h2>
+        <p className="text-lg text-pink-600 mt-1">{feedback || `Your final score is ${score}/${QUESTIONS_PER_ROUND}.`}</p>
+        <Button onClick={() => startNewRound(allIconsUsed)} className="mt-6 w-full sm:w-auto bg-accent text-accent-foreground hover:bg-accent/90">
+          <RotateCcw className="mr-2 h-5 w-5" /> 
+          {allIconsUsed ? "Play Again (Reset History)" : "Play Again"}
+        </Button>
+      </div>
+  );
 
   return (
     <Card className="w-full max-w-lg shadow-xl">
@@ -174,17 +188,9 @@ export default function CountTheObjectsGame({ onBack, difficulty }: CountTheObje
         </CardDescription>
       </CardHeader>
       <CardContent className="p-6 space-y-6">
-        {isGameOver || allIconsUsed ? (
-          <div className="text-center p-6 bg-pink-100 rounded-lg shadow-inner">
-            <Award className="mx-auto h-16 w-16 text-yellow-500 mb-3" />
-            <h2 className="text-2xl font-bold text-pink-700">Round Over!</h2>
-            <p className="text-lg text-pink-600 mt-1">{feedback || `Your final score is ${score}/${QUESTIONS_PER_ROUND}.`}</p>
-            <Button onClick={() => resetGame(allIconsUsed)} className="mt-6 w-full sm:w-auto bg-accent text-accent-foreground hover:bg-accent/90">
-              <RotateCcw className="mr-2 h-5 w-5" /> 
-              {allIconsUsed ? "Play Again (Reset History)" : "Play Again"}
-            </Button>
-          </div>
-        ) : currentProblem && (
+        {isRoundOver ? (
+          renderGameOverView()
+        ) : currentProblem ? (
           <>
             <div className="text-center p-4 bg-muted rounded-lg min-h-[150px] flex flex-wrap items-center justify-center gap-2 sm:gap-3">
               {Array.from({ length: currentProblem.count }).map((_, index) => (
@@ -211,15 +217,15 @@ export default function CountTheObjectsGame({ onBack, difficulty }: CountTheObje
                   onChange={(e) => setUserAnswer(e.target.value)}
                   placeholder="Enter your count"
                   className="text-base"
-                  disabled={isGameOver || !!feedback}
+                  disabled={!!feedback}
                   autoFocus
                 />
               </div>
-              <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isGameOver || !!feedback || !userAnswer.trim()}>
+              <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={!!feedback || !userAnswer.trim()}>
                 Submit Answer
               </Button>
             </form>
-            {feedback && !isGameOver && (
+            {feedback && !isRoundOver && (
               <div className={cn(
                 "mt-4 p-3 rounded-md text-center font-medium flex items-center justify-center",
                 feedback.startsWith("Correct") ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
@@ -229,8 +235,7 @@ export default function CountTheObjectsGame({ onBack, difficulty }: CountTheObje
               </div>
             )}
           </>
-        )}
-         {!currentProblem && !isGameOver && !allIconsUsed && (
+        ) : (
             <div className="text-center p-6">
                 <HelpCircle size={48} className="mx-auto text-primary/50 mb-4"/>
                 <p className="text-lg text-muted-foreground">Loading puzzle...</p>
