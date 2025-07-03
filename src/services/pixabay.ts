@@ -40,7 +40,7 @@ export async function searchImages(
   apiKey: string,
   options: SearchImagesOptions = {}
 ): Promise<PixabayImage[]> {
-  let apiUrl = `https://pixabay.com/api/?key=${apiKey}&q=${encodeURIComponent(query)}&image_type=photo&orientation=horizontal&safesearch=true`;
+  let apiUrl = `https://pixabay.com/api/?key=${apiKey}&q=${encodeURIComponent(query)}&image_type=illustration&orientation=horizontal&safesearch=true`;
 
   if (options.category) {
     apiUrl += `&category=${encodeURIComponent(options.category)}`;

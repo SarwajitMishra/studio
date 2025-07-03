@@ -49,7 +49,7 @@ export async function generateEnglishPuzzle(input: GenerateEnglishPuzzleInput): 
   
   // Determine the word to search for and construct a reliable image query.
   const queryWord = llmResponse.type === 'matchWord' ? llmResponse.correctWord : llmResponse.fullWord;
-  const imageQuery = `cartoon ${queryWord}`;
+  const imageQuery = queryWord;
 
   const baseItem = {
     id: `ai-${Date.now()}`,
