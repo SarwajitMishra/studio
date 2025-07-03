@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import type { EnglishPuzzleItem, EnglishPuzzleSubtype, Difficulty } from "@/lib/constants";
 import { generateEnglishPuzzle, type GenerateEnglishPuzzleInput } from "@/ai/flows/generate-english-puzzle-flow";
+import { searchImages } from "@/services/pixabay";
 
 const shuffleArray = <T,>(array: T[]): T[] => {
   const newArray = [...array];
@@ -82,7 +83,21 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
       const newWord = puzzleData.type === 'matchWord' ? puzzleData.correctWord : puzzleData.fullWord;
       addUsedWordToSession(newWord);
 
-      setCurrentPuzzle(puzzleData);
+      let finalImageUrl = puzzleData.imageSrc; // Default placeholder from flow
+      const apiKey = process.env.NEXT_PUBLIC_PIXABAY_API_KEY;
+
+      if (apiKey && puzzleData.imageQuery) {
+        const imageResults = await searchImages(puzzleData.imageQuery, apiKey, { perPage: 3 });
+        if (imageResults.length > 0) {
+          finalImageUrl = imageResults[0].webformatURL;
+        } else {
+          console.warn(`No Pixabay results for query: "${puzzleData.imageQuery}". Using placeholder.`);
+        }
+      }
+
+      const puzzleWithImage = { ...puzzleData, imageSrc: finalImageUrl };
+
+      setCurrentPuzzle(puzzleWithImage);
       setShuffledOptions(shuffleArray(puzzleData.options));
       setIsAnswered(false);
       setSelectedAnswer(null);
@@ -112,7 +127,7 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
 
   useEffect(() => {
     startNewRound();
-  }, [difficulty, puzzleType, startNewRound]);
+  }, [startNewRound]);
 
 
   const handleAnswer = (selectedOption: string) => {
@@ -223,6 +238,7 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
                   style={{ objectFit: 'contain' }}
                   data-ai-hint={currentPuzzle.imageQuery}
                   priority
+                  unoptimized={currentPuzzle.imageSrc.startsWith('https://cdn.pixabay.com') || currentPuzzle.imageSrc.startsWith('https://pixabay.com')}
                 />
               </div>
 

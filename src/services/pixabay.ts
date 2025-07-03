@@ -1,4 +1,3 @@
-
 // src/services/pixabay.ts
 
 interface PixabayImage {
@@ -40,6 +39,13 @@ export async function searchImages(
   apiKey: string,
   options: SearchImagesOptions = {}
 ): Promise<PixabayImage[]> {
+  if (!apiKey) {
+    console.warn(
+      "Pixabay API key is missing. Add NEXT_PUBLIC_PIXABAY_API_KEY to your environment variables. Falling back to placeholder images."
+    );
+    return [];
+  }
+
   let apiUrl = `https://pixabay.com/api/?key=${apiKey}&q=${encodeURIComponent(query)}&image_type=illustration&orientation=horizontal&safesearch=true`;
 
   if (options.category) {

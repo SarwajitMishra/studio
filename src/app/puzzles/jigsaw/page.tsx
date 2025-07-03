@@ -4,11 +4,12 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Puzzle as PuzzleIcon, CheckCircle, Shield, Gem, Star, ArrowLeft, Timer, Eye, RotateCw } from "lucide-react";
+import { Puzzle as PuzzleIcon, CheckCircle, Shield, Gem, Star, ArrowLeft, Timer, Eye, RotateCw, Loader2 } from "lucide-react";
 import Link from "next/link";
 import NextImage from "next/image";
 import { cn } from "@/lib/utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { searchImages } from "@/services/pixabay";
 
 
 type Difficulty = "beginner" | "expert" | "pro";
@@ -23,7 +24,7 @@ interface DifficultyOption {
 }
 
 interface PuzzleImage {
-  src: string;
+  src?: string; // Now optional, will be fetched
   alt: string;
   hint: string;
 }
@@ -45,19 +46,19 @@ const DIFFICULTY_LEVELS: DifficultyOption[] = [
 
 const PUZZLE_IMAGES_BY_DIFFICULTY: Record<Difficulty, PuzzleImage[]> = {
   beginner: [
-    { src: "https://placehold.co/450x450.png", alt: "A cute cartoon animal", hint: "cute animal" },
-    { src: "https://placehold.co/450x450.png", alt: "A colorful cartoon landscape", hint: "cartoon landscape" },
-    { src: "https://placehold.co/450x450.png", alt: "A simple nature scene", hint: "nature scene" },
+    { alt: "A cute cartoon animal", hint: "cute animal" },
+    { alt: "A colorful cartoon landscape", hint: "cartoon landscape" },
+    { alt: "A simple nature scene", hint: "nature scene" },
   ],
   expert: [
-    { src: "https://placehold.co/450x450.png", alt: "A beautiful landscape", hint: "beautiful landscape" },
-    { src: "https://placehold.co/450x450.png", alt: "A fantasy world illustration", hint: "fantasy world" },
-    { src: "https://placehold.co/450x450.png", alt: "A detailed city", hint: "detailed city" },
+    { alt: "A beautiful landscape", hint: "beautiful landscape" },
+    { alt: "A fantasy world illustration", hint: "fantasy world" },
+    { alt: "A detailed city", hint: "detailed city" },
   ],
   pro: [
-    { src: "https://placehold.co/450x450.png", alt: "A detailed cityscape", hint: "cityscape" },
-    { src: "https://placehold.co/450x450.png", alt: "A complex abstract pattern", hint: "abstract pattern" },
-    { src: "https://placehold.co/450x450.png", alt: "A busy space scene", hint: "space scene" },
+    { alt: "A detailed cityscape", hint: "cityscape" },
+    { alt: "A complex abstract pattern", hint: "abstract pattern" },
+    { alt: "A busy space scene", hint: "space scene" },
   ],
 };
 
@@ -130,7 +131,8 @@ const PuzzlePieceComponent = ({ piece, imageSrc, boardSize, gridSize, onClick, i
 export default function JigsawPuzzlePage() {
     const [viewMode, setViewMode] = useState<"selectDifficulty" | "selectImage" | "playing">("selectDifficulty");
     const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty | null>(null);
-    const [availableImages, setAvailableImages] = useState<PuzzleImage[]>([]);
+    const [fetchedImages, setFetchedImages] = useState<PuzzleImage[]>([]);
+    const [areImagesLoading, setAreImagesLoading] = useState(false);
     const [selectedImage, setSelectedImage] = useState<PuzzleImage | null>(null);
     
     // Game state
@@ -175,15 +177,40 @@ export default function JigsawPuzzlePage() {
 
         setSelectedDifficulty(difficulty);
         setGridSize(levelConfig.gridSize);
-
-        const imagesForDifficulty = PUZZLE_IMAGES_BY_DIFFICULTY[difficulty];
-        setAvailableImages(imagesForDifficulty);
-
         setViewMode("selectImage");
+        setAreImagesLoading(true);
+
+        const fetchAllImages = async () => {
+            const imagesForDifficulty = PUZZLE_IMAGES_BY_DIFFICULTY[difficulty];
+            const apiKey = process.env.NEXT_PUBLIC_PIXABAY_API_KEY;
+
+            if (!apiKey) {
+                console.warn("Pixabay API key missing, using placeholders for Jigsaw.");
+                const placeholderImages = imagesForDifficulty.map(img => ({ ...img, src: `https://placehold.co/400x400.png?text=${img.hint.replace(/\s/g,'+')}`}));
+                setFetchedImages(placeholderImages);
+                setAreImagesLoading(false);
+                return;
+            }
+
+            const imagePromises = imagesForDifficulty.map(async (img) => {
+                const results = await searchImages(img.hint, apiKey, { perPage: 1 });
+                if (results.length > 0) {
+                    return { ...img, src: results[0].largeImageURL };
+                }
+                // Fallback for a single image if not found
+                return { ...img, src: `https://placehold.co/400x400.png?text=Not+Found` }; 
+            });
+
+            const newImages = await Promise.all(imagePromises);
+            setFetchedImages(newImages);
+            setAreImagesLoading(false);
+        };
+
+        fetchAllImages();
     };
 
     const handleImageSelect = (image: PuzzleImage) => {
-        if (!selectedDifficulty) return;
+        if (!selectedDifficulty || !image.src) return;
         
         // Reset game state
         setTime(0);
@@ -289,7 +316,7 @@ export default function JigsawPuzzlePage() {
     };
 
     // View: Playing
-    if (viewMode === "playing" && selectedDifficulty && selectedImage) {
+    if (viewMode === "playing" && selectedDifficulty && selectedImage && selectedImage.src) {
         return (
             <div className="flex flex-col items-center justify-center p-2 sm:p-4 md:p-6 space-y-4">
                  <AlertDialog open={isComplete}>
@@ -305,7 +332,11 @@ export default function JigsawPuzzlePage() {
                         </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                        <AlertDialogAction onClick={() => setViewMode('selectImage')}>Choose New Puzzle</AlertDialogAction>
+                        <AlertDialogAction onClick={() => {
+                          setViewMode('selectImage');
+                          // Trigger image fetching for the current difficulty again
+                          handleDifficultySelect(selectedDifficulty);
+                        }}>Choose New Puzzle</AlertDialogAction>
                         <AlertDialogCancel onClick={handleReset}>Back to Menu</AlertDialogCancel>
                         </AlertDialogFooter>
                     </AlertDialogContent>
@@ -343,7 +374,7 @@ export default function JigsawPuzzlePage() {
                                     <PuzzlePieceComponent
                                         key={piece.id}
                                         piece={piece}
-                                        imageSrc={selectedImage.src}
+                                        imageSrc={selectedImage.src!}
                                         boardSize={boardSize}
                                         gridSize={gridSize}
                                         onClick={() => handlePieceClick(piece.id)}
@@ -360,7 +391,10 @@ export default function JigsawPuzzlePage() {
                            <Button onClick={() => setShowHint(true)} onMouseLeave={() => setShowHint(false)} onTouchEnd={() => setShowHint(false)}>
                                 <Eye className="mr-2 h-4 w-4" /> Hint
                            </Button>
-                           <Button variant="outline" onClick={() => setViewMode('selectImage')}>
+                           <Button variant="outline" onClick={() => {
+                             setViewMode('selectImage');
+                             handleDifficultySelect(selectedDifficulty);
+                            }}>
                                <ArrowLeft className="mr-2 h-4 w-4" /> Change Image
                            </Button>
                            <Button variant="destructive" onClick={handleReset}>
@@ -379,6 +413,7 @@ export default function JigsawPuzzlePage() {
                                         "rounded-md shadow-md transition-opacity duration-300",
                                         showHint ? "opacity-100" : "opacity-30 blur-sm"
                                     )}
+                                    unoptimized
                                 />
                             </div>
                         </div>
@@ -393,19 +428,29 @@ export default function JigsawPuzzlePage() {
         return (
             <div className="p-4 sm:p-6">
                 <h2 className="text-2xl font-bold text-center mb-6">Choose an Image for Your <span className={cn(DIFFICULTY_LEVELS.find(d => d.level === selectedDifficulty)?.color)}>{selectedDifficulty}</span> Puzzle</h2>
+                
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 max-w-4xl mx-auto">
-                    {availableImages.map((img, index) => (
-                        <button key={img.src + index} onClick={() => handleImageSelect(img)} className="relative group rounded-lg overflow-hidden shadow-md focus:outline-none focus:ring-4 focus:ring-accent">
-                            <NextImage
-                                src={img.src}
-                                alt={img.alt}
-                                width={400}
-                                height={400}
-                                data-ai-hint={img.hint}
-                                className="object-cover w-full h-full aspect-square group-hover:scale-105 transition-transform duration-300"
-                            />
-                        </button>
-                    ))}
+                    {areImagesLoading ? (
+                        Array.from({ length: 3 }).map((_, index) => (
+                          <div key={index} className="bg-muted w-full aspect-square flex items-center justify-center rounded-lg shadow-md">
+                            <Loader2 className="animate-spin text-primary h-8 w-8" />
+                          </div>
+                        ))
+                    ) : (
+                        fetchedImages.map((img, index) => (
+                            <button key={img.hint + index} onClick={() => handleImageSelect(img)} className="relative group rounded-lg overflow-hidden shadow-md focus:outline-none focus:ring-4 focus:ring-accent" disabled={!img.src}>
+                                <NextImage
+                                    src={img.src!}
+                                    alt={img.alt}
+                                    width={400}
+                                    height={400}
+                                    data-ai-hint={img.hint}
+                                    className="object-cover w-full h-full aspect-square group-hover:scale-105 transition-transform duration-300"
+                                    unoptimized
+                                />
+                            </button>
+                        ))
+                    )}
                 </div>
                 <div className="text-center mt-6">
                     <Button variant="ghost" onClick={() => setViewMode("selectDifficulty")}>
