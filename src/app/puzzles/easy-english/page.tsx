@@ -174,7 +174,7 @@ export default function EasyEnglishPuzzlePage() {
         const images = await searchImages(nextPuzzle.hint, apiKey, { category });
         if (images && images.length > 0) {
           // Use the first image from Pixabay
-          imageSrc = images[0].webformatURL;
+          imageSrc = images[0].largeImageURL;
           imageAlt = images[0].tags; // Pixabay provides tags
         } else {
            console.warn(`No images found on Pixabay for hint: ${nextPuzzle.hint}. Using fallback image.`);
@@ -379,6 +379,3 @@ export default function EasyEnglishPuzzlePage() {
     </>
   );
 }
-
-
-    

@@ -447,10 +447,6 @@ export default function JigsawPuzzlePage() {
                                 data-ai-hint={img.hint}
                                 className="object-cover w-full h-full aspect-square group-hover:scale-105 transition-transform duration-300"
                             />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-                            <div className="absolute bottom-0 left-0 right-0 text-white text-xs p-2 text-center truncate">
-                                {img.alt}
-                            </div>
                         </button>
                     ))}
                 </div>
@@ -509,5 +505,3 @@ export default function JigsawPuzzlePage() {
         </div>
     );
 }
-
-    
