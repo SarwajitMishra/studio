@@ -14,8 +14,8 @@ import { useToast } from "@/hooks/use-toast";
 import { db, auth, type User } from '@/lib/firebase';
 import { doc, setDoc, getDoc, onSnapshot, updateDoc, serverTimestamp } from 'firebase/firestore';
 
-import type { Player, Token, GameView, GameMode, PlayerColor } from '@/lib/ludo/types';
-import { initialPlayerState, getMovableTokens, isWinner, moveToken as moveTokenEngine, PLAYER_CONFIG, PLAYER_COLORS } from '@/lib/ludo/engine';
+import { PLAYER_COLORS, type Player, type Token, type GameView, type GameMode, type PlayerColor } from '@/lib/ludo/types';
+import { initialPlayerState, getMovableTokens, isWinner, moveToken as moveTokenEngine, PLAYER_CONFIG } from '@/lib/ludo/engine';
 import { getAIMove } from '@/lib/ludo/ai';
 import { LudoBoard } from '@/components/ludo/LudoBoard';
 import { PlayerInfoCard } from '@/components/ludo/PlayerInfoCard';
@@ -73,18 +73,6 @@ export default function LudoPage() {
 
     return () => unsubscribe();
   }, [gameId, toast]);
-  
-  const resetGame = useCallback(() => {
-    setGameView('setup');
-    setSelectedMode(null);
-    setSelectedNumPlayers(null);
-    setPlayers([]);
-    setCurrentPlayerIndex(0);
-    setDiceValue(null);
-    setIsRolling(false);
-    setGameMessage("Game Reset. Set up your new game!");
-    toast({ title: "Game Reset", description: "Ludo game has been reset to setup." });
-  }, [toast]);
 
   const passTurn = useCallback((isTurnEnding: boolean, turnForfeited = false) => {
       const currentPlayer = players[currentPlayerIndex];
@@ -270,6 +258,18 @@ export default function LudoPage() {
     setGameMessage(`${newPlayers[0].name}'s turn. Click your dice to roll!`);
   };
 
+  const resetGame = useCallback(() => {
+    setGameView('setup');
+    setSelectedMode(null);
+    setSelectedNumPlayers(null);
+    setPlayers([]);
+    setCurrentPlayerIndex(0);
+    setDiceValue(null);
+    setIsRolling(false);
+    setGameMessage("Game Reset. Set up your new game!");
+    toast({ title: "Game Reset", description: "Ludo game has been reset to setup." });
+  }, [toast]);
+
   const player1 = players.find(p => p.color === 'red');
   const player2 = players.find(p => p.color === 'green');
   const player3 = players.find(p => p.color === 'yellow');
@@ -428,3 +428,5 @@ export default function LudoPage() {
     </>
   );
 }
+
+    
