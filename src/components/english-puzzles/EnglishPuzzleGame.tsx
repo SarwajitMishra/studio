@@ -78,26 +78,29 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
         wordsToExclude: usedWords,
       };
 
-      const newPuzzle = await generateEnglishPuzzle(input);
+      const puzzleData = await generateEnglishPuzzle(input);
       
-      const newWord = newPuzzle.type === 'matchWord' ? newPuzzle.correctWord : newPuzzle.fullWord;
+      const apiKey = process.env.NEXT_PUBLIC_PIXABAY_API_KEY;
+      if (apiKey && puzzleData.imageQuery) {
+          try {
+              const images = await searchImages(puzzleData.imageQuery, apiKey, { perPage: 1 });
+              if (images?.length > 0) {
+                  puzzleData.imageSrc = images[0].largeImageURL;
+                  puzzleData.imageAlt = images[0].tags;
+              }
+          } catch (imgError) {
+              console.error("Failed to fetch puzzle image, using fallback.", imgError);
+          }
+      }
+      
+      const newWord = puzzleData.type === 'matchWord' ? puzzleData.correctWord : puzzleData.fullWord;
       addUsedWordToSession(newWord);
 
-      setCurrentPuzzle(newPuzzle);
-      setShuffledOptions(shuffleArray(newPuzzle.options));
+      setCurrentPuzzle(puzzleData);
+      setShuffledOptions(shuffleArray(puzzleData.options));
       setIsAnswered(false);
       setSelectedAnswer(null);
 
-      const apiKey = process.env.NEXT_PUBLIC_PIXABAY_API_KEY;
-      if (apiKey && newPuzzle.imageQuery) {
-        searchImages(newPuzzle.imageQuery, apiKey, { perPage: 1 }).then(images => {
-          if (images && images.length > 0) {
-            setCurrentPuzzle(p => p && p.id === newPuzzle.id ? {...p, imageSrc: images[0].largeImageURL, imageAlt: images[0].tags} : p);
-          }
-        }).catch(error => {
-          console.error("Error fetching image from Pixabay:", error);
-        });
-      }
     } catch (error) {
       console.error("Failed to generate puzzle:", error);
       toast({
