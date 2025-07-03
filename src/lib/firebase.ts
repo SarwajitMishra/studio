@@ -11,6 +11,7 @@ import {
   type User
 } from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
+import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfigValues = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -44,12 +45,14 @@ if (!getApps().length) {
 
 const auth = getAuth(app);
 const storage = getStorage(app); // Initialize Firebase Storage
+const db = getFirestore(app); // Initialize Firestore
 const googleProvider = new GoogleAuthProvider();
 
 export {
   app,
   auth,
   storage,
+  db, // Export db
   googleProvider,
   signInWithRedirect, // Ensure this is exported
   getRedirectResult,  // Ensure this is exported
@@ -58,4 +61,5 @@ export {
   updateProfile,
 };
 export type { User };
+
 

@@ -8,10 +8,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Dice1, Dice2, Dice3, Dice4, Dice5, Dice6, RotateCcw, Home, Users, Cpu, Info, Star } from 'lucide-react';
+import { Dice1, Dice2, Dice3, Dice4, Dice5, Dice6, RotateCcw, Home, Users, Cpu, Info, Star, Globe, Copy } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
+import { db, auth, type User } from '@/lib/firebase';
+import { doc, setDoc, getDoc, onSnapshot, updateDoc, serverTimestamp } from 'firebase/firestore';
 
 const PLAYER_COLORS = ['red', 'green', 'yellow', 'blue'] as const;
 type PlayerColor = typeof PLAYER_COLORS[number];
@@ -69,10 +71,11 @@ interface Player {
   hasRolledSix: boolean;
   sixStreak: number;
   isAI?: boolean;
+  uid?: string; // For online players
 }
 
-type GameState = 'setup' | 'playing' | 'gameOver';
-type GameMode = 'offline' | 'ai' | null;
+type GameView = 'setup' | 'playing' | 'gameOver' | 'waitingForPlayers';
+type GameMode = 'offline' | 'ai' | 'online' | null;
 
 const initialPlayerState = (
     numPlayersToCreate: number,
@@ -125,8 +128,8 @@ const PlayerInfoCard: React.FC<{
   diceValue: number | null;
   isRolling: boolean;
   onDiceRoll: () => void;
-  gameState: GameState;
-}> = ({ player, isCurrentPlayer, diceValue, isRolling, onDiceRoll, gameState }) => {
+  gameView: GameView;
+}> = ({ player, isCurrentPlayer, diceValue, isRolling, onDiceRoll, gameView }) => {
   const playerSpecificConfig = PLAYER_CONFIG[player.color];
   let DiceIconToRender = Dice6;
   let diceButtonStyling = "text-muted-foreground opacity-50";
@@ -143,7 +146,7 @@ const PlayerInfoCard: React.FC<{
       DiceIconToRender = Dice6;
       diceButtonStyling = cn("cursor-pointer hover:opacity-75", playerSpecificConfig.textClass);
     }
-    if (!player.isAI && gameState === 'playing' && !isRolling && (diceValue === null || player.hasRolledSix)) {
+    if (!player.isAI && gameView === 'playing' && !isRolling && (diceValue === null || player.hasRolledSix)) {
       isDiceButtonClickable = true;
     }
   } else {
@@ -180,7 +183,7 @@ const PlayerInfoCard: React.FC<{
         onClick={() => {
           if (isDiceButtonClickable) onDiceRoll();
         }}
-        disabled={!isDiceButtonClickable || gameState === 'gameOver'}
+        disabled={!isDiceButtonClickable || gameView === 'gameOver'}
         aria-label={`Roll dice for ${player.name}`}
       >
         <DiceIconToRender size={24} className={diceButtonStyling} />
@@ -191,7 +194,7 @@ const PlayerInfoCard: React.FC<{
 
 
 export default function LudoPage() {
-  const [gameState, setGameState] = useState<GameState>('setup');
+  const [gameView, setGameView] = useState<GameView>('setup');
   const [selectedMode, setSelectedMode] = useState<GameMode>(null);
   const [selectedNumPlayers, setSelectedNumPlayers] = useState<number | null>(null);
   
@@ -199,6 +202,7 @@ export default function LudoPage() {
   const [offlinePlayerNames, setOfflinePlayerNames] = useState<string[]>([]);
 
   const [selectedOfflineColors, setSelectedOfflineColors] = useState<(PlayerColor | null)[]>([]);
+  
   const [players, setPlayers] = useState<Player[]>([]);
   const [currentPlayerIndex, setCurrentPlayerIndex] = useState(0);
   const [diceValue, setDiceValue] = useState<number | null>(null);
@@ -206,7 +210,48 @@ export default function LudoPage() {
   const [gameMessage, setGameMessage] = useState("Welcome to Ludo! Set up your game.");
   const { toast } = useToast();
 
+  const [user, setUser] = useState<User | null>(null);
+  const [gameId, setGameId] = useState<string | null>(null);
+  const [joinGameId, setJoinGameId] = useState("");
+  const [onlineGameData, setOnlineGameData] = useState<any>(null);
+
   const currentPlayer = players[currentPlayerIndex];
+
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      setUser(user);
+    });
+    return () => unsubscribe();
+  }, []);
+  
+  useEffect(() => {
+    if (!gameId) return;
+
+    const gameRef = doc(db, 'ludo-games', gameId);
+    const unsubscribe = onSnapshot(gameRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setOnlineGameData(data);
+        setPlayers(data.players);
+        setCurrentPlayerIndex(data.currentPlayerIndex);
+        setDiceValue(data.diceValue);
+        setGameMessage(data.gameMessage);
+        
+        if (data.status === 'playing') {
+          setGameView('playing');
+        } else if (data.status === 'gameOver') {
+            setGameView('gameOver');
+        }
+
+      } else {
+        toast({ title: "Game not found", description: "The game session has ended or could not be found.", variant: "destructive" });
+        setGameId(null);
+        setGameView('setup');
+      }
+    });
+
+    return () => unsubscribe();
+  }, [gameId, toast]);
 
   useEffect(() => {
     if (selectedMode === 'offline' && selectedNumPlayers) {
@@ -229,7 +274,7 @@ export default function LudoPage() {
   };
 
   const resetGame = useCallback(() => {
-    setGameState('setup');
+    setGameView('setup');
     setSelectedMode(null);
     setSelectedNumPlayers(null);
     setHumanPlayerName("Human Player");
@@ -280,12 +325,79 @@ export default function LudoPage() {
     setPlayers(newPlayers);
     setCurrentPlayerIndex(0);
     setDiceValue(null);
-    setGameState('playing');
+    setGameView('playing');
     setGameMessage(`${newPlayers[0].name}'s turn. Click your dice to roll!`);
     if (newPlayers[0].isAI) {
         setGameMessage(`${newPlayers[0].name} is thinking...`);
     }
   };
+
+  const handleCreateOnlineGame = async () => {
+    if (!user) {
+        toast({ title: "Login Required", description: "Please log in to play online.", variant: "destructive" });
+        return;
+    }
+    const newGameId = Math.random().toString(36).substring(2, 8).toUpperCase();
+    const playerOne: Player = {
+        color: 'red', name: user.displayName || 'Player 1', uid: user.uid,
+        tokens: Array(NUM_TOKENS_PER_PLAYER).fill(null).map((_, i) => ({ id: i, color: 'red', position: -1 })),
+        hasRolledSix: false, sixStreak: 0,
+    };
+    const gameData = {
+        status: 'waiting',
+        players: [playerOne],
+        maxPlayers: 2,
+        currentPlayerIndex: 0,
+        diceValue: null,
+        gameMessage: 'Waiting for another player to join...',
+        createdAt: serverTimestamp(),
+    };
+    try {
+        await setDoc(doc(db, 'ludo-games', newGameId), gameData);
+        setGameId(newGameId);
+        setGameView('waitingForPlayers');
+    } catch (error) {
+        console.error("Error creating online game:", error);
+        toast({ title: "Error", description: "Could not create online game.", variant: "destructive" });
+    }
+  };
+  
+  const handleJoinOnlineGame = async () => {
+    if (!user) {
+        toast({ title: "Login Required", description: "Please log in to join a game.", variant: "destructive" });
+        return;
+    }
+    if (!joinGameId) {
+        toast({ title: "Game ID Required", description: "Please enter a game ID to join.", variant: "destructive" });
+        return;
+    }
+
+    const gameRef = doc(db, 'ludo-games', joinGameId);
+    const docSnap = await getDoc(gameRef);
+
+    if (docSnap.exists()) {
+        const gameData = docSnap.data();
+        if (gameData.players.length < gameData.maxPlayers) {
+            const playerTwo: Player = {
+                color: 'yellow', name: user.displayName || 'Player 2', uid: user.uid,
+                tokens: Array(NUM_TOKENS_PER_PLAYER).fill(null).map((_, i) => ({ id: i, color: 'yellow', position: -1 })),
+                hasRolledSix: false, sixStreak: 0,
+            };
+            const updatedPlayers = [...gameData.players, playerTwo];
+            await updateDoc(gameRef, {
+                players: updatedPlayers,
+                status: 'playing',
+                gameMessage: `Game started! ${updatedPlayers[0].name}'s turn.`,
+            });
+            setGameId(joinGameId);
+        } else {
+            toast({ title: "Game Full", description: "This game is already full.", variant: "destructive" });
+        }
+    } else {
+        toast({ title: "Game Not Found", description: "No game found with that ID.", variant: "destructive" });
+    }
+  };
+
 
   const getMovableTokens = (player: Player, roll: number): Token[] => {
     if (!player) return [];
@@ -302,59 +414,87 @@ export default function LudoPage() {
     });
   };
 
-  const passTurn = useCallback((isTurnEnding: boolean, turnForfeited = false) => {
-    setCurrentPlayerIndex(prevIndex => {
-        const numPlayers = players.length;
-        if (numPlayers === 0 || gameState !== 'playing') return prevIndex;
+  const passTurn = useCallback(async (isTurnEnding: boolean, turnForfeited = false) => {
+    if(selectedMode === 'online') {
+        if (!gameId) return;
+        const gameRef = doc(db, 'ludo-games', gameId);
+        const currentPlayer = onlineGameData.players[onlineGameData.currentPlayerIndex];
+        let nextIndex = onlineGameData.currentPlayerIndex;
 
-        const currentPlayer = players[prevIndex];
-        let nextIndex = prevIndex;
-
-        if (turnForfeited) {
-            nextIndex = (prevIndex + 1) % numPlayers;
-        } else if (isTurnEnding || !currentPlayer?.hasRolledSix) {
-            nextIndex = (prevIndex + 1) % numPlayers;
+        if(turnForfeited || isTurnEnding || !currentPlayer?.hasRolledSix) {
+            nextIndex = (onlineGameData.currentPlayerIndex + 1) % onlineGameData.players.length;
         }
 
-        setPlayers(currentPlayers => currentPlayers.map((p, idx) => {
-            if (idx === prevIndex) return { ...p, sixStreak: 0, hasRolledSix: false };
-            return p;
-        }));
-        setDiceValue(null);
+        const nextPlayer = onlineGameData.players[nextIndex];
+        let message = `${nextPlayer.name}'s turn.`;
+        if(!isTurnEnding) message = `${nextPlayer.name} rolled a 6 and gets another turn.`;
 
-        if(nextIndex !== prevIndex) {
-            const nextPlayer = players[nextIndex];
-            if (nextPlayer) {
-                setGameMessage(`${nextPlayer.name}'s turn. ${nextPlayer.isAI ? 'AI is thinking...' : 'Click your dice to roll!'}`);
+        await updateDoc(gameRef, {
+            currentPlayerIndex: nextIndex,
+            diceValue: null,
+            'players': onlineGameData.players.map((p: Player, idx: number) => ({...p, hasRolledSix: false, sixStreak: idx === onlineGameData.currentPlayerIndex ? 0 : p.sixStreak})),
+            gameMessage: message
+        });
+    } else {
+        setCurrentPlayerIndex(prevIndex => {
+            const numPlayers = players.length;
+            if (numPlayers === 0 || gameView !== 'playing') return prevIndex;
+
+            const currentPlayer = players[prevIndex];
+            let nextIndex = prevIndex;
+
+            if (turnForfeited) {
+                nextIndex = (prevIndex + 1) % numPlayers;
+            } else if (isTurnEnding || !currentPlayer?.hasRolledSix) {
+                nextIndex = (prevIndex + 1) % numPlayers;
             }
-        } else {
-             const nextPlayer = players[nextIndex];
-             if(nextPlayer) {
-                setGameMessage(`${nextPlayer.name} rolled a 6 and gets another turn.`);
-             }
-        }
-        
-        return nextIndex;
-    });
-  }, [players, gameState]);
+
+            setPlayers(currentPlayers => currentPlayers.map((p, idx) => {
+                if (idx === prevIndex) return { ...p, sixStreak: 0, hasRolledSix: false };
+                return p;
+            }));
+            setDiceValue(null);
+
+            if(nextIndex !== prevIndex) {
+                const nextPlayer = players[nextIndex];
+                if (nextPlayer) {
+                    setGameMessage(`${nextPlayer.name}'s turn. ${nextPlayer.isAI ? 'AI is thinking...' : 'Click your dice to roll!'}`);
+                }
+            } else {
+                const nextPlayer = players[nextIndex];
+                if(nextPlayer) {
+                    setGameMessage(`${nextPlayer.name} rolled a 6 and gets another turn.`);
+                }
+            }
+            
+            return nextIndex;
+        });
+    }
+  }, [players, gameView, selectedMode, gameId, onlineGameData]);
 
 
-  const attemptMoveToken = useCallback((playerIdx: number, tokenId: number, roll: number) => {
-    setPlayers(prevPlayers => {
-      const newPlayers = prevPlayers.map(p => ({ ...p, tokens: p.tokens.map(t => ({ ...t })) }));
-      let playerToMove = newPlayers[playerIdx];
-      if (!playerToMove) return prevPlayers;
-      const tokenToMove = playerToMove.tokens.find(t => t.id === tokenId);
-      if (!tokenToMove) return prevPlayers;
+  const attemptMoveToken = useCallback(async (playerIdx: number, tokenId: number, roll: number) => {
+    
+    let newPlayers: Player[];
+    if (selectedMode === 'online') {
+        if (!onlineGameData) return;
+        newPlayers = onlineGameData.players.map((p: Player) => ({ ...p, tokens: p.tokens.map(t => ({ ...t })) }));
+    } else {
+        newPlayers = players.map(p => ({ ...p, tokens: p.tokens.map(t => ({ ...t })) }));
+    }
 
-      const playerConfig = PLAYER_CONFIG[playerToMove.color];
-      let moveSuccessful = false;
-      
-      if (tokenToMove.position === -1 && roll === 6) {
+    let playerToMove = newPlayers[playerIdx];
+    if (!playerToMove) return;
+    const tokenToMove = playerToMove.tokens.find(t => t.id === tokenId);
+    if (!tokenToMove) return;
+
+    const playerConfig = PLAYER_CONFIG[playerToMove.color];
+    let moveSuccessful = false;
+    
+    if (tokenToMove.position === -1 && roll === 6) {
         tokenToMove.position = playerConfig.pathStartIndex;
-        setGameMessage(`${playerToMove.name} brought token ${tokenId + 1} out.`);
         moveSuccessful = true;
-      } else if (tokenToMove.position >= 0 && tokenToMove.position < MAIN_PATH_LENGTH) {
+    } else if (tokenToMove.position >= 0 && tokenToMove.position < MAIN_PATH_LENGTH) {
         let currentPosOnGlobalTrack = tokenToMove.position;
         const homeEntry = playerConfig.homeEntryPathIndex;
         let stepsToHomeEntry = (homeEntry - currentPosOnGlobalTrack + MAIN_PATH_LENGTH) % MAIN_PATH_LENGTH;
@@ -374,138 +514,218 @@ export default function LudoPage() {
             tokenToMove.position = (currentPosOnGlobalTrack + roll) % MAIN_PATH_LENGTH;
             moveSuccessful = true;
         }
-      } else if (tokenToMove.position >= 100 && tokenToMove.position < 200) {
+    } else if (tokenToMove.position >= 100 && tokenToMove.position < 200) {
         const newHomeStretchPos = (tokenToMove.position % 100) + roll;
         if (newHomeStretchPos < HOME_STRETCH_LENGTH) {
-          tokenToMove.position = 100 + newHomeStretchPos;
-          moveSuccessful = true;
+            tokenToMove.position = 100 + newHomeStretchPos;
+            moveSuccessful = true;
         }
-      }
+    }
 
-      if (moveSuccessful) {
+    if (moveSuccessful) {
         if(tokenToMove.position >= 100 + HOME_STRETCH_LENGTH-1){
             tokenToMove.position = 200 + tokenToMove.id; // Mark as home
-            setGameMessage(`${playerToMove.name} moved token ${tokenId + 1} home!`);
         }
-        const potentiallyWinningPlayer = newPlayers[playerIdx];
-        if (potentiallyWinningPlayer.tokens.every(t => t.position >= 200)) {
-            setGameMessage(`${potentiallyWinningPlayer.name} has won the game! Congratulations!`);
-            setGameState('gameOver');
-            toast({ title: "Game Over!", description: `${potentiallyWinningPlayer.name} wins!` });
-            return newPlayers;
+        
+        if (selectedMode === 'online') {
+            if (!gameId) return;
+            const gameRef = doc(db, 'ludo-games', gameId);
+            const potentiallyWinningPlayer = newPlayers[playerIdx];
+            if (potentiallyWinningPlayer.tokens.every(t => t.position >= 200)) {
+                await updateDoc(gameRef, {
+                    players: newPlayers,
+                    gameMessage: `${potentiallyWinningPlayer.name} has won the game! Congratulations!`,
+                    status: 'gameOver'
+                });
+            } else {
+                // pass turn logic integrated here
+                const currentPlayer = onlineGameData.players[onlineGameData.currentPlayerIndex];
+                let nextIndex = onlineGameData.currentPlayerIndex;
+                if(roll !== 6) {
+                    nextIndex = (onlineGameData.currentPlayerIndex + 1) % onlineGameData.players.length;
+                }
+                const nextPlayer = newPlayers[nextIndex];
+                let message = `${nextPlayer.name}'s turn.`;
+                if(roll === 6) message = `${currentPlayer.name} rolled a 6 and gets another turn.`;
+
+                await updateDoc(gameRef, {
+                    players: newPlayers,
+                    currentPlayerIndex: nextIndex,
+                    diceValue: null,
+                    gameMessage: message
+                });
+            }
+
+        } else {
+            setPlayers(newPlayers);
+            const potentiallyWinningPlayer = newPlayers[playerIdx];
+            if (potentiallyWinningPlayer.tokens.every(t => t.position >= 200)) {
+                setGameMessage(`${potentiallyWinningPlayer.name} has won the game! Congratulations!`);
+                setGameView('gameOver');
+                toast({ title: "Game Over!", description: `${potentiallyWinningPlayer.name} wins!` });
+                return;
+            }
+            passTurn(roll !== 6);
         }
-        passTurn(roll !== 6);
-      } else {
+    } else {
         toast({variant: 'destructive', title: 'Invalid Move'});
-      }
-      return newPlayers;
-    });
-  }, [passTurn, toast]);
+    }
+  }, [passTurn, toast, selectedMode, gameId, onlineGameData, players]);
 
-  const processDiceRoll = useCallback((roll: number) => {
-    setPlayers(currentPlayers => {
-        const player = currentPlayers[currentPlayerIndex];
-        if (!player) return currentPlayers;
-
-        let currentMessage = `${player.name} rolled a ${roll}.`;
-        let updatedPlayers = [...currentPlayers];
-        let sixStreak = player.sixStreak;
-
+  const processDiceRoll = useCallback(async (roll: number) => {
+    if (selectedMode === 'online') {
+        if (!gameId || !onlineGameData) return;
+        const gameRef = doc(db, 'ludo-games', gameId);
+        const player = onlineGameData.players[onlineGameData.currentPlayerIndex];
+        let message = `${player.name} rolled a ${roll}.`;
+        
+        let sixStreak = player.sixStreak || 0;
+        let hasRolledSix = false;
         if (roll === 6) {
             sixStreak += 1;
-            updatedPlayers = updatedPlayers.map((p, idx) => idx === currentPlayerIndex ? { ...p, hasRolledSix: true, sixStreak } : p);
-
+            hasRolledSix = true;
             if (sixStreak === 3) {
-                currentMessage += ` Three 6s in a row! Turn forfeited.`;
-                setGameMessage(currentMessage);
+                message += ` Three 6s in a row! Turn forfeited.`;
+                await updateDoc(gameRef, { gameMessage: message });
                 setTimeout(() => passTurn(true, true), 1500);
-                return updatedPlayers.map((p,idx) => idx === currentPlayerIndex ? {...p, sixStreak: 0, hasRolledSix: false} : p);
+                return;
             }
         }
         
-        const playerWithUpdatedSixRoll = updatedPlayers[currentPlayerIndex];
+        const playerWithUpdatedSixRoll = { ...player, hasRolledSix, sixStreak };
         const movableTokens = getMovableTokens(playerWithUpdatedSixRoll, roll);
         
         if (movableTokens.length === 0) {
-           currentMessage += ` No valid moves. Passing turn.`;
-           setGameMessage(currentMessage);
+           message += ` No valid moves. Passing turn.`;
+           await updateDoc(gameRef, { gameMessage: message });
            setTimeout(() => passTurn(roll !== 6), 1500);
-           return updatedPlayers;
+        } else {
+            const updatedPlayers = onlineGameData.players.map((p: Player, idx: number) => idx === onlineGameData.currentPlayerIndex ? playerWithUpdatedSixRoll : p);
+            await updateDoc(gameRef, { gameMessage: message + ` Select a token to move.`, players: updatedPlayers });
         }
-        
-        setGameMessage(currentMessage + (playerWithUpdatedSixRoll.isAI ? ` AI thinking...` : ` Select a token to move.`));
+    } else {
+        setPlayers(currentPlayers => {
+            const player = currentPlayers[currentPlayerIndex];
+            if (!player) return currentPlayers;
 
-        if (playerWithUpdatedSixRoll.isAI) {
-          setTimeout(() => {
-            const hasTokensInBase = playerWithUpdatedSixRoll.tokens.some(t => t.position === -1);
-            let tokenToMoveAI: Token | undefined;
-            if (roll === 6 && hasTokensInBase) {
-              tokenToMoveAI = movableTokens.find(t => t.position === -1);
+            let currentMessage = `${player.name} rolled a ${roll}.`;
+            let updatedPlayers = [...currentPlayers];
+            let sixStreak = player.sixStreak;
+
+            if (roll === 6) {
+                sixStreak += 1;
+                updatedPlayers = updatedPlayers.map((p, idx) => idx === currentPlayerIndex ? { ...p, hasRolledSix: true, sixStreak } : p);
+
+                if (sixStreak === 3) {
+                    currentMessage += ` Three 6s in a row! Turn forfeited.`;
+                    setGameMessage(currentMessage);
+                    setTimeout(() => passTurn(true, true), 1500);
+                    return updatedPlayers.map((p,idx) => idx === currentPlayerIndex ? {...p, sixStreak: 0, hasRolledSix: false} : p);
+                }
             }
-            if (!tokenToMoveAI) {
-              const sortedMovable = [...movableTokens].sort((a,b) => b.position - a.position);
-              tokenToMoveAI = sortedMovable[0];
+            
+            const playerWithUpdatedSixRoll = updatedPlayers[currentPlayerIndex];
+            const movableTokens = getMovableTokens(playerWithUpdatedSixRoll, roll);
+            
+            if (movableTokens.length === 0) {
+               currentMessage += ` No valid moves. Passing turn.`;
+               setGameMessage(currentMessage);
+               setTimeout(() => passTurn(roll !== 6), 1500);
+               return updatedPlayers;
             }
+            
+            setGameMessage(currentMessage + (playerWithUpdatedSixRoll.isAI ? ` AI thinking...` : ` Select a token to move.`));
 
-            if (tokenToMoveAI) {
-              attemptMoveToken(currentPlayerIndex, tokenToMoveAI.id, roll);
-            } else {
-              passTurn(roll !== 6);
+            if (playerWithUpdatedSixRoll.isAI) {
+              setTimeout(() => {
+                const hasTokensInBase = playerWithUpdatedSixRoll.tokens.some(t => t.position === -1);
+                let tokenToMoveAI: Token | undefined;
+                if (roll === 6 && hasTokensInBase) {
+                  tokenToMoveAI = movableTokens.find(t => t.position === -1);
+                }
+                if (!tokenToMoveAI) {
+                  const sortedMovable = [...movableTokens].sort((a,b) => b.position - a.position);
+                  tokenToMoveAI = sortedMovable[0];
+                }
+
+                if (tokenToMoveAI) {
+                  attemptMoveToken(currentPlayerIndex, tokenToMoveAI.id, roll);
+                } else {
+                  passTurn(roll !== 6);
+                }
+              }, 1000);
             }
-          }, 1000);
-        }
-        return updatedPlayers;
-    });
-  }, [currentPlayerIndex, passTurn, attemptMoveToken]);
+            return updatedPlayers;
+        });
+    }
+  }, [currentPlayerIndex, passTurn, attemptMoveToken, selectedMode, gameId, onlineGameData]);
 
 
- const handleDiceRoll = useCallback(() => {
+ const handleDiceRoll = useCallback(async () => {
     if (isRolling) return;
 
-    const player = players[currentPlayerIndex];
-    if (!player || (player.isAI && diceValue !== null)) return;
-    if (!player.isAI && diceValue !== null && !player.hasRolledSix) return;
-
-    setIsRolling(true);
-
-    let rollAttempts = 0;
-    const rollInterval = setInterval(() => {
-      setDiceValue(Math.floor(Math.random() * 6) + 1);
-      rollAttempts++;
-      if (rollAttempts > 10) {
-        clearInterval(rollInterval);
+    if (selectedMode === 'online') {
+        if (!gameId || !user || !onlineGameData || onlineGameData.players[onlineGameData.currentPlayerIndex].uid !== user.uid) return;
+        if (diceValue !== null && !onlineGameData.players[onlineGameData.currentPlayerIndex].hasRolledSix) return;
+        
+        setIsRolling(true);
+        const gameRef = doc(db, 'ludo-games', gameId);
         const finalRoll = Math.floor(Math.random() * 6) + 1;
-        setDiceValue(finalRoll);
+
+        await updateDoc(gameRef, { diceValue: finalRoll });
         setIsRolling(false);
         processDiceRoll(finalRoll);
-      }
-    }, 100);
-  }, [isRolling, players, currentPlayerIndex, diceValue, processDiceRoll]);
+
+    } else {
+        const player = players[currentPlayerIndex];
+        if (!player || (player.isAI && diceValue !== null)) return;
+        if (!player.isAI && diceValue !== null && !player.hasRolledSix) return;
+        
+        setIsRolling(true);
+
+        let rollAttempts = 0;
+        const rollInterval = setInterval(() => {
+          setDiceValue(Math.floor(Math.random() * 6) + 1);
+          rollAttempts++;
+          if (rollAttempts > 10) {
+            clearInterval(rollInterval);
+            const finalRoll = Math.floor(Math.random() * 6) + 1;
+            setDiceValue(finalRoll);
+            setIsRolling(false);
+            processDiceRoll(finalRoll);
+          }
+        }, 100);
+    }
+  }, [isRolling, players, currentPlayerIndex, diceValue, processDiceRoll, selectedMode, gameId, user, onlineGameData]);
 
   useEffect(() => {
     const player = players[currentPlayerIndex];
-    if (gameState === 'playing' && player?.isAI && !diceValue && !isRolling) {
+    if (gameView === 'playing' && player?.isAI && !diceValue && !isRolling) {
         if (player.sixStreak < 3) {
             setTimeout(handleDiceRoll, 1500);
         }
     }
-  }, [gameState, players, currentPlayerIndex, diceValue, isRolling, handleDiceRoll]);
+  }, [gameView, players, currentPlayerIndex, diceValue, isRolling, handleDiceRoll]);
 
 
   const handleTokenClick = (playerIndex: number, tokenId: number) => {
     const player = players[playerIndex];
-    if (isRolling || playerIndex !== currentPlayerIndex || !diceValue || !player || player.isAI) return;
+    let currentDiceValue = selectedMode === 'online' ? onlineGameData?.diceValue : diceValue;
+
+    if (isRolling || playerIndex !== currentPlayerIndex || !currentDiceValue || !player) return;
+    if (selectedMode === 'online' && (!user || player.uid !== user.uid)) return;
+    if (selectedMode !== 'online' && player.isAI) return;
 
     const token = player.tokens.find(t=>t.id === tokenId);
     if(!token) return;
         
-    const movableTokens = getMovableTokens(player, diceValue);
+    const movableTokens = getMovableTokens(player, currentDiceValue);
     if (!movableTokens.some(mt => mt.id === tokenId && mt.color === player.color)) {
         toast({ variant: "destructive", title: "Cannot Move Token", description: "This token cannot make the attempted move." });
         return;
     }
     
-    if (diceValue === 6 && player.tokens.some(t => t.position === -1) && token.position !== -1) {
+    if (currentDiceValue === 6 && player.tokens.some(t => t.position === -1) && token.position !== -1) {
         const baseTokensAreMovable = movableTokens.some(t => t.position === -1);
         if(baseTokensAreMovable){
             toast({ variant: "default", title: "Move From Base", description: "You rolled a 6! Please select a token from your base to move out." });
@@ -513,7 +733,7 @@ export default function LudoPage() {
         }
     }
 
-    attemptMoveToken(playerIndex, tokenId, diceValue);
+    attemptMoveToken(playerIndex, tokenId, currentDiceValue);
   };
   
   const getTokenDisplayInfo = (token: Token): { text: string; onPath: boolean; pathIndex?: number } => {
@@ -525,7 +745,7 @@ export default function LudoPage() {
 
   const getTokenForCell = (rowIndex: number, colIndex: number): Token[] => {
     const tokensOnThisCell: Token[] = [];
-    if (!players || players.length === 0 || gameState !== 'playing') return tokensOnThisCell;
+    if (!players || players.length === 0 || (gameView !== 'playing' && gameView !== 'gameOver')) return tokensOnThisCell;
 
     players.forEach(player => {
       const playerSpecificConfig = PLAYER_CONFIG[player.color];
@@ -597,9 +817,35 @@ export default function LudoPage() {
 
     return (rowIndex + colIndex) % 2 === 0 ? "bg-slate-100/70" : "bg-slate-200/70";
   };
+  
+  if (gameView === 'waitingForPlayers') {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-br from-primary/30 to-background">
+          <Card className="w-full max-w-md mx-auto shadow-xl bg-card text-center">
+            <CardHeader>
+              <CardTitle className="text-2xl font-bold text-primary">Waiting for Friend...</CardTitle>
+            </CardHeader>
+            <CardContent className="p-6 space-y-4">
+              <p>Share this Game ID with your friend:</p>
+              <div className="flex items-center justify-center space-x-2 p-3 bg-muted rounded-lg">
+                <p className="text-2xl font-mono tracking-widest font-bold text-accent">{gameId}</p>
+                <Button variant="ghost" size="icon" onClick={() => {
+                  navigator.clipboard.writeText(gameId || "");
+                  toast({title: "Copied!", description: "Game ID copied to clipboard."});
+                }}>
+                  <Copy className="h-5 w-5" />
+                </Button>
+              </div>
+              <p className="text-muted-foreground text-sm">The game will start automatically when your friend joins.</p>
+              {onlineGameData?.players.map((p: Player) => <p key={p.uid} className="font-semibold">{p.name} has joined.</p>)}
+            </CardContent>
+          </Card>
+      </div>
+    );
+  }
 
 
-  if (gameState === 'setup') {
+  if (gameView === 'setup') {
     return (
       <>
         <title>Setup Ludo Game | Shravya Playhouse</title>
@@ -612,7 +858,7 @@ export default function LudoPage() {
             <CardContent className="p-6 space-y-6">
               <div>
                 <Label className="text-lg font-medium">Game Mode</Label>
-                <RadioGroup value={selectedMode || ""} onValueChange={(value) => setSelectedMode(value as GameMode)} className="mt-2 grid grid-cols-2 gap-4">
+                <RadioGroup value={selectedMode || ""} onValueChange={(value) => setSelectedMode(value as GameMode)} className="mt-2 grid grid-cols-3 gap-4">
                   <div>
                     <RadioGroupItem value="offline" id="offline" className="peer sr-only" />
                     <Label htmlFor="offline" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer">
@@ -624,13 +870,21 @@ export default function LudoPage() {
                     <RadioGroupItem value="ai" id="ai" className="peer sr-only" />
                     <Label htmlFor="ai" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer">
                       <Cpu className="mb-2 h-8 w-8" />
-                      Play with Shravya AI
+                      Play with AI
+                    </Label>
+                  </div>
+                   <div>
+                    <RadioGroupItem value="online" id="online" className="peer sr-only" disabled={!user} />
+                    <Label htmlFor="online" className={cn("flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4", user ? "hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer" : "opacity-50 cursor-not-allowed")}>
+                      <Globe className="mb-2 h-8 w-8" />
+                      Online
+                      {!user && <span className="text-xs text-center text-muted-foreground">(Log in)</span>}
                     </Label>
                   </div>
                 </RadioGroup>
               </div>
 
-              {selectedMode && (
+              {selectedMode && selectedMode !== 'online' && (
                 <div>
                   <Label className="text-lg font-medium">Number of Players {selectedMode === 'ai' ? '(includes you)' : ''}</Label>
                   <RadioGroup 
@@ -644,7 +898,7 @@ export default function LudoPage() {
                         <Label htmlFor={`${selectedMode}-${num}`} className="flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer">
                           <span className="text-lg">{num}</span>
                           {selectedMode === 'ai' && (
-                            <span className="text-xs text-center">{num === 2 ? "(You vs 1 Shravya AI)" : `(You vs ${num-1} Shravya AI)`}</span>
+                            <span className="text-xs text-center">{num === 2 ? "(You vs 1 AI)" : `(You vs ${num-1} AI)`}</span>
                           )}
                         </Label>
                       </div>
@@ -652,6 +906,17 @@ export default function LudoPage() {
                   </RadioGroup>
                 </div>
               )}
+              
+               {selectedMode === 'online' && user && (
+                <div className="space-y-4">
+                  <Button onClick={handleCreateOnlineGame} className="w-full">Create Online Game</Button>
+                  <div className="flex items-center space-x-2">
+                    <Input value={joinGameId} onChange={(e) => setJoinGameId(e.target.value.toUpperCase())} placeholder="Enter Game ID"/>
+                    <Button onClick={handleJoinOnlineGame} variant="secondary">Join Game</Button>
+                  </div>
+                </div>
+              )}
+
 
               {selectedMode === 'ai' && selectedNumPlayers && (
                   <div className="space-y-2">
@@ -702,20 +967,22 @@ export default function LudoPage() {
                       ))}
                   </div>
               )}
-              <Button 
-                onClick={handleStartGame} 
-                disabled={!selectedMode || !selectedNumPlayers || 
-                    (selectedMode === 'ai' && humanPlayerName.trim() === "") || 
-                    (selectedMode === 'offline' && (
-                        offlinePlayerNames.slice(0,selectedNumPlayers).some(name => name.trim() === "") || 
-                        selectedOfflineColors.slice(0,selectedNumPlayers).some(c => c === null) ||
-                        new Set(selectedOfflineColors.slice(0,selectedNumPlayers).filter(c=>c!==null)).size !== selectedOfflineColors.slice(0,selectedNumPlayers).filter(c=>c!==null).length
-                    ))
-                } 
-                className="w-full text-lg py-3 bg-accent hover:bg-accent/90 text-accent-foreground"
-               >
-                Start Game
-              </Button>
+              {selectedMode !== 'online' && 
+                <Button 
+                    onClick={handleStartGame} 
+                    disabled={!selectedMode || !selectedNumPlayers || 
+                        (selectedMode === 'ai' && humanPlayerName.trim() === "") || 
+                        (selectedMode === 'offline' && (
+                            offlinePlayerNames.slice(0,selectedNumPlayers).some(name => name.trim() === "") || 
+                            selectedOfflineColors.slice(0,selectedNumPlayers).some(c => c === null) ||
+                            new Set(selectedOfflineColors.slice(0,selectedNumPlayers).filter(c=>c!==null)).size !== selectedOfflineColors.slice(0,selectedNumPlayers).filter(c=>c!==null).length
+                        ))
+                    } 
+                    className="w-full text-lg py-3 bg-accent hover:bg-accent/90 text-accent-foreground"
+                >
+                    Start Game
+                </Button>
+              }
             </CardContent>
           </Card>
         </div>
@@ -738,7 +1005,7 @@ export default function LudoPage() {
         
         <div className="mb-2 sm:mb-3 p-2 rounded-lg shadow-md bg-card/90 backdrop-blur-sm max-w-md text-center">
             <h2 className="text-base sm:text-lg font-semibold text-primary">
-                {gameState === 'gameOver' ? "Game Over!" : (currentPlayer ? `Turn: ${currentPlayer.name}` : "Loading...")}
+                {gameView === 'gameOver' ? "Game Over!" : (currentPlayer ? `Turn: ${currentPlayer.name}` : "Loading...")}
             </h2>
             <p className="text-xs sm:text-sm text-foreground/90 min-h-[1.5em]">{gameMessage}</p>
         </div>
@@ -751,7 +1018,7 @@ export default function LudoPage() {
                     diceValue={diceValue}
                     isRolling={isRolling}
                     onDiceRoll={handleDiceRoll}
-                    gameState={gameState}
+                    gameView={gameView}
                   />
             )}
             {player3 && (
@@ -761,7 +1028,7 @@ export default function LudoPage() {
                     diceValue={diceValue}
                     isRolling={isRolling}
                     onDiceRoll={handleDiceRoll}
-                    gameState={gameState}
+                    gameView={gameView}
                   />
             )}
 
@@ -796,12 +1063,15 @@ export default function LudoPage() {
                     {tokensOnThisCell.slice(0, 4).map((token, idx) => (
                          <button
                             key={token.color + token.id}
-                            onClick={() => currentPlayer && !currentPlayer.isAI && diceValue && handleTokenClick(players.findIndex(p=>p.color === token.color), token.id)}
-                            disabled={!currentPlayer || players.findIndex(p => p.color === token.color) !== currentPlayerIndex || isRolling || !diceValue || currentPlayer.isAI || gameState === 'gameOver' || !getMovableTokens(currentPlayer, diceValue).some(mt => mt.id === token.id)}
+                            onClick={() => {
+                                const currentDiceValue = selectedMode === 'online' ? onlineGameData.diceValue : diceValue;
+                                handleTokenClick(players.findIndex(p=>p.color === token.color), token.id)
+                            }}
+                            disabled={!currentPlayer || players.findIndex(p => p.color === token.color) !== currentPlayerIndex || isRolling || (!diceValue && selectedMode !== 'online') || (selectedMode === 'online' && !onlineGameData?.diceValue) || (selectedMode !== 'online' && currentPlayer.isAI) || gameView === 'gameOver' || !getMovableTokens(currentPlayer, selectedMode === 'online' ? onlineGameData.diceValue : diceValue).some(mt => mt.id === token.id)}
                             className={cn(
                                 "rounded-full flex items-center justify-center border-2 hover:ring-2 hover:ring-offset-1 absolute shadow-md",
                                 PLAYER_CONFIG[token.color].baseClass,
-                                (currentPlayer && players.findIndex(p => p.color === token.color) === currentPlayerIndex && diceValue && !currentPlayer.isAI && getMovableTokens(currentPlayer, diceValue).some(mt => mt.id === token.id)) ? "cursor-pointer ring-2 ring-offset-1 ring-black" : "cursor-default",
+                                (currentPlayer && players.findIndex(p => p.color === token.color) === currentPlayerIndex && (diceValue || (selectedMode === 'online' && onlineGameData?.diceValue)) && getMovableTokens(currentPlayer, selectedMode === 'online' ? onlineGameData.diceValue : diceValue).some(mt => mt.id === token.id)) ? "cursor-pointer ring-2 ring-offset-1 ring-black" : "cursor-default",
                                 "text-white font-bold text-[calc(min(1.5vw,0.8rem))] z-10",
                                 tokensOnThisCell.length > 1 ? 'w-[70%] h-[70%]' : 'w-[80%] h-[80%]',
                             )}
@@ -827,7 +1097,7 @@ export default function LudoPage() {
                     diceValue={diceValue}
                     isRolling={isRolling}
                     onDiceRoll={handleDiceRoll}
-                    gameState={gameState}
+                    gameView={gameView}
                   />
             )}
              {player4 && (
@@ -837,7 +1107,7 @@ export default function LudoPage() {
                     diceValue={diceValue}
                     isRolling={isRolling}
                     onDiceRoll={handleDiceRoll}
-                    gameState={gameState}
+                    gameView={gameView}
                   />
             )}
         </div>
