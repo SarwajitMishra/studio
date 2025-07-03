@@ -51,63 +51,62 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
           !prevUsedIds.includes(p.id)
       );
       
-      if (availablePuzzles.length === 0) {
-        setUsedPuzzleIds([]); // Reset used IDs for this type/difficulty
+      let finalUsedIds = prevUsedIds;
+      if (availablePuzzles.length === 0 && prevUsedIds.length > 0) {
+        finalUsedIds = []; // Reset used IDs for this type/difficulty
         availablePuzzles = ENGLISH_PUZZLE_DATA.filter(p => p.type === puzzleType && p.difficulty === difficulty);
       }
       
       if (availablePuzzles.length === 0) {
-          setFeedback({ message: `No puzzles available for ${difficulty} ${puzzleType}. Please select another.`, type: "info" });
           setCurrentPuzzle(null);
-          return prevUsedIds;
+          setFeedback({ message: `No more puzzles available for this category. Resetting.`, type: "info" });
+          return finalUsedIds;
       }
   
       const nextPuzzle = availablePuzzles[Math.floor(Math.random() * availablePuzzles.length)];
       
-      const apiKey = process.env.NEXT_PUBLIC_PIXABAY_API_KEY;
-      let imageSrc = nextPuzzle.imageSrc;
-      let imageAlt = nextPuzzle.imageAlt;
-      const searchQuery = nextPuzzle.type === 'matchWord' ? nextPuzzle.correctWord : nextPuzzle.fullWord;
-  
-      if (apiKey) {
-        searchImages(searchQuery, apiKey, { perPage: 5 }).then(images => {
-          if (images && images.length > 0) {
-            imageSrc = images[0].largeImageURL;
-            imageAlt = images[0].tags;
-          } else {
-             console.warn(`No images found on Pixabay for query: ${searchQuery}. Using fallback image.`);
-          }
-          setCurrentPuzzle({...nextPuzzle, imageSrc, imageAlt});
-        }).catch(error => {
-          console.error("Error fetching image from Pixabay:", error);
-          setCurrentPuzzle({...nextPuzzle, imageSrc, imageAlt});
-        });
-      } else {
-        setCurrentPuzzle(nextPuzzle);
-      }
-
+      setCurrentPuzzle(nextPuzzle); // Set initial puzzle data
       setShuffledOptions(shuffleArray(nextPuzzle.options));
       setIsAnswered(false);
       setSelectedAnswer(null);
       setFeedback(null);
       
-      return [...prevUsedIds, nextPuzzle.id];
+      const apiKey = process.env.NEXT_PUBLIC_PIXABAY_API_KEY;
+      if (apiKey) {
+        const searchQuery = nextPuzzle.type === 'matchWord' ? nextPuzzle.correctWord : nextPuzzle.fullWord;
+        searchImages(searchQuery, apiKey, { perPage: 5 }).then(images => {
+          if (images && images.length > 0) {
+            // Update the current puzzle with the fetched image, checking if it's still the same puzzle
+            setCurrentPuzzle(p => p && p.id === nextPuzzle.id ? {...p, imageSrc: images[0].largeImageURL, imageAlt: images[0].tags} : p);
+          }
+        }).catch(error => {
+          console.error("Error fetching image from Pixabay:", error);
+        });
+      }
+      
+      return [...finalUsedIds, nextPuzzle.id];
     });
   }, [puzzleType, difficulty]);
 
   const resetGame = useCallback(() => {
     setScore(0);
     setQuestionsAnswered(0);
-    setFeedback(null);
-    setIsAnswered(false);
-    setSelectedAnswer(null);
     setUsedPuzzleIds([]);
-    loadNextPuzzle();
-  }, [loadNextPuzzle]);
+    // The first puzzle load is triggered by the useEffect below
+    // when usedPuzzleIds is reset to an empty array.
+  }, []);
 
   useEffect(() => {
     resetGame();
   }, [resetGame, difficulty, puzzleType]);
+
+  useEffect(() => {
+    // This effect handles the initial puzzle load when the component mounts
+    // or when a full reset happens (usedPuzzleIds becomes empty).
+    if (questionsAnswered === 0 && usedPuzzleIds.length === 0) {
+      loadNextPuzzle();
+    }
+  }, [questionsAnswered, usedPuzzleIds.length, loadNextPuzzle]);
 
   const handleAnswer = (selectedOption: string) => {
     if (!currentPuzzle || isAnswered) return;
