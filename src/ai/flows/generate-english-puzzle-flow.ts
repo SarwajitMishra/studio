@@ -15,7 +15,7 @@ import { z } from 'genkit';
 import type { EnglishPuzzleItem, EnglishPuzzleSubtype, Difficulty } from '@/lib/constants'; // Re-using existing types
 
 // Define Zod schemas that match the existing types for validation and structured output.
-export const GenerateEnglishPuzzleInputSchema = z.object({
+const GenerateEnglishPuzzleInputSchema = z.object({
   puzzleType: z.enum(['matchWord', 'missingLetter']),
   difficulty: z.enum(['easy', 'medium', 'hard']),
   wordsToExclude: z
