@@ -21,7 +21,7 @@ import {
   LOCAL_STORAGE_S_POINTS_KEY,
   LOCAL_STORAGE_S_COINS_KEY
 } from "@/lib/constants";
-import { UserCircle, BarChart3, Settings, CheckCircle, LogIn, LogOut, UploadCloud, Edit3, User as UserIcon, Palette, Sun, Moon, Trophy, Gamepad2, Star, Coins } from 'lucide-react';
+import { UserCircle, BarChart3, Settings, CheckCircle, LogIn, LogOut, UploadCloud, Edit3, User as UserIcon, Palette, Sun, Moon, Trophy, Gamepad2, Star, Coins, AlertTriangle } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -106,6 +106,8 @@ export default function ProfilePage() {
   const [sPoints, setSPoints] = useState<number>(0);
   const [sCoins, setSCoins] = useState<number>(0);
 
+  const [isConfigMissing, setIsConfigMissing] = useState(false);
+
 
   // Effect for loading all local data on initial mount
   useEffect(() => {
@@ -147,6 +149,22 @@ export default function ProfilePage() {
 
   // Effect for Firebase Auth state changes
   useEffect(() => {
+    // Config validation first
+    const authDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
+    const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+
+    if (!authDomain || !projectId) {
+      console.error("CRITICAL: Firebase configuration is missing from environment variables. Login will be disabled. Please set NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN and NEXT_PUBLIC_FIREBASE_PROJECT_ID.");
+      setIsConfigMissing(true);
+      toast({
+        variant: "destructive",
+        title: "Firebase Config Missing",
+        description: "Login is disabled. See console for details.",
+        duration: 8000,
+      });
+      return; // Stop the rest of the effect from running if config is bad
+    }
+
     let isMounted = true; 
 
     // Log Firebase config being used by the SDK for diagnostics
@@ -398,7 +416,12 @@ export default function ProfilePage() {
               <Edit3 className="mr-2 h-4 w-4" /> Save to Profile
             </Button>
           </div>
-          {currentUser ? (
+          {isConfigMissing ? (
+            <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-md text-destructive text-sm space-y-1">
+              <p className="font-bold flex items-center gap-2"><AlertTriangle size={16} /> Firebase Configuration Error</p>
+              <p>Google login is disabled because your Firebase configuration is incomplete. Please ensure `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` and `NEXT_PUBLIC_FIREBASE_PROJECT_ID` are set correctly in your environment.</p>
+            </div>
+          ) : currentUser ? (
             <div className="space-y-3">
               <p className="text-foreground">Logged in as: <span className="font-semibold">{currentUser.email}</span></p>
               <Button onClick={handleLogout} variant="destructive" className="w-full sm:w-auto">
