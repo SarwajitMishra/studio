@@ -33,18 +33,15 @@ export default function GuessTheNumberGame({ onBack, difficulty }: GuessTheNumbe
 
   const maxNumber = DIFFICULTY_CONFIG[difficulty].max;
 
-  const generateNewSecretNumber = useCallback(() => {
-    setSecretNumber(Math.floor(Math.random() * maxNumber) + 1);
-  }, [maxNumber]);
-
   const resetGame = useCallback(() => {
-    generateNewSecretNumber();
+    const newSecret = Math.floor(Math.random() * maxNumber) + 1;
+    setSecretNumber(newSecret);
     setCurrentGuess("");
     setFeedback(`I'm thinking of a number between 1 and ${maxNumber}.`);
     setAttempts(0);
     setIsGameWon(false);
     setShowHint(false);
-  }, [generateNewSecretNumber, maxNumber]);
+  }, [maxNumber]);
 
   useEffect(() => {
     resetGame();

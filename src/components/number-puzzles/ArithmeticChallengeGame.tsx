@@ -73,7 +73,7 @@ export default function ArithmeticChallengeGame({ onBack, difficulty }: Arithmet
 
   useEffect(() => {
     resetGame();
-  }, [resetGame]);
+  }, [resetGame, difficulty]);
 
   const handleSubmitAnswer = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();

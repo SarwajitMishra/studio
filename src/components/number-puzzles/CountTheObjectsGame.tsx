@@ -50,57 +50,37 @@ export default function CountTheObjectsGame({ onBack, difficulty }: CountTheObje
   const [feedback, setFeedback] = useState<string | null>(null);
   const [isGameOver, setIsGameOver] = useState<boolean>(false);
   const { toast } = useToast();
-
   const [usedIconsInCurrentCycle, setUsedIconsInCurrentCycle] = useState<string[]>([]);
 
-  const generateProblemInternal = useCallback((iconsToExclude: string[]): CountTheObjectsProblem => {
-    let R_OBJECT_ICONS = OBJECT_ICONS.filter(icon => !iconsToExclude.includes(icon.name));
-
-    if (R_OBJECT_ICONS.length === 0 && OBJECT_ICONS.length > 0) {
-      R_OBJECT_ICONS = OBJECT_ICONS;
-    }
-    
-    if (R_OBJECT_ICONS.length === 0) {
-        const fallbackIcon = { name: "HelpCircle", Icon: HelpCircle, color: "text-gray-500" };
-        console.warn("No icons available for problem generation (this should not happen if OBJECT_ICONS is populated). Using fallback.");
-        return {
-            id: `cto-fallback-${Date.now()}`,
-            ObjectIcon: fallbackIcon.Icon,
-            iconName: fallbackIcon.name,
-            iconColor: fallbackIcon.color,
-            count: 1,
-        };
-    }
-
-    const selectedObject = R_OBJECT_ICONS[Math.floor(Math.random() * R_OBJECT_ICONS.length)];
-    const config = DIFFICULTY_CONFIG[difficulty];
-    const count = Math.floor(Math.random() * (config.max - config.min + 1)) + config.min;
-
-    return {
-      id: `cto-${Date.now()}-${Math.random()}`,
-      ObjectIcon: selectedObject.Icon,
-      iconName: selectedObject.name,
-      iconColor: selectedObject.color,
-      count,
-    };
-  }, [difficulty]);
-
-
   const loadNewProblem = useCallback(() => {
-    let iconsToFilter = usedIconsInCurrentCycle;
-    let nextUsedIcons = [...usedIconsInCurrentCycle];
+    setUsedIconsInCurrentCycle(prevUsedIcons => {
+      let availableIcons = OBJECT_ICONS.filter(icon => !prevUsedIcons.includes(icon.name));
+      if (availableIcons.length === 0 && OBJECT_ICONS.length > 0) {
+        availableIcons = OBJECT_ICONS;
+        prevUsedIcons = []; // Reset cycle
+      }
+      
+      if (availableIcons.length === 0) {
+        return prevUsedIcons;
+      }
+      
+      const selectedObject = availableIcons[Math.floor(Math.random() * availableIcons.length)];
+      const config = DIFFICULTY_CONFIG[difficulty];
+      const count = Math.floor(Math.random() * (config.max - config.min + 1)) + config.min;
 
-    if (usedIconsInCurrentCycle.length >= OBJECT_ICONS.length && OBJECT_ICONS.length > 0) {
-      nextUsedIcons = [];
-      iconsToFilter = []; 
-    }
+      setCurrentProblem({
+        id: `cto-${Date.now()}-${Math.random()}`,
+        ObjectIcon: selectedObject.Icon,
+        iconName: selectedObject.name,
+        iconColor: selectedObject.color,
+        count,
+      });
+      setUserAnswer("");
+      setFeedback(null);
 
-    const newProblem = generateProblemInternal(iconsToFilter);
-    setCurrentProblem(newProblem);
-    setUsedIconsInCurrentCycle([...nextUsedIcons, newProblem.iconName]);
-    setUserAnswer("");
-    setFeedback(null);
-  }, [usedIconsInCurrentCycle, generateProblemInternal]);
+      return [...prevUsedIcons, selectedObject.name];
+    });
+  }, [difficulty]);
 
   const resetGame = useCallback(() => {
     setScore(0);
@@ -115,7 +95,6 @@ export default function CountTheObjectsGame({ onBack, difficulty }: CountTheObje
   useEffect(() => {
     resetGame();
   }, [difficulty, resetGame]);
-
 
   const handleSubmitAnswer = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();

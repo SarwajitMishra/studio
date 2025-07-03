@@ -43,59 +43,57 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
 
   const MAX_QUESTIONS = 5;
 
-  const loadNextPuzzle = useCallback(async () => {
-    if (questionsAnswered >= MAX_QUESTIONS) {
-      setFeedback({ message: `Game Over! Your final score: ${score}/${MAX_QUESTIONS}`, type: "info" });
-      setCurrentPuzzle(null);
-      return;
-    }
-    
-    let availablePuzzles = ENGLISH_PUZZLE_DATA.filter(p => 
-        p.type === puzzleType && 
-        p.difficulty === difficulty &&
-        !usedPuzzleIds.includes(p.id)
-    );
-    
-    if (availablePuzzles.length === 0) {
-      // If no unused puzzles of this type/difficulty are left, reset the used list for this type/difficulty
-      setUsedPuzzleIds(ids => ids.filter(id => !ENGLISH_PUZZLE_DATA.find(p => p.id === id && p.type === puzzleType && p.difficulty === difficulty)));
-      availablePuzzles = ENGLISH_PUZZLE_DATA.filter(p => p.type === puzzleType && p.difficulty === difficulty);
-    }
-    
-    if (availablePuzzles.length === 0) {
-        setFeedback({ message: `No puzzles available for ${difficulty} ${puzzleType}. Please select another.`, type: "info" });
-        setCurrentPuzzle(null);
-        return;
-    }
-
-    const nextPuzzle = availablePuzzles[Math.floor(Math.random() * availablePuzzles.length)];
-    setUsedPuzzleIds(prev => [...prev, nextPuzzle.id]);
-    
-    const apiKey = process.env.NEXT_PUBLIC_PIXABAY_API_KEY;
-    let imageSrc = nextPuzzle.imageSrc;
-    let imageAlt = nextPuzzle.imageAlt;
-
-    const searchQuery = nextPuzzle.type === 'matchWord' ? nextPuzzle.correctWord : nextPuzzle.fullWord;
-
-    if (apiKey) {
-      try {
-        const images = await searchImages(searchQuery, apiKey, { perPage: 5 });
-        if (images && images.length > 0) {
-          imageSrc = images[0].largeImageURL;
-          imageAlt = images[0].tags;
-        } else {
-           console.warn(`No images found on Pixabay for query: ${searchQuery}. Using fallback image.`);
-        }
-      } catch (error) {
-        console.error("Error fetching image from Pixabay:", error);
+  const loadNextPuzzle = useCallback(() => {
+    setUsedPuzzleIds(prevUsedIds => {
+      let availablePuzzles = ENGLISH_PUZZLE_DATA.filter(p => 
+          p.type === puzzleType && 
+          p.difficulty === difficulty &&
+          !prevUsedIds.includes(p.id)
+      );
+      
+      if (availablePuzzles.length === 0) {
+        setUsedPuzzleIds([]); // Reset used IDs for this type/difficulty
+        availablePuzzles = ENGLISH_PUZZLE_DATA.filter(p => p.type === puzzleType && p.difficulty === difficulty);
       }
-    }
-    setCurrentPuzzle({...nextPuzzle, imageSrc, imageAlt});
-    setShuffledOptions(shuffleArray(nextPuzzle.options));
-    setIsAnswered(false);
-    setSelectedAnswer(null);
-    setFeedback(null);
-  }, [questionsAnswered, score, usedPuzzleIds, puzzleType, difficulty]); 
+      
+      if (availablePuzzles.length === 0) {
+          setFeedback({ message: `No puzzles available for ${difficulty} ${puzzleType}. Please select another.`, type: "info" });
+          setCurrentPuzzle(null);
+          return prevUsedIds;
+      }
+  
+      const nextPuzzle = availablePuzzles[Math.floor(Math.random() * availablePuzzles.length)];
+      
+      const apiKey = process.env.NEXT_PUBLIC_PIXABAY_API_KEY;
+      let imageSrc = nextPuzzle.imageSrc;
+      let imageAlt = nextPuzzle.imageAlt;
+      const searchQuery = nextPuzzle.type === 'matchWord' ? nextPuzzle.correctWord : nextPuzzle.fullWord;
+  
+      if (apiKey) {
+        searchImages(searchQuery, apiKey, { perPage: 5 }).then(images => {
+          if (images && images.length > 0) {
+            imageSrc = images[0].largeImageURL;
+            imageAlt = images[0].tags;
+          } else {
+             console.warn(`No images found on Pixabay for query: ${searchQuery}. Using fallback image.`);
+          }
+          setCurrentPuzzle({...nextPuzzle, imageSrc, imageAlt});
+        }).catch(error => {
+          console.error("Error fetching image from Pixabay:", error);
+          setCurrentPuzzle({...nextPuzzle, imageSrc, imageAlt});
+        });
+      } else {
+        setCurrentPuzzle(nextPuzzle);
+      }
+
+      setShuffledOptions(shuffleArray(nextPuzzle.options));
+      setIsAnswered(false);
+      setSelectedAnswer(null);
+      setFeedback(null);
+      
+      return [...prevUsedIds, nextPuzzle.id];
+    });
+  }, [puzzleType, difficulty]);
 
   const resetGame = useCallback(() => {
     setScore(0);
@@ -109,7 +107,7 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
 
   useEffect(() => {
     resetGame();
-  }, [resetGame]);
+  }, [resetGame, difficulty, puzzleType]);
 
   const handleAnswer = (selectedOption: string) => {
     if (!currentPuzzle || isAnswered) return;
