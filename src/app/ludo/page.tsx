@@ -289,55 +289,19 @@ export default function LudoPage() {
     }
   };
 
-  const handleDiceRoll = useCallback(() => {
-    if (isRolling || !currentPlayer || (currentPlayer.isAI && diceValue !== null)) return;
-    if (!currentPlayer.isAI && diceValue !== null && !currentPlayer.hasRolledSix) return;
-
-    const initialAnimatingRoll = Math.floor(Math.random() * 6) + 1;
-    setDiceValue(initialAnimatingRoll);
-    setIsRolling(true);
-
-    let rollAttempts = 0;
-    const rollInterval = setInterval(() => {
-      setDiceValue(Math.floor(Math.random() * 6) + 1);
-      rollAttempts++;
-      if (rollAttempts > 10) {
-        clearInterval(rollInterval);
-        const finalRoll = Math.floor(Math.random() * 6) + 1;
-        setDiceValue(finalRoll);
-        setIsRolling(false);
-        processDiceRoll(finalRoll);
-      }
-    }, 100);
-  }, [isRolling, currentPlayer, diceValue, players, currentPlayerIndex]);
-
-  const getMovableTokens = (player: Player, roll: number): Token[] => {
-    if (!player) return [];
+  const processDiceRoll = useCallback((roll: number) => {
+    const player = players[currentPlayerIndex];
+    if (!player) return;
     
-    return player.tokens.filter(token => {
-      if (token.position === -1) return roll === 6;
-      if (token.position >= 200) return false;
-
-      if (token.position >= 100) {
-        const stretchPos = token.position % 100;
-        return (stretchPos + roll) <= HOME_STRETCH_LENGTH -1;
-      }
-      return true;
-    });
-  };
-
-  const processDiceRoll = (roll: number) => {
-    if (!currentPlayer) return;
-    let currentMessage = `${currentPlayer.name} rolled a ${roll}.`;
-
-    let currentP = players[currentPlayerIndex];
+    let currentMessage = `${player.name} rolled a ${roll}.`;
+    let currentP = { ...player };
 
     if (roll === 6) {
-      const updatedPlayer = { ...currentP, hasRolledSix: true, sixStreak: currentP.sixStreak + 1 };
-      setPlayers(prev => prev.map((p, idx) => idx === currentPlayerIndex ? updatedPlayer : p));
-      currentP = updatedPlayer;
+      currentP.hasRolledSix = true;
+      currentP.sixStreak += 1;
+      setPlayers(prev => prev.map((p, idx) => idx === currentPlayerIndex ? currentP : p));
 
-      if (updatedPlayer.sixStreak === 3) {
+      if (currentP.sixStreak === 3) {
         currentMessage += ` Three 6s in a row! Turn forfeited.`;
         setGameMessage(currentMessage);
         setTimeout(() => passTurn(true, true), 1500);
@@ -375,6 +339,44 @@ export default function LudoPage() {
         }
       }, 1000);
     }
+  }, [players, currentPlayerIndex]);
+
+  const handleDiceRoll = useCallback(() => {
+    const player = players[currentPlayerIndex];
+    if (isRolling || !player || (player.isAI && diceValue !== null)) return;
+    if (!player.isAI && diceValue !== null && !player.hasRolledSix) return;
+
+    const initialAnimatingRoll = Math.floor(Math.random() * 6) + 1;
+    setDiceValue(initialAnimatingRoll);
+    setIsRolling(true);
+
+    let rollAttempts = 0;
+    const rollInterval = setInterval(() => {
+      setDiceValue(Math.floor(Math.random() * 6) + 1);
+      rollAttempts++;
+      if (rollAttempts > 10) {
+        clearInterval(rollInterval);
+        const finalRoll = Math.floor(Math.random() * 6) + 1;
+        setDiceValue(finalRoll);
+        setIsRolling(false);
+        processDiceRoll(finalRoll);
+      }
+    }, 100);
+  }, [isRolling, diceValue, players, currentPlayerIndex, processDiceRoll]);
+
+  const getMovableTokens = (player: Player, roll: number): Token[] => {
+    if (!player) return [];
+    
+    return player.tokens.filter(token => {
+      if (token.position === -1) return roll === 6;
+      if (token.position >= 200) return false;
+
+      if (token.position >= 100) {
+        const stretchPos = token.position % 100;
+        return (stretchPos + roll) <= HOME_STRETCH_LENGTH -1;
+      }
+      return true;
+    });
   };
 
   const passTurn = (isTurnEnding = true, turnForfeited = false) => {
@@ -401,22 +403,24 @@ export default function LudoPage() {
   };
 
  useEffect(() => {
-    if (gameState === 'playing' && players.length > 0 && currentPlayer?.isAI && !diceValue && !isRolling) {
-        if (currentPlayer.sixStreak < 3) {
+    const player = players[currentPlayerIndex];
+    if (gameState === 'playing' && player?.isAI && !diceValue && !isRolling) {
+        if (player.sixStreak < 3) {
             setTimeout(() => handleDiceRoll(), 1500);
         }
     }
-}, [currentPlayerIndex, players, gameState, diceValue, isRolling, currentPlayer, handleDiceRoll]);
+}, [gameState, players, currentPlayerIndex, diceValue, isRolling, handleDiceRoll]);
 
 
   const handleTokenClick = (playerIndex: number, tokenId: number) => {
-    if (isRolling || playerIndex !== currentPlayerIndex || !diceValue || !currentPlayer || currentPlayer.isAI) return;
+    const player = players[playerIndex];
+    if (isRolling || playerIndex !== currentPlayerIndex || !diceValue || !player || player.isAI) return;
 
-    const token = players[playerIndex].tokens.find(t=>t.id === tokenId);
+    const token = player.tokens.find(t=>t.id === tokenId);
     if(!token) return;
         
-    const movableTokens = getMovableTokens(currentPlayer, diceValue);
-    if (!movableTokens.some(mt => mt.id === tokenId && mt.color === currentPlayer.color)) {
+    const movableTokens = getMovableTokens(player, diceValue);
+    if (!movableTokens.some(mt => mt.id === tokenId && mt.color === player.color)) {
         toast({ variant: "destructive", title: "Cannot Move Token", description: "This token cannot make the attempted move or you must move from base." });
         return;
     }
@@ -872,4 +876,3 @@ export default function LudoPage() {
     </>
   );
 }
-
