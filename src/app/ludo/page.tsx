@@ -86,7 +86,6 @@ export default function LudoPage() {
     toast({ title: "Game Reset", description: "Ludo game has been reset to setup." });
   }, [toast]);
 
-  // Pass Turn Logic
   const passTurn = useCallback((isTurnEnding: boolean, turnForfeited = false) => {
       const currentPlayer = players[currentPlayerIndex];
       let nextIndex = currentPlayerIndex;
@@ -189,14 +188,11 @@ export default function LudoPage() {
     }, 100);
   }, [isRolling, players, currentPlayerIndex, diceValue, processDiceRoll]);
 
-  // AI Turn Trigger
   useEffect(() => {
     if (gameView === 'playing' && currentPlayer?.isAI) {
       if (diceValue === null && !isRolling) {
-          // AI needs to roll
           setTimeout(() => handleDiceRoll(), 1500);
       } else if (diceValue !== null) {
-          // AI has rolled, needs to move
           setTimeout(() => {
             const tokenId = getAIMove(players, currentPlayerIndex, diceValue);
             if (tokenId !== null) {
@@ -222,7 +218,6 @@ export default function LudoPage() {
     handleTokenMove(playerIndex, tokenId, diceValue);
   };
   
-  // Game setup related logic
   useEffect(() => {
     if (selectedMode === 'offline' && selectedNumPlayers) {
       setOfflinePlayerNames(Array(selectedNumPlayers).fill('').map((_, i) => `Player ${i + 1}`));
@@ -251,7 +246,23 @@ export default function LudoPage() {
       toast({ variant: "destructive", title: "Name Required", description: "Please enter your name." });
       return;
     }
-    const newPlayers = initialPlayerState(selectedNumPlayers, selectedMode, humanPlayerName, offlinePlayerNames, selectedOfflineColors.filter(c => c) as PlayerColor[]);
+    if (selectedMode === 'offline') {
+      if (offlinePlayerNames.some(name => name.trim() === '')) {
+        toast({ variant: 'destructive', title: 'Setup Incomplete', description: 'Please enter a name for all players.' });
+        return;
+      }
+      if (selectedOfflineColors.some(color => color === null)) {
+        toast({ variant: 'destructive', title: 'Setup Incomplete', description: 'Please select a color for all players.' });
+        return;
+      }
+      const uniqueColors = new Set(selectedOfflineColors);
+      if (uniqueColors.size !== selectedNumPlayers) {
+        toast({ variant: 'destructive', title: 'Invalid Colors', description: 'Each player must have a unique color.' });
+        return;
+      }
+    }
+
+    const newPlayers = initialPlayerState(selectedNumPlayers, selectedMode, humanPlayerName, offlinePlayerNames, selectedOfflineColors as PlayerColor[]);
     setPlayers(newPlayers);
     setCurrentPlayerIndex(0);
     setDiceValue(null);
@@ -314,6 +325,53 @@ export default function LudoPage() {
                   </RadioGroup>
                 </div>
               )}
+              
+              {selectedMode === 'offline' && selectedNumPlayers && (
+                <div className="pt-4 space-y-4">
+                  <h3 className="text-lg font-medium text-center text-foreground/90">Player Details</h3>
+                  {Array.from({ length: selectedNumPlayers }).map((_, index) => {
+                    const availableColors = PLAYER_COLORS.filter(c => !selectedOfflineColors.includes(c) || selectedOfflineColors[index] === c);
+                    return (
+                      <div key={index} className="flex flex-col sm:flex-row gap-3 items-center">
+                        <Input
+                          id={`offline-player-${index}`}
+                          value={offlinePlayerNames[index] || ''}
+                          onChange={(e) => {
+                            const newNames = [...offlinePlayerNames];
+                            newNames[index] = e.target.value;
+                            setOfflinePlayerNames(newNames);
+                          }}
+                          placeholder={`Player ${index + 1} Name`}
+                          className="flex-grow text-base"
+                        />
+                        <Select
+                          value={selectedOfflineColors[index] || ''}
+                          onValueChange={(value) => {
+                            const newColors = [...selectedOfflineColors];
+                            newColors[index] = value as PlayerColor;
+                            setSelectedOfflineColors(newColors);
+                          }}
+                        >
+                          <SelectTrigger className="w-full sm:w-[200px] text-base">
+                            <SelectValue placeholder="Select a color" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableColors.map(color => (
+                              <SelectItem key={color} value={color} className="text-base">
+                                <div className="flex items-center gap-2">
+                                  <div className={cn("w-4 h-4 rounded-full border", PLAYER_CONFIG[color].baseClass)}></div>
+                                  {PLAYER_CONFIG[color].name}
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
 
               {selectedMode === 'ai' && (
                 <div className="pt-4 space-y-2">
@@ -324,7 +382,7 @@ export default function LudoPage() {
                             id="humanPlayerName"
                             value={humanPlayerName}
                             onChange={(e) => setHumanPlayerName(e.target.value)}
-                            className="mt-2"
+                            className="mt-2 text-base"
                             placeholder="Enter your name"
                         />
                     </div>

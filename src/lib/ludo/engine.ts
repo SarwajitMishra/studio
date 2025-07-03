@@ -47,23 +47,23 @@ export const initialPlayerState = (
 ): Player[] => {
   let activePlayerColors: PlayerColor[];
 
-  if (mode === 'offline' && offlinePlayerColors && offlinePlayerColors.length === numPlayersToCreate && offlinePlayerColors.every(c => c !== null)) {
+  if (mode === 'offline' && offlinePlayerColors && offlinePlayerColors.length === numPlayersToCreate) {
     activePlayerColors = offlinePlayerColors;
-  } else if (numPlayersToCreate === 2) {
+  } else if (mode === 'ai') {
      activePlayerColors = ['red', 'yellow']; 
   } else {
+    // Fallback for offline if colors somehow aren't provided, or other modes.
     activePlayerColors = (['red', 'green', 'yellow', 'blue'] as PlayerColor[]).slice(0, numPlayersToCreate);
   }
 
   return activePlayerColors.map((color, index) => {
     const isAIPlayer = mode === 'ai' && index > 0;
-    let playerName = PLAYER_CONFIG[color].name;
+    let playerName = PLAYER_CONFIG[color].name; // Default name
 
     if (mode === 'ai') {
-      if (index === 0) playerName = humanName || "Human Player";
-      else playerName = "Shravya AI";
-    } else if (mode === 'offline') {
-      playerName = (offlineNames && offlineNames[index]) ? offlineNames[index] : `Player ${index + 1}`;
+      playerName = (index === 0) ? (humanName || "Human Player") : "Shravya AI";
+    } else if (mode === 'offline' && offlineNames && offlineNames[index]) {
+      playerName = offlineNames[index];
     }
     
     return {
