@@ -130,7 +130,7 @@ export default function LudoPage() {
           }, 1500);
       }
     }
-  }, [gameView, currentPlayer, diceValue, isRolling, players, currentPlayerIndex]);
+  }, [gameView, currentPlayer, diceValue, isRolling, players, currentPlayerIndex, passTurn, handleDiceRoll, handleTokenMove]);
 
 
   const handleTokenMove = useCallback((playerIndex: number, tokenId: number, roll: number) => {
@@ -232,6 +232,15 @@ export default function LudoPage() {
       setSelectedOfflineColors([]);
     }
   }, [selectedNumPlayers, selectedMode]);
+
+  const handleModeChange = (newMode: GameMode) => {
+    setSelectedMode(newMode);
+    if (newMode === 'ai') {
+        setSelectedNumPlayers(2);
+    } else {
+        setSelectedNumPlayers(null);
+    }
+  };
   
   const handleStartGame = () => {
     if (!selectedMode || !selectedNumPlayers) {
@@ -265,7 +274,7 @@ export default function LudoPage() {
             <CardContent className="p-6 space-y-6">
               <div>
                 <Label className="text-lg font-medium">Game Mode</Label>
-                <RadioGroup value={selectedMode || ""} onValueChange={(value) => setSelectedMode(value as GameMode)} className="mt-2 grid grid-cols-3 gap-4">
+                <RadioGroup value={selectedMode || ""} onValueChange={handleModeChange} className="mt-2 grid grid-cols-3 gap-4">
                   <div>
                     <RadioGroupItem value="offline" id="offline" className="peer sr-only" />
                     <Label htmlFor="offline" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer">
@@ -290,14 +299,14 @@ export default function LudoPage() {
                 </RadioGroup>
               </div>
 
-              {selectedMode && selectedMode !== 'online' && (
+              {selectedMode === 'offline' && (
                 <div>
-                  <Label className="text-lg font-medium">Number of Players {selectedMode === 'ai' ? '(includes you)' : ''}</Label>
+                  <Label className="text-lg font-medium">Number of Players</Label>
                   <RadioGroup value={selectedNumPlayers?.toString() || ""} onValueChange={(value) => setSelectedNumPlayers(parseInt(value))} className="mt-2 grid grid-cols-3 gap-4">
-                    {(selectedMode === 'offline' ? [2, 3, 4] : [2, 4]).map(num => (
+                    {[2, 3, 4].map(num => (
                       <div key={num}>
-                        <RadioGroupItem value={num.toString()} id={`${selectedMode}-${num}`} className="peer sr-only" />
-                        <Label htmlFor={`${selectedMode}-${num}`} className="flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer">
+                        <RadioGroupItem value={num.toString()} id={`offline-${num}`} className="peer sr-only" />
+                        <Label htmlFor={`offline-${num}`} className="flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer">
                           <span className="text-lg">{num}</span>
                         </Label>
                       </div>
@@ -305,7 +314,24 @@ export default function LudoPage() {
                   </RadioGroup>
                 </div>
               )}
-              <Button onClick={handleStartGame} disabled={!selectedMode || !selectedNumPlayers} className="w-full text-lg py-3 bg-accent hover:bg-accent/90 text-accent-foreground">Start Game</Button>
+
+              {selectedMode === 'ai' && (
+                <div className="pt-4 space-y-2">
+                    <p className="text-center text-muted-foreground">You (Red) vs. Shravya AI (Yellow)</p>
+                    <div>
+                        <Label htmlFor="humanPlayerName" className="text-lg font-medium">Your Name</Label>
+                        <Input
+                            id="humanPlayerName"
+                            value={humanPlayerName}
+                            onChange={(e) => setHumanPlayerName(e.target.value)}
+                            className="mt-2"
+                            placeholder="Enter your name"
+                        />
+                    </div>
+                </div>
+              )}
+
+              <Button onClick={handleStartGame} disabled={!selectedMode || (selectedMode === 'offline' && !selectedNumPlayers)} className="w-full text-lg py-3 mt-4 bg-accent hover:bg-accent/90 text-accent-foreground">Start Game</Button>
             </CardContent>
           </Card>
         </div>
