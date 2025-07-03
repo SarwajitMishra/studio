@@ -2,7 +2,7 @@
 "use client";
 
 import type { NextPage } from 'next';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card as ShadCNCard, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { RefreshCw, Award, Brain, Timer, ArrowLeft, Shield, Star, Gem } from 'lucide-react';
