@@ -22,6 +22,7 @@ interface FallingObject {
   y: number; // pixels
   speed: number;
   status: 'falling' | 'bursting';
+  color: string; // Added for different bubble colors
 }
 
 const DIFFICULTY_SETTINGS = {
@@ -30,7 +31,17 @@ const DIFFICULTY_SETTINGS = {
   hard: { speed: 1.6, spawnRate: 1200, items: ["happy", "apple", "world", "play", "house", "smile", "friend", "water", "earth", "magic"] },
 };
 
-const GAME_HEIGHT = 500;
+// Added an array of colors for the bubbles
+const BUBBLE_COLORS = [
+    "bg-blue-400 border-blue-200/50",
+    "bg-green-400 border-green-200/50",
+    "bg-purple-400 border-purple-200/50",
+    "bg-pink-400 border-pink-200/50",
+    "bg-orange-400 border-orange-200/50",
+    "bg-teal-400 border-teal-200/50",
+];
+
+
 const INITIAL_LIVES = 5;
 
 export default function TypingRushGame({ onBack, difficulty }: TypingRushGameProps) {
@@ -39,15 +50,26 @@ export default function TypingRushGame({ onBack, difficulty }: TypingRushGamePro
     const [lives, setLives] = useState(INITIAL_LIVES);
     const [fallingObjects, setFallingObjects] = useState<FallingObject[]>([]);
     const [inputValue, setInputValue] = useState("");
+    const [gameAreaHeight, setGameAreaHeight] = useState(500); // State for game area height
 
     const gameLoopRef = useRef<number | null>(null);
     const spawnIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const inputRef = useRef<HTMLInputElement>(null);
+    const gameAreaRef = useRef<HTMLDivElement>(null); // Ref for the game area
     const { toast } = useToast();
+    
+    // Effect to set the game area height dynamically
+    useEffect(() => {
+        if (gameAreaRef.current) {
+            setGameAreaHeight(gameAreaRef.current.offsetHeight);
+        }
+    }, []);
+
 
     const spawnObject = useCallback(() => {
         const settings = DIFFICULTY_SETTINGS[difficulty];
         const text = settings.items[Math.floor(Math.random() * settings.items.length)];
+        const color = BUBBLE_COLORS[Math.floor(Math.random() * BUBBLE_COLORS.length)];
         const newObject: FallingObject = {
             id: Date.now() + Math.random(),
             text,
@@ -55,6 +77,7 @@ export default function TypingRushGame({ onBack, difficulty }: TypingRushGamePro
             y: -30,
             speed: settings.speed + Math.random() * 0.4,
             status: 'falling',
+            color: color, // Assign a random color
         };
         setFallingObjects(prev => [...prev, newObject]);
     }, [difficulty]);
@@ -63,7 +86,8 @@ export default function TypingRushGame({ onBack, difficulty }: TypingRushGamePro
         setFallingObjects(prev => {
             const updatedObjects = prev.map(obj => ({ ...obj, y: obj.y + obj.speed }));
             
-            const missedObjects = updatedObjects.filter(obj => obj.y > GAME_HEIGHT && obj.status === 'falling');
+            // Use dynamic gameAreaHeight for collision detection
+            const missedObjects = updatedObjects.filter(obj => obj.y > gameAreaHeight && obj.status === 'falling');
 
             if (missedObjects.length > 0) {
                 // Deferring the state updates for lives and toast to prevent render-cycle errors.
@@ -76,11 +100,11 @@ export default function TypingRushGame({ onBack, difficulty }: TypingRushGamePro
             }
             
             // Return only the objects that are still on screen or bursting
-            return updatedObjects.filter(obj => obj.y <= GAME_HEIGHT || obj.status !== 'falling');
+            return updatedObjects.filter(obj => obj.y <= gameAreaHeight || obj.status !== 'falling');
         });
 
         gameLoopRef.current = requestAnimationFrame(gameLoop);
-    }, [toast]);
+    }, [toast, gameAreaHeight]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const typedValue = e.target.value.toLowerCase();
@@ -149,8 +173,9 @@ export default function TypingRushGame({ onBack, difficulty }: TypingRushGamePro
     }, [gameState, gameLoop, spawnObject, difficulty]);
 
     return (
-        <Card className="w-full max-w-2xl shadow-lg relative">
-            <CardHeader className="bg-primary/10">
+        // Make the card take full width and height within its container
+        <Card className="w-full h-full flex flex-col shadow-lg relative">
+            <CardHeader className="bg-primary/10 flex-shrink-0">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                         <Keyboard size={28} className="text-primary" />
@@ -178,8 +203,9 @@ export default function TypingRushGame({ onBack, difficulty }: TypingRushGamePro
                     </span>
                 </CardDescription>
             </CardHeader>
-            <CardContent className="p-4">
-                <div className="relative bg-primary/5 rounded-lg overflow-hidden border shadow-inner" style={{ height: `${GAME_HEIGHT}px` }}>
+            <CardContent className="p-4 flex flex-col flex-grow">
+                 {/* This container will now be flexible and define the game area height */}
+                <div ref={gameAreaRef} className="relative bg-primary/5 rounded-lg overflow-hidden border shadow-inner w-full flex-grow min-h-[400px]">
                     {/* overlays */}
                     {gameState === 'paused' && (
                          <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center z-20 backdrop-blur-sm">
@@ -210,7 +236,8 @@ export default function TypingRushGame({ onBack, difficulty }: TypingRushGamePro
                             key={obj.id}
                             className={cn(
                                 "absolute text-lg font-bold text-white flex items-center justify-center rounded-full shadow-lg",
-                                "w-16 h-16 bg-blue-400 border-2 border-blue-200/50",
+                                "w-16 h-16 border-2",
+                                obj.color, // Apply dynamic color
                                 { 'animate-burst': obj.status === 'bursting' }
                             )}
                             style={{
@@ -224,7 +251,7 @@ export default function TypingRushGame({ onBack, difficulty }: TypingRushGamePro
                         </div>
                     ))}
                 </div>
-                <div className="mt-4">
+                <div className="mt-4 flex-shrink-0">
                     <Input
                         ref={inputRef}
                         type="text"
