@@ -35,6 +35,7 @@ import {
   type User
 } from '@/lib/firebase';
 import { ref as storageRef, uploadString, getDownloadURL } from 'firebase/storage';
+import { applyColorTheme } from '@/components/theme-provider';
 
 const THEME_OPTIONS = [
   { value: 'light', label: 'Light Mode', Icon: Sun },
@@ -42,15 +43,11 @@ const THEME_OPTIONS = [
 ];
 
 const FAVORITE_COLOR_OPTIONS = [
-  { value: 'default', label: 'Default Theme Accent' },
-  { value: 'red', label: 'Red' },
-  { value: 'green', label: 'Green' },
-  { value: 'blue', label: 'Blue' },
-  { value: 'yellow', label: 'Yellow' },
-  { value: 'pink', label: 'Pink' },
-  { value: 'purple', label: 'Purple' },
-  { value: 'orange', label: 'Orange' },
-  { value: 'teal', label: 'Teal' },
+  { value: 'default', label: 'Default (Sky Blue)', color: '#87CEEB' },
+  { value: 'red', label: 'Sunset Red', color: '#E55C5C' },
+  { value: 'green', label: 'Forest Green', color: '#4CAF50' },
+  { value: 'blue', label: 'Oceanic Blue', color: '#3A8DDE' },
+  { value: 'purple', label: 'Twilight Purple', color: '#9067C6' },
 ];
 
 const LOCAL_STORAGE_USER_NAME_KEY = 'shravyaPlayhouse_userName';
@@ -109,22 +106,10 @@ export default function ProfilePage() {
   const [isConfigMissing, setIsConfigMissing] = useState(false);
 
 
-  // Effect for loading all local data on initial mount
+  // Effect for loading local data on initial mount (theme is handled by ThemeProvider)
   useEffect(() => {
-    const storedTheme = localStorage.getItem('theme');
-    if (storedTheme && (storedTheme === 'light' || storedTheme === 'dark')) {
-      setTheme(storedTheme);
-      if (storedTheme === 'dark') {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-      }
-    }
-
-    const storedColor = localStorage.getItem('favoriteColor');
-    if (storedColor) {
-      setFavoriteColor(storedColor);
-    }
+    setTheme(localStorage.getItem('theme') || 'light');
+    setFavoriteColor(localStorage.getItem('favoriteColor') || 'default');
     
     // Load local currency values initially. These will be overwritten by the auth listener if logged in.
     setSPoints(getStoredGameCurrency(LOCAL_STORAGE_S_POINTS_KEY));
@@ -336,6 +321,7 @@ export default function ProfilePage() {
   const handleFavoriteColorChange = (newColor: string) => {
     setFavoriteColor(newColor);
     localStorage.setItem('favoriteColor', newColor);
+    applyColorTheme(newColor);
     toast({ title: "Favorite Color Set", description: `Your favorite color is now ${FAVORITE_COLOR_OPTIONS.find(c => c.value === newColor)?.label || newColor}.` });
   };
 
@@ -610,9 +596,7 @@ export default function ProfilePage() {
                     {FAVORITE_COLOR_OPTIONS.map((colorOption) => (
                       <SelectItem key={colorOption.value} value={colorOption.value} className="text-base">
                         <div className="flex items-center">
-                          {colorOption.value !== 'default' && (
-                            <span className="w-4 h-4 rounded-full mr-2" style={{ backgroundColor: colorOption.value === 'sky' ? '#87CEEB' : colorOption.value }}></span>
-                          )}
+                          <span className="w-4 h-4 rounded-full mr-2" style={{ backgroundColor: colorOption.color }}></span>
                           {colorOption.label}
                         </div>
                       </SelectItem>
@@ -620,7 +604,7 @@ export default function ProfilePage() {
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  This color preference is saved locally. It might be used for UI highlights in the future.
+                  This color preference is saved locally and will update your app's theme instantly.
                 </p>
               </div>
             </CardContent>
@@ -652,6 +636,7 @@ export default function ProfilePage() {
     
 
     
+
 
 
 

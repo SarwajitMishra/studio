@@ -5,6 +5,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import MainLayout from '@/components/layout/main-layout';
 import PWALoader from '@/components/pwa-loader';
+import ThemeProvider from '@/components/theme-provider'; // Import ThemeProvider
 
 // Configure Quicksand font
 const quicksand = Quicksand({
@@ -28,15 +29,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head><meta name="theme-color" content="#87CEEB" /></head>
       {/* Apply Quicksand font variable to the body */}
-      <body className={`${quicksand.variable} font-sans antialiased`} suppressHydrationWarning={true}>
-        <MainLayout>
-          {children}
-        </MainLayout>
-        <Toaster />
-        <PWALoader />
+      <body className={`${quicksand.variable} font-sans antialiased`}>
+        <ThemeProvider>
+          <MainLayout>
+            {children}
+          </MainLayout>
+          <Toaster />
+          <PWALoader />
+        </ThemeProvider>
       </body>
     </html>
   );
