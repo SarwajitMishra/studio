@@ -87,7 +87,7 @@ const shufflePieces = (pieces: PuzzlePiece[]): PuzzlePiece[] => {
 };
 
 // Component to render a single piece of the puzzle
-const PuzzlePieceComponent = ({ piece, imageSrc, boardSize, gridSize, onClick, isSelected, isComplete }: {
+const PuzzlePieceComponent = ({ piece, imageSrc, boardSize, gridSize, onClick, isSelected, isComplete, onDragStart, onDragOver, onDrop }: {
     piece: PuzzlePiece;
     imageSrc: string;
     boardSize: number;
@@ -95,6 +95,9 @@ const PuzzlePieceComponent = ({ piece, imageSrc, boardSize, gridSize, onClick, i
     onClick: () => void;
     isSelected: boolean;
     isComplete: boolean;
+    onDragStart: (e: React.DragEvent<HTMLButtonElement>) => void;
+    onDragOver: (e: React.DragEvent<HTMLButtonElement>) => void;
+    onDrop: (e: React.DragEvent<HTMLButtonElement>) => void;
 }) => {
     const pieceSize = boardSize / gridSize;
     const backgroundX = piece.correctCol * pieceSize;
@@ -103,6 +106,10 @@ const PuzzlePieceComponent = ({ piece, imageSrc, boardSize, gridSize, onClick, i
     return (
         <button
             onClick={onClick}
+            draggable={!isComplete}
+            onDragStart={onDragStart}
+            onDragOver={onDragOver}
+            onDrop={onDrop}
             disabled={isComplete}
             className={cn(
                 "bg-no-repeat border border-primary/30 transition-all duration-200 ease-in-out bg-cover",
@@ -252,6 +259,29 @@ export default function JigsawPuzzlePage() {
         }
     }, []);
 
+    const swapPieces = useCallback((piece1Id: string, piece2Id: string) => {
+        const newPieces = [...puzzlePieces];
+        const piece1Index = newPieces.findIndex(p => p.id === piece1Id);
+        const piece2Index = newPieces.findIndex(p => p.id === piece2Id);
+
+        if (piece1Index === -1 || piece2Index === -1) return;
+
+        // Swap the currentRow and currentCol properties
+        const tempRow = newPieces[piece1Index].currentRow;
+        const tempCol = newPieces[piece1Index].currentCol;
+        newPieces[piece1Index].currentRow = newPieces[piece2Index].currentRow;
+        newPieces[piece1Index].currentCol = newPieces[piece2Index].currentCol;
+        newPieces[piece2Index].currentRow = tempRow;
+        newPieces[piece2Index].currentCol = tempCol;
+        
+        // Actually swap their positions in the array for rendering
+        [newPieces[piece1Index], newPieces[piece2Index]] = [newPieces[piece2Index], newPieces[piece1Index]];
+
+        setPuzzlePieces(newPieces);
+        setMoves(m => m + 1);
+        checkCompletion(newPieces);
+    }, [puzzlePieces, checkCompletion]);
+
     const handlePieceClick = (clickedPieceId: string) => {
         if (isComplete) return;
 
@@ -260,28 +290,28 @@ export default function JigsawPuzzlePage() {
         } else if (selectedPieceId === clickedPieceId) {
             setSelectedPieceId(null); // Deselect if the same piece is clicked again
         } else {
-            // Swap logic
-            const newPieces = [...puzzlePieces];
-            const piece1Index = newPieces.findIndex(p => p.id === selectedPieceId);
-            const piece2Index = newPieces.findIndex(p => p.id === clickedPieceId);
-
-            if (piece1Index === -1 || piece2Index === -1) return;
-
-            // Swap the currentRow and currentCol properties
-            const tempRow = newPieces[piece1Index].currentRow;
-            const tempCol = newPieces[piece1Index].currentCol;
-            newPieces[piece1Index].currentRow = newPieces[piece2Index].currentRow;
-            newPieces[piece1Index].currentCol = newPieces[piece2Index].currentCol;
-            newPieces[piece2Index].currentRow = tempRow;
-            newPieces[piece2Index].currentCol = tempCol;
-            
-            // Actually swap their positions in the array for rendering
-            [newPieces[piece1Index], newPieces[piece2Index]] = [newPieces[piece2Index], newPieces[piece1Index]];
-
-            setPuzzlePieces(newPieces);
+            swapPieces(selectedPieceId, clickedPieceId);
             setSelectedPieceId(null);
-            setMoves(m => m + 1);
-            checkCompletion(newPieces);
+        }
+    };
+
+    const handleDragStart = (e: React.DragEvent<HTMLButtonElement>, pieceId: string) => {
+        e.dataTransfer.setData("application/jigsaw-piece", pieceId);
+        e.dataTransfer.effectAllowed = "move";
+        if (selectedPieceId) {
+            setSelectedPieceId(null); // Clear selection when drag starts
+        }
+    };
+    
+    const handleDragOver = (e: React.DragEvent<HTMLButtonElement>) => {
+        e.preventDefault();
+    };
+    
+    const handleDrop = (e: React.DragEvent<HTMLButtonElement>, droppedOnPieceId: string) => {
+        e.preventDefault();
+        const draggedPieceId = e.dataTransfer.getData("application/jigsaw-piece");
+        if (draggedPieceId && draggedPieceId !== droppedOnPieceId) {
+            swapPieces(draggedPieceId, droppedOnPieceId);
         }
     };
     
@@ -362,6 +392,9 @@ export default function JigsawPuzzlePage() {
                                         onClick={() => handlePieceClick(piece.id)}
                                         isSelected={selectedPieceId === piece.id}
                                         isComplete={isComplete}
+                                        onDragStart={(e) => handleDragStart(e, piece.id)}
+                                        onDragOver={handleDragOver}
+                                        onDrop={(e) => handleDrop(e, piece.id)}
                                     />
                                 ))}
                             </div>
@@ -384,6 +417,7 @@ export default function JigsawPuzzlePage() {
                                     alt="Hint: Completed puzzle"
                                     width={120}
                                     height={120}
+                                    data-ai-hint={selectedImage.hint}
                                     className={cn(
                                         "rounded-md shadow-md transition-opacity duration-300",
                                         showHint ? "opacity-100" : "opacity-30 blur-sm"
@@ -410,6 +444,7 @@ export default function JigsawPuzzlePage() {
                                 alt={img.alt}
                                 width={400}
                                 height={400}
+                                data-ai-hint={img.hint}
                                 className="object-cover w-full h-full aspect-square group-hover:scale-105 transition-transform duration-300"
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
@@ -474,3 +509,5 @@ export default function JigsawPuzzlePage() {
         </div>
     );
 }
+
+    
