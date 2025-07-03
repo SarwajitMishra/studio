@@ -442,8 +442,7 @@ export default function ShravyaChatModalContent() {
             >
               {message.role === 'assistant' && (
                 <span className="flex-shrink-0 p-2 bg-accent rounded-full text-accent-foreground shadow">
-                  {/* Path updated to /icons/custom-chat-icon.png */}
-                  <CustomChatIcon src="/icons/custom-chat-icon.png" alt="Shravya AI Icon" size={20} />
+                  <CustomChatIcon src="/images/custom-chat-icon.png" alt="Shravya AI Icon" size={20} />
                 </span>
               )}
               <div
@@ -466,8 +465,7 @@ export default function ShravyaChatModalContent() {
           {isLoading && !isListening && (!messages[messages.length - 1]?.isStreaming || messages[messages.length - 1]?.role !== 'assistant') && (
             <div className="flex items-start space-x-3">
               <span className="flex-shrink-0 p-2 bg-accent rounded-full text-accent-foreground shadow">
-                 {/* Path updated to /icons/custom-chat-icon.png */}
-                 <CustomChatIcon src="/icons/custom-chat-icon.png" alt="Shravya AI Icon" size={20} />
+                 <CustomChatIcon src="/images/custom-chat-icon.png" alt="Shravya AI Icon" size={20} />
               </span>
               <div className="p-3 rounded-lg shadow bg-card border flex items-center space-x-2">
                 <Loader2 size={18} className="animate-spin text-muted-foreground" />

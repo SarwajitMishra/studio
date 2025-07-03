@@ -251,7 +251,7 @@ export default function ProfilePage() {
       isMounted = false;
       unsubscribe();
     };
-  }, [toast]); // currentUser removed from dependency array.
+  }, [toast, currentUser]);
 
 
   const handleUserNameChange = (name: string) => {
