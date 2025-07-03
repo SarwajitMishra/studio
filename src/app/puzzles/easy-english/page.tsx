@@ -156,7 +156,7 @@ export default function EasyEnglishPuzzlesPage() {
               Choose a fun way to learn!
             </CardDescription>
           </CardHeader>
-          <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+          <CardContent className="p-6 grid grid-cols-1 gap-4">
             {ENGLISH_PUZZLE_TYPES.map((puzzle) => (
               <Button
                 key={puzzle.id}
