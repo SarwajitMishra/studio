@@ -27,14 +27,14 @@ const GenerateEnglishPuzzleInputSchema = z.object({
 export type GenerateEnglishPuzzleInput = z.infer<typeof GenerateEnglishPuzzleInputSchema>;
 
 const WordMatchPuzzleSchema = z.object({
-  type: z.literal('matchWord'),
+  type: z.enum(['matchWord']).describe("The type of puzzle, which must be 'matchWord' for this schema."),
   correctWord: z.string().describe('The single, correct word for the puzzle.'),
   options: z.array(z.string()).length(4).describe('An array of 4 words, including the correct one and three plausible distractors.'),
   imageQuery: z.string().describe('A simple, two-word search query suitable for an image search API to find a picture for the correct word (e.g., "cartoon apple").'),
 });
 
 const MissingLetterPuzzleSchema = z.object({
-  type: z.literal('missingLetter'),
+  type: z.enum(['missingLetter']).describe("The type of puzzle, which must be 'missingLetter' for this schema."),
   fullWord: z.string().describe('The complete, correct word.'),
   wordPattern: z.string().describe('The word with one letter replaced by an underscore (e.g., "AP_LE").'),
   correctLetter: z.string().length(1).describe('The single correct letter that was replaced.'),
