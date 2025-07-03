@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview An AI flow for generating English puzzles for kids.
@@ -98,15 +99,13 @@ const puzzleGenerationPrompt = ai.definePrompt({
       None
     {{/if}}
 
-- **Puzzle Specifics:**
-  {{#if (eq puzzleType "matchWord")}}
-  - **Type:** 'matchWord'.
-  - **Task:** Generate one correct word and three plausible but incorrect distractor words. All words should match the difficulty level. The final 'options' array must contain exactly 4 words and must include the correct word.
-  {{/if}}
-  {{#if (eq puzzleType "missingLetter")}}
-  - **Type:** 'missingLetter'.
-  - **Task:** Generate a word matching the difficulty. Create a pattern by replacing ONE letter with an underscore. Provide the correct letter and three distractor letters as options. The final 'options' array must contain exactly 4 single letters and must include the correct letter.
-  {{/if}}
+- **Puzzle Specifics based on '{{puzzleType}}':**
+  - If the puzzle type is 'matchWord':
+    - **Task:** Generate one correct word and three plausible but incorrect distractor words. All words should match the difficulty level. The final 'options' array must contain exactly 4 words and must include the correct word.
+    - **Your output JSON 'type' field must be 'matchWord'.**
+  - If the puzzle type is 'missingLetter':
+    - **Task:** Generate a word matching the difficulty. Create a pattern by replacing ONE letter with an underscore. Provide the correct letter and three distractor letters as options. The final 'options' array must contain exactly 4 single letters and must include the correct letter.
+    - **Your output JSON 'type' field must be 'missingLetter'.**
 
 - **Image Query:** Provide a simple, 2-word, descriptive query for an image search API (like "cute cat" or "red apple").
 
