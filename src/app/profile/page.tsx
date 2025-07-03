@@ -97,8 +97,7 @@ export default function ProfilePage() {
   const { toast } = useToast();
   const [isUploading, setIsUploading] = useState(false);
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const previousUserIdRef = useRef<string | null>(null);
-
+  
   const [theme, setTheme] = useState<string>('light');
   const [favoriteColor, setFavoriteColor] = useState<string>('default');
   const [gameStats, setGameStats] = useState<GameStat[]>([]);
@@ -158,16 +157,7 @@ export default function ProfilePage() {
     }
     
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-        // Check if the user is logging in (i.e., user exists and is different from the last known user)
-        if (user && user.uid !== previousUserIdRef.current) {
-          toast({ title: "Logged In!", description: `Welcome back, ${user.displayName || 'User'}!` });
-        }
-        
-        // Update the current user state
         setCurrentUser(user);
-
-        // Update the ref to the new user's UID (or null if logged out)
-        previousUserIdRef.current = user?.uid ?? null;
 
         if (user) { 
             // User is logged in, sync state from Firebase profile or fall back to local storage/defaults
@@ -229,7 +219,11 @@ export default function ProfilePage() {
         toast({ title: "Avatar Auto-Saved!", description: "Your new avatar has been saved to your profile." });
       } catch (error: any) {
         console.error("Error auto-saving avatar:", error);
-        toast({ variant: "destructive", title: "Avatar Save Failed", description: error.message || "Could not save avatar." });
+        let description = "Could not save avatar. Please try again.";
+        if (error.message && (error.message.toLowerCase().includes('cors') || error.message.toLowerCase().includes('network')) ) {
+            description = "A server configuration error (CORS) is preventing the upload. See the browser console for details and ensure your Firebase Storage is correctly configured to allow requests from this domain.";
+        }
+        toast({ variant: "destructive", title: "Avatar Upload Failed", description, duration: 8000 });
       } finally {
         setIsUploading(false);
       }
@@ -280,7 +274,7 @@ export default function ProfilePage() {
   const actualSignInWithGoogle = async () => {
     try {
       const result = await signInWithPopup(auth, googleProvider);
-      console.log("DIAGNOSTIC: Google sign-in with popup successful.", result.user.displayName);
+      toast({ title: "Logged In!", description: `Welcome back, ${result.user.displayName || 'User'}!` });
     } catch (error: any) {
       console.error("Error during Google sign-in with popup:", error);
       if (error.code !== 'auth/popup-closed-by-user') {
@@ -658,6 +652,7 @@ export default function ProfilePage() {
     
 
     
+
 
 
 
