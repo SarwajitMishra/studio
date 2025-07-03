@@ -13,7 +13,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import type { EnglishPuzzleItem, EnglishPuzzleSubtype, Difficulty } from '@/lib/constants'; // Re-using existing types
+import type { EnglishPuzzleItem } from '@/lib/constants';
 
 // Define Zod schemas that match the existing types for validation and structured output.
 const GenerateEnglishPuzzleInputSchema = z.object({
@@ -26,7 +26,7 @@ const GenerateEnglishPuzzleInputSchema = z.object({
 });
 export type GenerateEnglishPuzzleInput = z.infer<typeof GenerateEnglishPuzzleInputSchema>;
 
-// Schemas for the AI model's direct output. `imageQuery` is removed.
+// Schemas for the AI model's direct output.
 const WordMatchPuzzleSchema = z.object({
   type: z.enum(['matchWord']).describe("The type of puzzle, which must be 'matchWord' for this schema."),
   correctWord: z.string().describe('The single, correct word for the puzzle.'),
@@ -46,29 +46,23 @@ const EnglishPuzzleOutputSchema = z.union([WordMatchPuzzleSchema, MissingLetterP
 // This is the main function that the client will call.
 export async function generateEnglishPuzzle(input: GenerateEnglishPuzzleInput): Promise<EnglishPuzzleItem> {
   const llmResponse = await generateEnglishPuzzleFlow(input);
-  
-  // Determine the word to search for and construct a reliable image query.
-  const queryWord = llmResponse.type === 'matchWord' ? llmResponse.correctWord : llmResponse.fullWord;
-  const imageQuery = queryWord;
-
-  const baseItem = {
-    id: `ai-${Date.now()}`,
-    difficulty: input.difficulty,
-    imageSrc: 'https://placehold.co/400x300.png', // Fallback image
-    imageAlt: queryWord,
-    imageQuery: imageQuery, // Use the reliably constructed query
-  };
 
   if (llmResponse.type === 'matchWord') {
+    const queryWord = llmResponse.correctWord;
     return {
-      ...baseItem,
+      id: `ai-${Date.now()}`,
+      difficulty: input.difficulty,
+      imageSrc: 'https://placehold.co/400x300.png', // Default placeholder
+      imageAlt: queryWord,
+      imageQuery: queryWord,
       type: 'matchWord',
       correctWord: llmResponse.correctWord,
       options: llmResponse.options,
     };
-  } else {
+  } else { // 'missingLetter'
     return {
-      ...baseItem,
+      id: `ai-${Date.now()}`,
+      difficulty: input.difficulty,
       type: 'missingLetter',
       fullWord: llmResponse.fullWord,
       wordPattern: llmResponse.wordPattern,
@@ -78,14 +72,14 @@ export async function generateEnglishPuzzle(input: GenerateEnglishPuzzleInput): 
   }
 }
 
-// Define the prompt for the AI model. Instructions for `imageQuery` are removed.
+// Define the prompt for the AI model.
 const puzzleGenerationPrompt = ai.definePrompt({
   name: 'englishPuzzleGeneratorPrompt',
   input: { schema: GenerateEnglishPuzzleInputSchema },
   output: { schema: EnglishPuzzleOutputSchema },
   prompt: `You are an expert puzzle creator for a kids' English learning app. Your task is to generate a single new puzzle based on the requested type and difficulty.
 
-**Crucially, all words you generate for any puzzle must be simple, common, concrete nouns that can be easily represented by a picture (e.g., 'apple', 'house', 'dog', 'car'). Avoid abstract concepts, verbs, or adjectives (e.g., 'bright', 'happy', 'run').**
+**Crucially, for 'matchWord' puzzles, all words you generate must be simple, common, concrete nouns that can be easily represented by a picture (e.g., 'apple', 'house', 'dog', 'car'). Avoid abstract concepts, verbs, or adjectives (e.g., 'bright', 'happy', 'run'). For 'missingLetter' puzzles, the words can be slightly more varied but should still be age-appropriate.**
 
 - **Difficulty levels:**
   - **easy:** Simple, common words (3-4 letters).

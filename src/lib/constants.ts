@@ -239,16 +239,16 @@ export const ENGLISH_PUZZLE_TYPES: EnglishPuzzleType[] = [
 
 interface EnglishPuzzleItemBase {
   id: string;
-  imageAlt: string;
-  imageSrc: string;
   difficulty: Difficulty;
-  imageQuery?: string;
 }
 
 interface WordMatchPuzzle extends EnglishPuzzleItemBase {
   type: "matchWord";
   correctWord: string;
   options: string[];
+  imageAlt: string;
+  imageSrc: string;
+  imageQuery?: string;
 }
 
 interface MissingLetterPuzzle extends EnglishPuzzleItemBase {

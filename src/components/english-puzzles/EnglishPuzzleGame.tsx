@@ -79,26 +79,30 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
       };
 
       const puzzleData = await generateEnglishPuzzle(input);
-      
-      const newWord = puzzleData.type === 'matchWord' ? puzzleData.correctWord : puzzleData.fullWord;
-      addUsedWordToSession(newWord);
 
-      let finalImageUrl = puzzleData.imageSrc; // Default placeholder from flow
-      const apiKey = process.env.NEXT_PUBLIC_PIXABAY_API_KEY;
+      if (puzzleData.type === 'matchWord') {
+        addUsedWordToSession(puzzleData.correctWord);
+        let finalImageUrl = puzzleData.imageSrc; // Default placeholder from flow
+        const apiKey = process.env.NEXT_PUBLIC_PIXABAY_API_KEY;
 
-      if (apiKey && puzzleData.imageQuery) {
-        const imageResults = await searchImages(puzzleData.imageQuery, apiKey, { perPage: 3 });
-        if (imageResults.length > 0) {
-          finalImageUrl = imageResults[0].webformatURL;
-        } else {
-          console.warn(`No Pixabay results for query: "${puzzleData.imageQuery}". Using placeholder.`);
+        if (apiKey && puzzleData.imageQuery) {
+          const imageResults = await searchImages(puzzleData.imageQuery, apiKey, { perPage: 3, image_type: 'illustration' });
+          if (imageResults.length > 0) {
+            finalImageUrl = imageResults[0].webformatURL;
+          } else {
+            console.warn(`No Pixabay results for query: "${puzzleData.imageQuery}". Using placeholder.`);
+          }
         }
+        
+        const puzzleWithImage = { ...puzzleData, imageSrc: finalImageUrl };
+        setCurrentPuzzle(puzzleWithImage);
+        setShuffledOptions(shuffleArray(puzzleWithImage.options));
+      } else { // 'missingLetter' puzzle
+        addUsedWordToSession(puzzleData.fullWord);
+        setCurrentPuzzle(puzzleData);
+        setShuffledOptions(shuffleArray(puzzleData.options));
       }
 
-      const puzzleWithImage = { ...puzzleData, imageSrc: finalImageUrl };
-
-      setCurrentPuzzle(puzzleWithImage);
-      setShuffledOptions(shuffleArray(puzzleData.options));
       setIsAnswered(false);
       setSelectedAnswer(null);
 
@@ -115,6 +119,7 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
       setIsGenerating(false);
     }
   }, [puzzleType, difficulty, sessionKey, toast]);
+
 
   const startNewRound = useCallback(() => {
     resetSessionHistory(); // Clear history for a completely new round
@@ -230,17 +235,19 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
             renderLoadingView()
           ) : currentPuzzle && !isRoundOver ? (
             <>
-              <div className="relative w-full h-48 sm:h-64 rounded-lg overflow-hidden shadow-md border-2 border-primary/30 bg-slate-100">
-                <Image
-                  src={currentPuzzle.imageSrc}
-                  alt={currentPuzzle.imageAlt}
-                  fill
-                  style={{ objectFit: 'contain' }}
-                  data-ai-hint={currentPuzzle.imageQuery}
-                  priority
-                  unoptimized={currentPuzzle.imageSrc.startsWith('https://cdn.pixabay.com') || currentPuzzle.imageSrc.startsWith('https://pixabay.com')}
-                />
-              </div>
+              {currentPuzzle.type === 'matchWord' && (
+                <div className="relative w-full h-48 sm:h-64 rounded-lg overflow-hidden shadow-md border-2 border-primary/30 bg-slate-100">
+                  <Image
+                    src={currentPuzzle.imageSrc}
+                    alt={currentPuzzle.imageAlt}
+                    fill
+                    style={{ objectFit: 'contain' }}
+                    data-ai-hint={currentPuzzle.imageQuery}
+                    priority
+                    unoptimized={currentPuzzle.imageSrc.startsWith('https://cdn.pixabay.com') || currentPuzzle.imageSrc.startsWith('https://pixabay.com')}
+                  />
+                </div>
+              )}
 
               {currentPuzzle.type === "missingLetter" && (
                 <p className="text-3xl sm:text-4xl font-bold tracking-wider my-4">
