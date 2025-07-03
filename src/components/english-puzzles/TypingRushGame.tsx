@@ -61,17 +61,24 @@ export default function TypingRushGame({ onBack, difficulty }: TypingRushGamePro
 
     const gameLoop = useCallback(() => {
         setFallingObjects(prev => {
-            const newObjects = prev.map(obj => ({ ...obj, y: obj.y + obj.speed }));
-            const remainingObjects = newObjects.filter(obj => {
-                if (obj.y > GAME_HEIGHT && obj.status === 'falling') {
-                    setLives(l => Math.max(0, l - 1));
-                    toast({ variant: 'destructive', title: 'Miss!', description: `You missed "${obj.text}"`, duration: 2000 });
-                    return false;
-                }
-                return true;
-            });
-            return remainingObjects;
+            const updatedObjects = prev.map(obj => ({ ...obj, y: obj.y + obj.speed }));
+            
+            const missedObjects = updatedObjects.filter(obj => obj.y > GAME_HEIGHT && obj.status === 'falling');
+
+            if (missedObjects.length > 0) {
+                // Deferring the state updates for lives and toast to prevent render-cycle errors.
+                setTimeout(() => {
+                    setLives(l => Math.max(0, l - missedObjects.length));
+                    missedObjects.forEach(obj => {
+                        toast({ variant: 'destructive', title: 'Miss!', description: `You missed "${obj.text}"`, duration: 2000 });
+                    });
+                }, 0);
+            }
+            
+            // Return only the objects that are still on screen or bursting
+            return updatedObjects.filter(obj => obj.y <= GAME_HEIGHT || obj.status !== 'falling');
         });
+
         gameLoopRef.current = requestAnimationFrame(gameLoop);
     }, [toast]);
 
