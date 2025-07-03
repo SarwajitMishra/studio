@@ -1,6 +1,6 @@
 
 import type { LucideIcon } from 'lucide-react';
-import { HomeIcon, LayoutGrid, Puzzle, BookOpen, UserCircle, Settings, BarChart3, Zap, Apple, Banana, Cherry, Grape, Carrot, Pizza, CakeSlice, IceCream2, Swords, Bot, Search, Sigma, Brain, ToyBrick, Star as StarIcon, Coins as CoinsIcon, BookMarked, Target, Calculator, ListOrdered, SpellCheck, CaseLower, AlignJustify, Filter, Keyboard, Gamepad2 } from 'lucide-react';
+import { LayoutGrid, Puzzle, BookOpen, UserCircle, Settings, BarChart3, Zap, Apple, Banana, Cherry, Grape, Carrot, Pizza, CakeSlice, IceCream2, Swords, Bot, Search, Sigma, Brain, ToyBrick, Star as StarIcon, Coins as CoinsIcon, BookMarked, Target, Calculator, ListOrdered, SpellCheck, CaseLower, AlignJustify, Filter, Keyboard, Gamepad2, Languages, Lightbulb, Mail, Calendar, Heart } from 'lucide-react';
 
 export type GameCategory = 'Strategy' | 'Puzzles' | 'Learning';
 
@@ -131,16 +131,19 @@ export const AVATARS: { src: string; alt: string; hint: string }[] = [
   { src: '/images/avatars/modern_girl.png', alt: 'Modern girl avatar', hint: 'modern girl' },
 ];
 
-export interface NavItem {
+export interface SettingsMenuItem {
   href: string;
   label: string;
   Icon: LucideIcon;
 }
 
-export const NAV_ITEMS: NavItem[] = [
-  { href: '/', label: 'Games', Icon: HomeIcon },
-  { href: '/puzzles', label: 'Puzzles', Icon: Puzzle },
-  { href: '/profile', label: 'Profile', Icon: UserCircle },
+export const SETTINGS_MENU_ITEMS: SettingsMenuItem[] = [
+  { href: '#', label: 'Language', Icon: Languages },
+  { href: '#', label: 'New Feature Requests', Icon: Lightbulb },
+  { href: '#', label: 'Contact Us', Icon: Mail },
+  { href: '#', label: 'Upcoming Features', Icon: Zap },
+  { href: '#', label: 'Live Events', Icon: Calendar },
+  { href: '#', label: 'Donation', Icon: Heart },
 ];
 
 // Icons for Memory Match game
