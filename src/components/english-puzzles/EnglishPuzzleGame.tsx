@@ -39,74 +39,83 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
   const [isAnswered, setIsAnswered] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [usedPuzzleIds, setUsedPuzzleIds] = useState<string[]>([]);
+  const [allPuzzlesCompleted, setAllPuzzlesCompleted] = useState(false);
   const { toast } = useToast();
 
   const MAX_QUESTIONS = 5;
+  const sessionKey = `usedEnglishPuzzles_${puzzleType}_${difficulty}`;
 
   const loadNextPuzzle = useCallback(() => {
-    setUsedPuzzleIds(prevUsedIds => {
-      let availablePuzzles = ENGLISH_PUZZLE_DATA.filter(p => 
-          p.type === puzzleType && 
-          p.difficulty === difficulty &&
-          !prevUsedIds.includes(p.id)
-      );
-      
-      let finalUsedIds = prevUsedIds;
-      if (availablePuzzles.length === 0 && prevUsedIds.length > 0) {
-        finalUsedIds = []; // Reset used IDs for this type/difficulty
-        availablePuzzles = ENGLISH_PUZZLE_DATA.filter(p => p.type === puzzleType && p.difficulty === difficulty);
-      }
-      
-      if (availablePuzzles.length === 0) {
-          setCurrentPuzzle(null);
-          setFeedback({ message: `No more puzzles available for this category. Resetting.`, type: "info" });
-          return finalUsedIds;
-      }
-  
-      const nextPuzzle = availablePuzzles[Math.floor(Math.random() * availablePuzzles.length)];
-      
-      setCurrentPuzzle(nextPuzzle); // Set initial puzzle data
-      setShuffledOptions(shuffleArray(nextPuzzle.options));
-      setIsAnswered(false);
-      setSelectedAnswer(null);
-      setFeedback(null);
-      
-      const apiKey = process.env.NEXT_PUBLIC_PIXABAY_API_KEY;
-      if (apiKey) {
-        const searchQuery = nextPuzzle.type === 'matchWord' ? nextPuzzle.correctWord : nextPuzzle.fullWord;
-        searchImages(searchQuery, apiKey, { perPage: 5 }).then(images => {
-          if (images && images.length > 0) {
-            // Update the current puzzle with the fetched image, checking if it's still the same puzzle
-            setCurrentPuzzle(p => p && p.id === nextPuzzle.id ? {...p, imageSrc: images[0].largeImageURL, imageAlt: images[0].tags} : p);
-          }
-        }).catch(error => {
-          console.error("Error fetching image from Pixabay:", error);
-        });
-      }
-      
-      return [...finalUsedIds, nextPuzzle.id];
-    });
-  }, [puzzleType, difficulty]);
+    let availablePuzzles = ENGLISH_PUZZLE_DATA.filter(p => 
+        p.type === puzzleType && 
+        p.difficulty === difficulty &&
+        !usedPuzzleIds.includes(p.id)
+    );
+    
+    if (availablePuzzles.length === 0) {
+      setAllPuzzlesCompleted(true);
+      setCurrentPuzzle(null);
+      setFeedback({ message: `You've completed all puzzles in this category!`, type: "info" });
+      return;
+    }
 
-  const resetGame = useCallback(() => {
+    const nextPuzzle = availablePuzzles[Math.floor(Math.random() * availablePuzzles.length)];
+    const newUsedIds = [...usedPuzzleIds, nextPuzzle.id];
+    
+    setUsedPuzzleIds(newUsedIds);
+    if (typeof window !== 'undefined') {
+        sessionStorage.setItem(sessionKey, JSON.stringify(newUsedIds));
+    }
+    
+    setCurrentPuzzle(nextPuzzle);
+    setShuffledOptions(shuffleArray(nextPuzzle.options));
+    setIsAnswered(false);
+    setSelectedAnswer(null);
+    setFeedback(null);
+    
+    const apiKey = process.env.NEXT_PUBLIC_PIXABAY_API_KEY;
+    if (apiKey) {
+      const searchQuery = nextPuzzle.type === 'matchWord' ? nextPuzzle.correctWord : nextPuzzle.fullWord;
+      searchImages(searchQuery, apiKey, { perPage: 5 }).then(images => {
+        if (images && images.length > 0) {
+          setCurrentPuzzle(p => p && p.id === nextPuzzle.id ? {...p, imageSrc: images[0].largeImageURL, imageAlt: images[0].tags} : p);
+        }
+      }).catch(error => {
+        console.error("Error fetching image from Pixabay:", error);
+      });
+    }
+  }, [puzzleType, difficulty, usedPuzzleIds, sessionKey]);
+
+  const resetGame = useCallback((clearSession = false) => {
     setScore(0);
     setQuestionsAnswered(0);
-    setUsedPuzzleIds([]);
-    // The first puzzle load is triggered by the useEffect below
-    // when usedPuzzleIds is reset to an empty array.
-  }, []);
+    setAllPuzzlesCompleted(false);
+
+    let initialUsedIds: string[] = [];
+    if (clearSession) {
+        if(typeof window !== 'undefined') {
+            sessionStorage.removeItem(sessionKey);
+        }
+    } else {
+        if (typeof window !== 'undefined') {
+            const storedUsedIds = sessionStorage.getItem(sessionKey);
+            initialUsedIds = storedUsedIds ? JSON.parse(storedUsedIds) : [];
+        }
+    }
+    setUsedPuzzleIds(initialUsedIds);
+  }, [sessionKey]);
 
   useEffect(() => {
-    resetGame();
-  }, [resetGame, difficulty, puzzleType]);
+    // This effect runs once on mount or when difficulty/type changes to initialize
+    resetGame(false);
+  }, [difficulty, puzzleType, resetGame]);
 
   useEffect(() => {
-    // This effect handles the initial puzzle load when the component mounts
-    // or when a full reset happens (usedPuzzleIds becomes empty).
-    if (questionsAnswered === 0 && usedPuzzleIds.length === 0) {
+    // This effect loads the first puzzle when the usedPuzzleIds state is initialized/reset
+    if (questionsAnswered === 0 && !currentPuzzle && !allPuzzlesCompleted) {
       loadNextPuzzle();
     }
-  }, [questionsAnswered, usedPuzzleIds.length, loadNextPuzzle]);
+  }, [questionsAnswered, currentPuzzle, allPuzzlesCompleted, usedPuzzleIds, loadNextPuzzle]);
 
   const handleAnswer = (selectedOption: string) => {
     if (!currentPuzzle || isAnswered) return;
@@ -114,14 +123,11 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
     setSelectedAnswer(selectedOption);
 
     let isCorrect = false;
-    let correctValue = "";
 
     if (currentPuzzle.type === "matchWord") {
-      correctValue = currentPuzzle.correctWord;
-      isCorrect = selectedOption === correctValue;
+      isCorrect = selectedOption === currentPuzzle.correctWord;
     } else if (currentPuzzle.type === "missingLetter") {
-      correctValue = currentPuzzle.correctLetter;
-      isCorrect = selectedOption === correctValue;
+      isCorrect = selectedOption === currentPuzzle.correctLetter;
     }
 
     let newScore = score;
@@ -166,6 +172,8 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
       : `What letter is missing from "${currentPuzzle.wordPattern.replace(/_/g, ' _ ')}"?`;
   };
 
+  const isRoundOver = questionsAnswered >= MAX_QUESTIONS;
+
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] py-8">
       <Card className="w-full max-w-lg shadow-xl">
@@ -181,13 +189,13 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
           </div>
           <CardDescription className="text-center text-md text-foreground/80 pt-2 min-h-[3em]">
             Score: {score} / {MAX_QUESTIONS} | Round: {Math.min(questionsAnswered + 1, MAX_QUESTIONS)} | Difficulty: <span className="capitalize">{difficulty}</span>
-            {currentPuzzle && questionsAnswered < MAX_QUESTIONS && (
+            {currentPuzzle && !isRoundOver && (
                <p className="text-sm text-muted-foreground mt-1">{getPuzzleInstruction()}</p>
             )}
           </CardDescription>
         </CardHeader>
         <CardContent className="p-6 text-center space-y-6">
-          {currentPuzzle && questionsAnswered < MAX_QUESTIONS ? (
+          {currentPuzzle && !isRoundOver ? (
             <>
               <div className="relative w-full h-48 sm:h-64 rounded-lg overflow-hidden shadow-md border-2 border-primary/30 bg-slate-100">
                 <Image
@@ -238,7 +246,7 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
                   )
                 })}
               </div>
-              {feedback && (feedback.type !== "info" || questionsAnswered >= MAX_QUESTIONS) && (
+              {feedback && (feedback.type !== "info" || isRoundOver) && (
                 <div
                   className={cn(
                     "mt-4 p-3 rounded-md text-center font-medium",
@@ -260,9 +268,10 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
               <p className="text-2xl font-semibold text-accent">
                 {feedback?.message || "Loading Puzzles..."}
               </p>
-              {questionsAnswered >= MAX_QUESTIONS && (
-                <Button onClick={resetGame} className="bg-accent text-accent-foreground hover:bg-accent/90">
-                  <RotateCcw className="mr-2" /> Play Again
+              {(isRoundOver || allPuzzlesCompleted) && (
+                <Button onClick={() => resetGame(allPuzzlesCompleted)} className="bg-accent text-accent-foreground hover:bg-accent/90">
+                  <RotateCcw className="mr-2" /> 
+                  {allPuzzlesCompleted ? "Play Again (Reset History)" : "Play Again"}
                 </Button>
               )}
             </div>

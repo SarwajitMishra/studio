@@ -50,51 +50,73 @@ export default function CountTheObjectsGame({ onBack, difficulty }: CountTheObje
   const [feedback, setFeedback] = useState<string | null>(null);
   const [isGameOver, setIsGameOver] = useState<boolean>(false);
   const { toast } = useToast();
-  const [usedIconsInCurrentCycle, setUsedIconsInCurrentCycle] = useState<string[]>([]);
+  const [usedIcons, setUsedIcons] = useState<string[]>([]);
+  const [allIconsUsed, setAllIconsUsed] = useState<boolean>(false);
+
+  const sessionKey = `usedCountIcons_${difficulty}`;
 
   const loadNewProblem = useCallback(() => {
-    setUsedIconsInCurrentCycle(prevUsedIcons => {
-      let availableIcons = OBJECT_ICONS.filter(icon => !prevUsedIcons.includes(icon.name));
-      if (availableIcons.length === 0 && OBJECT_ICONS.length > 0) {
-        availableIcons = OBJECT_ICONS;
-        prevUsedIcons = []; // Reset cycle
-      }
-      
-      if (availableIcons.length === 0) {
-        return prevUsedIcons;
-      }
-      
-      const selectedObject = availableIcons[Math.floor(Math.random() * availableIcons.length)];
-      const config = DIFFICULTY_CONFIG[difficulty];
-      const count = Math.floor(Math.random() * (config.max - config.min + 1)) + config.min;
+    let availableIcons = OBJECT_ICONS.filter(icon => !usedIcons.includes(icon.name));
+    
+    if (availableIcons.length === 0 && OBJECT_ICONS.length > 0) {
+      setAllIconsUsed(true);
+      setCurrentProblem(null);
+      setFeedback(`You've counted all the different types of objects!`);
+      return;
+    }
 
-      setCurrentProblem({
-        id: `cto-${Date.now()}-${Math.random()}`,
-        ObjectIcon: selectedObject.Icon,
-        iconName: selectedObject.name,
-        iconColor: selectedObject.color,
-        count,
-      });
-      setUserAnswer("");
-      setFeedback(null);
+    const selectedObject = availableIcons[Math.floor(Math.random() * availableIcons.length)];
+    const config = DIFFICULTY_CONFIG[difficulty];
+    const count = Math.floor(Math.random() * (config.max - config.min + 1)) + config.min;
+    
+    const newUsedIcons = [...usedIcons, selectedObject.name];
+    setUsedIcons(newUsedIcons);
+    if(typeof window !== 'undefined') {
+        sessionStorage.setItem(sessionKey, JSON.stringify(newUsedIcons));
+    }
 
-      return [...prevUsedIcons, selectedObject.name];
+    setCurrentProblem({
+      id: `cto-${Date.now()}-${Math.random()}`,
+      ObjectIcon: selectedObject.Icon,
+      iconName: selectedObject.name,
+      iconColor: selectedObject.color,
+      count,
     });
-  }, [difficulty]);
+    setUserAnswer("");
+    setFeedback(null);
+  }, [difficulty, usedIcons, sessionKey]);
 
-  const resetGame = useCallback(() => {
+  const resetGame = useCallback((clearSession = false) => {
     setScore(0);
     setQuestionsAnswered(0);
     setIsGameOver(false);
     setFeedback(null);
     setUserAnswer("");
-    setUsedIconsInCurrentCycle([]);
-    loadNewProblem();
-  }, [loadNewProblem]);
+    setAllIconsUsed(false);
+    
+    let initialUsedIcons: string[] = [];
+    if (clearSession) {
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem(sessionKey);
+      }
+    } else {
+      if (typeof window !== 'undefined') {
+        const storedUsedIcons = sessionStorage.getItem(sessionKey);
+        initialUsedIcons = storedUsedIcons ? JSON.parse(storedUsedIcons) : [];
+      }
+    }
+    setUsedIcons(initialUsedIcons);
+  }, [sessionKey]);
 
   useEffect(() => {
     resetGame();
   }, [difficulty, resetGame]);
+
+  useEffect(() => {
+    if (questionsAnswered === 0 && !currentProblem && !allIconsUsed) {
+      loadNewProblem();
+    }
+  }, [questionsAnswered, currentProblem, allIconsUsed, usedIcons, loadNewProblem]);
 
   const handleSubmitAnswer = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -133,6 +155,8 @@ export default function CountTheObjectsGame({ onBack, difficulty }: CountTheObje
     }, isCorrect ? 1500 : 3000);
   };
 
+  const isRoundOver = questionsAnswered >= QUESTIONS_PER_ROUND;
+
   return (
     <Card className="w-full max-w-lg shadow-xl">
       <CardHeader className="bg-primary/10">
@@ -150,13 +174,14 @@ export default function CountTheObjectsGame({ onBack, difficulty }: CountTheObje
         </CardDescription>
       </CardHeader>
       <CardContent className="p-6 space-y-6">
-        {isGameOver ? (
+        {isGameOver || allIconsUsed ? (
           <div className="text-center p-6 bg-pink-100 rounded-lg shadow-inner">
             <Award className="mx-auto h-16 w-16 text-yellow-500 mb-3" />
             <h2 className="text-2xl font-bold text-pink-700">Round Over!</h2>
             <p className="text-lg text-pink-600 mt-1">{feedback || `Your final score is ${score}/${QUESTIONS_PER_ROUND}.`}</p>
-            <Button onClick={resetGame} className="mt-6 w-full sm:w-auto bg-accent text-accent-foreground hover:bg-accent/90">
-              <RotateCcw className="mr-2 h-5 w-5" /> Play Again
+            <Button onClick={() => resetGame(allIconsUsed)} className="mt-6 w-full sm:w-auto bg-accent text-accent-foreground hover:bg-accent/90">
+              <RotateCcw className="mr-2 h-5 w-5" /> 
+              {allIconsUsed ? "Play Again (Reset History)" : "Play Again"}
             </Button>
           </div>
         ) : currentProblem && (
@@ -205,7 +230,7 @@ export default function CountTheObjectsGame({ onBack, difficulty }: CountTheObje
             )}
           </>
         )}
-         {!currentProblem && !isGameOver && (
+         {!currentProblem && !isGameOver && !allIconsUsed && (
             <div className="text-center p-6">
                 <HelpCircle size={48} className="mx-auto text-primary/50 mb-4"/>
                 <p className="text-lg text-muted-foreground">Loading puzzle...</p>
