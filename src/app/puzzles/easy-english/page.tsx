@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { BookMarked, ArrowLeft, Lightbulb, Sparkles, XCircle, CheckCircle, RotateCcw, HelpCircle } from "lucide-react";
+import { BookMarked, ArrowLeft, Sparkles, XCircle, CheckCircle, RotateCcw, HelpCircle } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -13,9 +13,9 @@ import { searchImages } from "../../../services/pixabay";
 
 interface PuzzleItemBase {
   id: string;
-  imageSrc: string;
   imageAlt: string;
-  hint: string;
+  // imageSrc is now a fallback
+  imageSrc: string;
 }
 
 interface WordMatchPuzzle extends PuzzleItemBase {
@@ -42,7 +42,6 @@ const PUZZLE_DATA: PuzzleItem[] = [
     imageAlt: "An apple",
     correctWord: "Apple",
     options: ["Apple", "Banana", "Carrot"],
-    hint: "fruit red",
   },
   {
     id: "2",
@@ -51,7 +50,6 @@ const PUZZLE_DATA: PuzzleItem[] = [
     imageAlt: "A ball",
     correctWord: "Ball",
     options: ["Ball", "Box", "Book"],
-    hint: "toy round",
   },
   {
     id: "3",
@@ -60,7 +58,6 @@ const PUZZLE_DATA: PuzzleItem[] = [
     imageAlt: "A cat",
     correctWord: "Cat",
     options: ["Cat", "Dog", "Car"],
-    hint: "animal pet",
   },
   {
     id: "ml1",
@@ -71,7 +68,6 @@ const PUZZLE_DATA: PuzzleItem[] = [
     correctLetter: "O",
     options: ["A", "O", "U"],
     fullWord: "DOG",
-    hint: "animal barks",
   },
   {
     id: "ml2",
@@ -82,7 +78,6 @@ const PUZZLE_DATA: PuzzleItem[] = [
     correctLetter: "U",
     options: ["A", "U", "I"],
     fullWord: "SUN",
-    hint: "sky bright yellow",
   },
   {
     id: "4",
@@ -91,7 +86,6 @@ const PUZZLE_DATA: PuzzleItem[] = [
     imageAlt: "A dog",
     correctWord: "Dog",
     options: ["Dog", "Duck", "Door"],
-    hint: "animal bark",
   },
   {
     id: "5",
@@ -100,7 +94,6 @@ const PUZZLE_DATA: PuzzleItem[] = [
     imageAlt: "A sun",
     correctWord: "Sun",
     options: ["Sun", "Star", "Moon"],
-    hint: "sky bright",
   },
   {
     id: "ml3",
@@ -111,7 +104,6 @@ const PUZZLE_DATA: PuzzleItem[] = [
     correctLetter: "E",
     options: ["A", "E", "I"],
     fullWord: "BED",
-    hint: "sleep furniture",
   },
 ];
 
@@ -140,6 +132,8 @@ export default function EasyEnglishPuzzlePage() {
   const [feedback, setFeedback] = useState<{ message: string; type: "correct" | "incorrect" | "info" } | null>(null);
   const [shuffledOptions, setShuffledOptions] = useState<string[]>([]);
   const [isAnswered, setIsAnswered] = useState(false);
+  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
+  const [usedPuzzleIds, setUsedPuzzleIds] = useState<string[]>([]);
   const { toast } = useToast();
 
   const MAX_QUESTIONS = 5;
@@ -150,38 +144,34 @@ export default function EasyEnglishPuzzlePage() {
       setCurrentPuzzle(null);
       return;
     }
-
-    const currentPuzzleIdToAvoid = currentPuzzle ? currentPuzzle.id : null;
-    const availablePuzzles = PUZZLE_DATA.filter(p => p.id !== currentPuzzleIdToAvoid);
-    const puzzlePool = availablePuzzles.length > 0 ? availablePuzzles : PUZZLE_DATA;
-    const nextPuzzle = puzzlePool[Math.floor(Math.random() * puzzlePool.length)];
+    
+    let availablePuzzles = PUZZLE_DATA.filter(p => !usedPuzzleIds.includes(p.id));
+    if (availablePuzzles.length === 0) {
+      availablePuzzles = PUZZLE_DATA;
+      setUsedPuzzleIds([]);
+    }
+    
+    const nextPuzzle = availablePuzzles[Math.floor(Math.random() * availablePuzzles.length)];
+    setUsedPuzzleIds(prev => [...prev, nextPuzzle.id]);
     
     const apiKey = process.env.NEXT_PUBLIC_PIXABAY_API_KEY;
-    let imageSrc = nextPuzzle.imageSrc; // Default to hardcoded image
-    let imageAlt = nextPuzzle.imageAlt; // Default to hardcoded alt
+    let imageSrc = nextPuzzle.imageSrc;
+    let imageAlt = nextPuzzle.imageAlt;
 
-    let category = undefined;
-    if (nextPuzzle.hint.includes("animal")) {
-      category = "animals";
-    } else if (nextPuzzle.hint.includes("fruit") || nextPuzzle.hint.includes("food")) {
-      category = "food";
-    } else if (nextPuzzle.hint.includes("sky") || nextPuzzle.hint.includes("nature")) {
-      category = "nature";
-    }
+    const searchQuery = nextPuzzle.type === 'matchWord' ? nextPuzzle.correctWord : nextPuzzle.fullWord;
+
     if (apiKey) {
-
       try {
-        const images = await searchImages(nextPuzzle.hint, apiKey, { category });
+        const images = await searchImages(searchQuery, apiKey, { perPage: 5 });
         if (images && images.length > 0) {
-          // Use the first image from Pixabay
           imageSrc = images[0].largeImageURL;
-          imageAlt = images[0].tags; // Pixabay provides tags
+          imageAlt = images[0].tags;
         } else {
-           console.warn(`No images found on Pixabay for hint: ${nextPuzzle.hint}. Using fallback image.`);
+           console.warn(`No images found on Pixabay for query: ${searchQuery}. Using fallback image.`);
         }
       } catch (error) {
         console.error("Error fetching image from Pixabay:", error);
-        console.warn(`Using fallback image for hint: ${nextPuzzle.hint} due to API error.`);
+        console.warn(`Using fallback image for query: ${searchQuery} due to API error.`);
       }
     } else {
        console.warn("Pixabay API key not set. Using fallback image.");
@@ -189,33 +179,34 @@ export default function EasyEnglishPuzzlePage() {
     setCurrentPuzzle({...nextPuzzle, imageSrc, imageAlt});
     setShuffledOptions(shuffleArray(nextPuzzle.options));
     setIsAnswered(false);
-    setFeedback(null); // Clear previous feedback
+    setSelectedAnswer(null);
+    setFeedback(null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [questionsAnswered, score, MAX_QUESTIONS]); // currentPuzzle removed from deps to avoid potential loops if it contains complex objects that change identity. Logic relies on questionsAnswered.
+  }, [questionsAnswered, score, MAX_QUESTIONS]); 
 
   useEffect(() => {
-    if (questionsAnswered === 0) {
-      loadNextPuzzle();
-    }
+    loadNextPuzzle();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [questionsAnswered, MAX_QUESTIONS]); // loadNextPuzzle removed to break potential cycle as per error diagnosis.
+  }, []); // Run only once on mount
 
   const handleAnswer = (selectedOption: string) => {
     if (!currentPuzzle || isAnswered) return;
     setIsAnswered(true);
+    setSelectedAnswer(selectedOption);
+
     let isCorrect = false;
-    let correctDetail = "";
+    let correctValue = "";
 
     if (currentPuzzle.type === "matchWord") {
-      if (selectedOption === currentPuzzle.correctWord) {
+      correctValue = currentPuzzle.correctWord;
+      if (selectedOption === correctValue) {
         isCorrect = true;
       }
-      correctDetail = `The correct word was "${currentPuzzle.correctWord}".`;
     } else if (currentPuzzle.type === "missingLetter") {
-      if (selectedOption === currentPuzzle.correctLetter) {
+      correctValue = currentPuzzle.correctLetter;
+      if (selectedOption === correctValue) {
         isCorrect = true;
       }
-      correctDetail = `The correct letter was "${currentPuzzle.correctLetter}". The word is "${currentPuzzle.fullWord}".`;
     }
 
     let newScore = score;
@@ -229,7 +220,10 @@ export default function EasyEnglishPuzzlePage() {
         className: "bg-green-500 text-white",
       });
     } else {
-      setFeedback({ message: `Not quite! ${correctDetail}`, type: "incorrect" });
+      const incorrectFeedback = currentPuzzle.type === 'matchWord'
+        ? `The correct word was "${currentPuzzle.correctWord}".`
+        : `The correct letter was "${currentPuzzle.correctLetter}". The word is "${currentPuzzle.fullWord}".`;
+      setFeedback({ message: `Not quite! ${incorrectFeedback}`, type: "incorrect" });
       toast({
         variant: "destructive",
         title: "Try Again!",
@@ -252,9 +246,12 @@ export default function EasyEnglishPuzzlePage() {
 
   const resetGame = () => {
     setScore(0);
-    setQuestionsAnswered(0); // This will trigger the useEffect to load a new puzzle
+    setQuestionsAnswered(0);
     setFeedback(null);
     setIsAnswered(false);
+    setSelectedAnswer(null);
+    setUsedPuzzleIds([]);
+    loadNextPuzzle();
   };
 
   const getPuzzleTitle = () => {
@@ -280,7 +277,7 @@ export default function EasyEnglishPuzzlePage() {
               <CardTitle className="text-3xl font-bold text-primary">{getPuzzleTitle()}</CardTitle>
             </div>
             <CardDescription className="text-center text-md text-foreground/80 pt-2 min-h-[3em]">
-              Score: {score} / {questionsAnswered < MAX_QUESTIONS ? MAX_QUESTIONS : MAX_QUESTIONS} (Round: {questionsAnswered < MAX_QUESTIONS ? questionsAnswered + 1 : MAX_QUESTIONS})
+              Score: {score} / {MAX_QUESTIONS} (Round: {Math.min(questionsAnswered + 1, MAX_QUESTIONS)})
               {currentPuzzle && questionsAnswered < MAX_QUESTIONS && (
                  <p className="text-sm text-muted-foreground mt-1">{getPuzzleInstruction()}</p>
               )}
@@ -295,8 +292,9 @@ export default function EasyEnglishPuzzlePage() {
                     alt={currentPuzzle.imageAlt}
                     layout="fill"
                     objectFit="contain" 
-                    data-ai-hint={currentPuzzle.hint}
+                    data-ai-hint={currentPuzzle.type === 'matchWord' ? currentPuzzle.correctWord : currentPuzzle.fullWord}
                     priority
+                    unoptimized={currentPuzzle.imageSrc.includes('pixabay.com')}
                   />
                 </div>
 
@@ -312,28 +310,30 @@ export default function EasyEnglishPuzzlePage() {
 
                 <div className={cn(
                   "grid gap-3",
-                  currentPuzzle.options.length <=3 ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-2 sm:grid-cols-4" // Adjust grid for more options if needed
+                  currentPuzzle.options.length <=3 ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-2 sm:grid-cols-4"
                 )}>
-                  {shuffledOptions.map((option) => (
-                    <Button
-                      key={option}
-                      onClick={() => handleAnswer(option)}
-                      disabled={isAnswered}
-                      variant="outline"
-                      className={cn(
-                        "text-lg py-3 h-auto transition-all duration-200 ease-in-out",
-                        "hover:bg-accent/20 focus:ring-2 focus:ring-accent",
-                        isAnswered && currentPuzzle.type === "matchWord" && option === currentPuzzle.correctWord && "bg-green-500/20 border-green-600 text-green-700 hover:bg-green-500/30",
-                        isAnswered && currentPuzzle.type === "missingLetter" && option === currentPuzzle.correctLetter && "bg-green-500/20 border-green-600 text-green-700 hover:bg-green-500/30",
-                        isAnswered && feedback?.type === "incorrect" && (
-                          (currentPuzzle.type === "matchWord" && option !== currentPuzzle.correctWord) ||
-                          (currentPuzzle.type === "missingLetter" && option !== currentPuzzle.correctLetter)
-                        ) && "bg-red-500/20 border-red-600 text-red-700 hover:bg-red-500/30"
-                      )}
-                    >
-                      {option}
-                    </Button>
-                  ))}
+                  {shuffledOptions.map((option) => {
+                    const isCorrectOption = currentPuzzle.type === "matchWord" ? option === currentPuzzle.correctWord : option === currentPuzzle.correctLetter;
+                    const isSelectedIncorrect = isAnswered && selectedAnswer === option && !isCorrectOption;
+
+                    return (
+                      <Button
+                        key={option}
+                        onClick={() => handleAnswer(option)}
+                        disabled={isAnswered}
+                        variant="outline"
+                        className={cn(
+                          "text-lg py-3 h-auto transition-all duration-200 ease-in-out",
+                          "hover:bg-accent/20 focus:ring-2 focus:ring-accent",
+                          isAnswered && isCorrectOption && "bg-green-100 border-green-600 text-green-700 hover:bg-green-100/80 ring-2 ring-green-500",
+                          isSelectedIncorrect && "bg-red-100 border-red-600 text-red-700 hover:bg-red-100/80 ring-2 ring-red-500",
+                          isAnswered && !isCorrectOption && option !== selectedAnswer && "opacity-60"
+                        )}
+                      >
+                        {option}
+                      </Button>
+                    )
+                  })}
                 </div>
                 {feedback && (feedback.type !== "info" || questionsAnswered >= MAX_QUESTIONS) && (
                   <div
@@ -379,3 +379,5 @@ export default function EasyEnglishPuzzlePage() {
     </>
   );
 }
+
+    
