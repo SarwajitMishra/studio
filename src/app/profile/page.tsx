@@ -97,6 +97,7 @@ export default function ProfilePage() {
   const { toast } = useToast();
   const [isUploading, setIsUploading] = useState(false);
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const previousUserIdRef = useRef<string | null | undefined>(undefined);
 
 
   const [theme, setTheme] = useState<string>('light');
@@ -165,78 +166,59 @@ export default function ProfilePage() {
       });
       return; // Stop the rest of the effect from running if config is bad
     }
-
-    // Log Firebase config being used by the SDK for diagnostics
-    if (auth && auth.app && auth.app.options) {
-      console.log("DIAGNOSTIC: Firebase Auth Domain (from SDK):", auth.app.options.authDomain);
-      console.log("DIAGNOSTIC: Firebase Project ID (from SDK):", auth.app.options.projectId);
-    } else {
-      console.log("DIAGNOSTIC: Firebase auth object or options not yet available for logging.");
-    }
-
-    const handleUserUpdate = (user: User | null, isNewLoginEvent: boolean = false) => {
-      setCurrentUser(user); // Set current user first
-
-      if (user) { 
-        // Use nullish coalescing (??) to correctly handle empty strings as valid display names
-        const firebaseDisplayName = user.displayName ?? localStorage.getItem(LOCAL_STORAGE_USER_NAME_KEY) ?? DEFAULT_USER_NAME;
-        setEditingUserName(firebaseDisplayName);
-        localStorage.setItem(LOCAL_STORAGE_USER_NAME_KEY, firebaseDisplayName);
-
-        const firebasePhotoURL = user.photoURL ?? localStorage.getItem(LOCAL_STORAGE_AVATAR_KEY) ?? DEFAULT_AVATAR_SRC;
-        setSelectedAvatar(firebasePhotoURL);
-        localStorage.setItem(LOCAL_STORAGE_AVATAR_KEY, firebasePhotoURL);
-
-        // Simulate fetching points for logged-in user (actual Firestore would go here)
-        setSPoints(100); // Mock S-Points for logged-in user
-        setSCoins(10);  // Mock S-Coins for logged-in user
-
-        const onlineStats = GAMES.map(game => ({
-            gameId: game.id,
-            gamesPlayed: Math.floor(Math.random() * 10),
-            wins: Math.floor(Math.random() * 5),
-            highScore: Math.floor(Math.random() * 1000),
-        }));
-        setGameStats(onlineStats);
-
-        if (isNewLoginEvent) {
-          toast({ title: "Logged In!", description: `Welcome back, ${user.displayName || 'User'}!` });
-        }
-      } else { 
-        // User is logged out, revert to local storage for points/coins
-        setSPoints(getStoredGameCurrency(LOCAL_STORAGE_S_POINTS_KEY));
-        setSCoins(getStoredGameCurrency(LOCAL_STORAGE_S_COINS_KEY));
-        
-        const offlineStats = GAMES.map(game => ({
-            gameId: game.id,
-            gamesPlayed: 'N/A',
-            wins: 'N/A',
-            highScore: 'N/A',
-        }));
-        setGameStats(offlineStats);
-      }
-    };
     
-    // The onAuthStateChanged listener handles all user state updates,
-    // including those from signInWithPopup.
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-        const isNewLogin = !!user && (!currentUser || currentUser.uid !== user.uid); 
-        handleUserUpdate(user, isNewLogin);
+        const isNewLogin = !!user && previousUserIdRef.current === undefined;
+        previousUserIdRef.current = user?.uid;
+        setCurrentUser(user);
+
+        if (user) { 
+            const firebaseDisplayName = user.displayName ?? localStorage.getItem(LOCAL_STORAGE_USER_NAME_KEY) ?? DEFAULT_USER_NAME;
+            setEditingUserName(firebaseDisplayName);
+            localStorage.setItem(LOCAL_STORAGE_USER_NAME_KEY, firebaseDisplayName);
+
+            const firebasePhotoURL = user.photoURL ?? localStorage.getItem(LOCAL_STORAGE_AVATAR_KEY) ?? DEFAULT_AVATAR_SRC;
+            setSelectedAvatar(firebasePhotoURL);
+            localStorage.setItem(LOCAL_STORAGE_AVATAR_KEY, firebasePhotoURL);
+
+            setSPoints(100); 
+            setSCoins(10);  
+
+            const onlineStats = GAMES.map(game => ({
+                gameId: game.id,
+                gamesPlayed: Math.floor(Math.random() * 10),
+                wins: Math.floor(Math.random() * 5),
+                highScore: Math.floor(Math.random() * 1000),
+            }));
+            setGameStats(onlineStats);
+
+            if (isNewLogin) {
+              toast({ title: "Logged In!", description: `Welcome back, ${user.displayName || 'User'}!` });
+            }
+        } else { 
+            setSPoints(getStoredGameCurrency(LOCAL_STORAGE_S_POINTS_KEY));
+            setSCoins(getStoredGameCurrency(LOCAL_STORAGE_S_COINS_KEY));
+            
+            const offlineStats = GAMES.map(game => ({
+                gameId: game.id,
+                gamesPlayed: 'N/A',
+                wins: 'N/A',
+                highScore: 'N/A',
+            }));
+            setGameStats(offlineStats);
+        }
     });
 
     return () => {
       unsubscribe();
     };
-  }, [toast, currentUser]);
+  }, [toast]);
 
   const handleAutoSaveAvatar = useCallback(async (avatarToSave: string) => {
       if (!currentUser) return;
 
       const isDataUrl = avatarToSave.startsWith('data:image');
       
-      // No need to check for changes, as this is only called on a new selection.
-      // if (!isDataUrl && avatarToSave === currentUser.photoURL) return;
-
       setIsUploading(true);
       try {
         let photoURLToSave = avatarToSave;
@@ -682,4 +664,5 @@ export default function ProfilePage() {
     
 
     
+
 
