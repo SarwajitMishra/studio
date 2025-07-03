@@ -9,7 +9,6 @@ import { ArrowLeft, Sparkles, XCircle, CheckCircle, RotateCcw, HelpCircle, Loade
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { searchImages } from "@/services/pixabay";
 import type { EnglishPuzzleItem, EnglishPuzzleSubtype, Difficulty } from "@/lib/constants";
 import { generateEnglishPuzzle, type GenerateEnglishPuzzleInput } from "@/ai/flows/generate-english-puzzle-flow";
 
@@ -80,19 +79,6 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
 
       const puzzleData = await generateEnglishPuzzle(input);
       
-      const apiKey = process.env.NEXT_PUBLIC_PIXABAY_API_KEY;
-      if (apiKey && puzzleData.imageQuery) {
-          try {
-              const images = await searchImages(puzzleData.imageQuery, apiKey, { perPage: 1 });
-              if (images?.length > 0) {
-                  puzzleData.imageSrc = images[0].largeImageURL;
-                  puzzleData.imageAlt = images[0].tags;
-              }
-          } catch (imgError) {
-              console.error("Failed to fetch puzzle image, using fallback.", imgError);
-          }
-      }
-      
       const newWord = puzzleData.type === 'matchWord' ? puzzleData.correctWord : puzzleData.fullWord;
       addUsedWordToSession(newWord);
 
@@ -126,7 +112,7 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
 
   useEffect(() => {
     startNewRound();
-  }, [difficulty, puzzleType]);
+  }, [difficulty, puzzleType, startNewRound]);
 
 
   const handleAnswer = (selectedOption: string) => {
@@ -233,11 +219,10 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
                 <Image
                   src={currentPuzzle.imageSrc}
                   alt={currentPuzzle.imageAlt}
-                  layout="fill"
-                  objectFit="contain" 
+                  fill
+                  style={{ objectFit: 'contain' }}
                   data-ai-hint={currentPuzzle.imageQuery}
                   priority
-                  unoptimized={currentPuzzle.imageSrc.includes('pixabay.com')}
                 />
               </div>
 
