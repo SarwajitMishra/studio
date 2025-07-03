@@ -114,16 +114,63 @@ export default function ChessPage() {
   const [winner, setWinner] = useState<PlayerColor | 'draw' | null>(null);
   const [kingUnderAttack, setKingUnderAttack] = useState<PlayerColor | null>(null);
   const [promotionSquare, setPromotionSquare] = useState<SquarePosition | null>(null);
+  const [castlingRights, setCastlingRights] = useState({ w: { K: true, Q: true }, b: { K: true, Q: true }});
+  const [enPassantTarget, setEnPassantTarget] = useState<SquarePosition | null>(null);
 
 
   const { toast } = useToast();
 
   const isSquareOnBoard = (row: number, col: number): boolean => row >= 0 && row < 8 && col >= 0 && col < 8;
 
-  const getPieceAt = (currentBoard: (Piece | null)[][], row: number, col: number): Piece | null => {
+  const getPieceAt = useCallback((currentBoard: (Piece | null)[][], row: number, col: number): Piece | null => {
     if (!isSquareOnBoard(row, col)) return null;
     return currentBoard[row][col];
-  };
+  }, []);
+
+  const isSquareAttacked = useCallback((
+    currentBoard: (Piece | null)[][],
+    targetRow: number,
+    targetCol: number,
+    attackerColor: PlayerColor
+  ): boolean => {
+    // Check for pawn attacks
+    const pawnDirection = attackerColor === 'w' ? 1 : -1;
+    let piece = getPieceAt(currentBoard, targetRow + pawnDirection, targetCol - 1);
+    if (piece?.type === 'P' && piece.color === attackerColor) return true;
+    piece = getPieceAt(currentBoard, targetRow + pawnDirection, targetCol + 1);
+    if (piece?.type === 'P' && piece.color === attackerColor) return true;
+    
+    // Check for knight attacks
+    const knightMoves = [[1, 2], [1, -2], [-1, 2], [-1, -2], [2, 1], [2, -1], [-2, 1], [-2, -1]];
+    for (const [dr, dc] of knightMoves) {
+        piece = getPieceAt(currentBoard, targetRow + dr, targetCol + dc);
+        if (piece?.type === 'N' && piece.color === attackerColor) return true;
+    }
+
+    // Check for sliding attacks (Rook, Bishop, Queen) and King attacks
+    const directions = [[0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [1, -1], [-1, 1], [-1, -1]];
+    for (const [dr, dc] of directions) {
+        for (let i = 1; i < 8; i++) {
+            const r = targetRow + i * dr;
+            const c = targetCol + i * dc;
+            if (!isSquareOnBoard(r, c)) break;
+            const pieceOnPath = getPieceAt(currentBoard, r, c);
+            if (pieceOnPath) {
+                if (pieceOnPath.color === attackerColor) {
+                    const isRookMove = dr === 0 || dc === 0;
+                    const isBishopMove = Math.abs(dr) === Math.abs(dc);
+                    if (pieceOnPath.type === 'Q') return true;
+                    if (pieceOnPath.type === 'R' && isRookMove) return true;
+                    if (pieceOnPath.type === 'B' && isBishopMove) return true;
+                    if (pieceOnPath.type === 'K' && i === 1) return true;
+                }
+                break; // Path is blocked
+            }
+        }
+    }
+    
+    return false;
+  }, [getPieceAt]);
 
   const _calculateRawPossibleMoves = useCallback((
     currentBoard: (Piece | null)[][],
@@ -151,13 +198,16 @@ export default function ChessPage() {
 
     if (piece.type === 'P') {
       const direction = playerColor === 'w' ? -1 : 1;
+      // Standard 1-step move
       if (isSquareOnBoard(r + direction, c) && !getPieceAt(currentBoard, r + direction, c)) {
         addMove(r + direction, c);
+        // Initial 2-step move
         const initialRow = playerColor === 'w' ? 6 : 1;
         if (r === initialRow && isSquareOnBoard(r + 2 * direction, c) && !getPieceAt(currentBoard, r + 2 * direction, c)) {
           addMove(r + 2 * direction, c);
         }
       }
+      // Captures
       [-1, 1].forEach(colOffset => {
         if (isSquareOnBoard(r + direction, c + colOffset)) {
           const targetPiece = getPieceAt(currentBoard, r + direction, c + colOffset);
@@ -166,12 +216,34 @@ export default function ChessPage() {
           }
         }
       });
+      // En Passant
+      if (enPassantTarget) {
+          if (enPassantTarget.row === r + direction && Math.abs(enPassantTarget.col - c) === 1) {
+              addMove(enPassantTarget.row, enPassantTarget.col);
+          }
+      }
+
     } else if (piece.type === 'N') {
       const knightMoves = [[1, 2], [1, -2], [-1, 2], [-1, -2], [2, 1], [2, -1], [-2, 1], [-2, -1]];
       knightMoves.forEach(([dr, dc]) => addMove(r + dr, c + dc));
     } else if (piece.type === 'K') {
       const kingMoves = [[0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [1, -1], [-1, 1], [-1, -1]];
       kingMoves.forEach(([dr, dc]) => addMove(r + dr, c + dc));
+      // Castling
+      if (!isSquareAttacked(currentBoard, r, c, opponentColor)) {
+          // Kingside
+          if (castlingRights[playerColor].K && !getPieceAt(currentBoard, r, c + 1) && !getPieceAt(currentBoard, r, c + 2)) {
+              if (!isSquareAttacked(currentBoard, r, c + 1, opponentColor) && !isSquareAttacked(currentBoard, r, c + 2, opponentColor)) {
+                  addMove(r, c + 2);
+              }
+          }
+          // Queenside
+          if (castlingRights[playerColor].Q && !getPieceAt(currentBoard, r, c - 1) && !getPieceAt(currentBoard, r, c - 2) && !getPieceAt(currentBoard, r, c - 3)) {
+              if (!isSquareAttacked(currentBoard, r, c - 1, opponentColor) && !isSquareAttacked(currentBoard, r, c - 2, opponentColor)) {
+                  addMove(r, c - 2);
+              }
+          }
+      }
     } else { 
       let directions: number[][] = [];
       if (piece.type === 'R' || piece.type === 'Q') directions.push(...[[0, 1], [0, -1], [1, 0], [-1, 0]]);
@@ -183,27 +255,7 @@ export default function ChessPage() {
       });
     }
     return moves;
-  }, []);
-
-  const isSquareAttacked = useCallback((
-    currentBoard: (Piece | null)[][],
-    targetRow: number,
-    targetCol: number,
-    attackerColor: PlayerColor
-  ): boolean => {
-    for (let r = 0; r < 8; r++) {
-      for (let c = 0; c < 8; c++) {
-        const piece = getPieceAt(currentBoard, r, c);
-        if (piece && piece.color === attackerColor) {
-          const rawMoves = _calculateRawPossibleMoves(currentBoard, piece, r, c);
-          if (rawMoves.some(move => move.row === targetRow && move.col === targetCol)) {
-            return true;
-          }
-        }
-      }
-    }
-    return false;
-  }, [_calculateRawPossibleMoves]);
+  }, [enPassantTarget, castlingRights, isSquareAttacked, getPieceAt]);
 
   const calculateLegalMoves = useCallback((
     currentBoard: (Piece | null)[][],
@@ -246,13 +298,12 @@ export default function ChessPage() {
         const piece = getPieceAt(currentBoard, r_idx, c_idx);
         if (piece && piece.color === playerColor) {
           const legalMoves = calculateLegalMoves(currentBoard, piece, r_idx, c_idx, playerColor, currentKingPositions);
-          // Add fromRow and fromCol to each move for easier identification later if needed
           allMoves.push(...legalMoves.map(move => ({ fromRow: r_idx, fromCol: c_idx, ...move })));
         }
       }
     }
     return allMoves;
-  }, [calculateLegalMoves]);
+  }, [calculateLegalMoves, getPieceAt]);
 
 
   const handleSquareClick = (row: number, col: number) => {
@@ -278,23 +329,60 @@ export default function ChessPage() {
 
       if (isMovePossible) {
         const newBoard = board.map(r_arr => r_arr.map(p => p ? { ...p } : null));
+        let nextEnPassantTarget: SquarePosition | null = null;
+        const newCastlingRights = JSON.parse(JSON.stringify(castlingRights));
+
+        // Handle En Passant capture
+        if (pieceToMove.type === 'P' && enPassantTarget && row === enPassantTarget.row && col === enPassantTarget.col) {
+            newBoard[fromRow][col] = null; // Remove the captured pawn
+        }
+        // Handle Castling move
+        if (pieceToMove.type === 'K' && Math.abs(fromCol - col) === 2) {
+            if (col > fromCol) { // Kingside castle
+                const rook = newBoard[row][7]; newBoard[row][5] = rook; newBoard[row][7] = null;
+            } else { // Queenside castle
+                const rook = newBoard[row][0]; newBoard[row][3] = rook; newBoard[row][0] = null;
+            }
+        }
+
         newBoard[row][col] = pieceToMove;
         newBoard[fromRow][fromCol] = null;
         
-        const isPromotion = pieceToMove.type === 'P' &&
-                            ((pieceToMove.color === 'w' && row === 0) || (pieceToMove.color === 'b' && row === 7));
-
+        // Update En Passant target square for next turn
+        if (pieceToMove.type === 'P' && Math.abs(fromRow - row) === 2) {
+            nextEnPassantTarget = { row: (fromRow + row) / 2, col: col };
+        }
+        
+        // Update Castling rights
+        if (pieceToMove.type === 'K') { newCastlingRights[currentPlayer].K = false; newCastlingRights[currentPlayer].Q = false; }
+        if (pieceToMove.type === 'R') {
+            if (fromCol === 0 && fromRow === (currentPlayer === 'w' ? 7 : 0)) newCastlingRights[currentPlayer].Q = false;
+            if (fromCol === 7 && fromRow === (currentPlayer === 'w' ? 7 : 0)) newCastlingRights[currentPlayer].K = false;
+        }
+        // If a rook is captured, its side can no longer castle
+        const capturedPiece = getPieceAt(board, row, col);
+        if (capturedPiece?.type === 'R') {
+            const opponentColor = currentPlayer === 'w' ? 'b' : 'w';
+            if (row === (opponentColor === 'w' ? 7 : 0)) {
+                if (col === 0) newCastlingRights[opponentColor].Q = false;
+                if (col === 7) newCastlingRights[opponentColor].K = false;
+            }
+        }
+        
+        const isPromotion = pieceToMove.type === 'P' && ((pieceToMove.color === 'w' && row === 0) || (pieceToMove.color === 'b' && row === 7));
         if (isPromotion) {
-            setBoard(newBoard); // Pawn is on the promotion square
+            setBoard(newBoard);
             setPromotionSquare({ row, col });
-            // selectedPiece is still the pawn's original square.
-            setPossibleMoves([]); // Clear possible moves for the pawn
+            setEnPassantTarget(nextEnPassantTarget);
+            setCastlingRights(newCastlingRights);
+            setPossibleMoves([]);
             setGameStatusMessage(`Pawn promotion for ${currentPlayer === 'w' ? 'White' : 'Black'}! Select a piece.`);
-            // Do NOT switch player or do further check/checkmate analysis here. That happens in handlePromotionChoice.
             return; 
         }
         
         setBoard(newBoard);
+        setEnPassantTarget(nextEnPassantTarget);
+        setCastlingRights(newCastlingRights);
 
         const newKingPositions = { ...kingPositions };
         if (pieceToMove.type === 'K') {
@@ -333,22 +421,12 @@ export default function ChessPage() {
         } else {
           setSelectedPiece(null);
           setPossibleMoves([]);
-          if (clickedSquarePiece && clickedSquarePiece.color !== currentPlayer) {
-            // Allow clicking empty squares or opponent pieces to deselect without specific error if not a valid move
-          } else if (!clickedSquarePiece) {
-            // Clicked an empty square not part of possible moves, deselect.
-          }
-           else {
-            toast({ variant: "destructive", title: "Invalid Move", description: "That move is not allowed or would put your king in check." });
-          }
         }
       }
     } else {
       if (clickedSquarePiece && clickedSquarePiece.color === currentPlayer) {
         setSelectedPiece({ row, col });
         setPossibleMoves(calculateLegalMoves(board, clickedSquarePiece, row, col, currentPlayer, kingPositions));
-      } else if (clickedSquarePiece && clickedSquarePiece.color !== currentPlayer) {
-        toast({ variant: "default", title: "Not Your Turn", description: `It's ${currentPlayer === 'w' ? "White" : "Black"}'s turn to move, or you clicked an opponent's piece.` });
       }
     }
   };
@@ -361,9 +439,7 @@ export default function ChessPage() {
     finalBoard[promotionSquare.row][promotionSquare.col] = promotedPiece;
     setBoard(finalBoard);
 
-    const newKingPositions = { ...kingPositions }; // King positions on board before this turn
-                                                 // The current player's king didn't move due to promotion
-                                                 // Opponent's king position also hasn't changed yet.
+    const newKingPositions = { ...kingPositions }; 
 
     const opponentColor = currentPlayer === 'w' ? 'b' : 'w';
     const opponentKingPos = newKingPositions[opponentColor];
@@ -406,6 +482,8 @@ export default function ChessPage() {
     setWinner(null);
     setKingUnderAttack(null);
     setPromotionSquare(null);
+    setCastlingRights({ w: { K: true, Q: true }, b: { K: true, Q: true }});
+    setEnPassantTarget(null);
     toast({ title: "Game Reset", description: "The board has been reset." });
   };
 
@@ -471,8 +549,7 @@ export default function ChessPage() {
               Reset Game
             </Button>
             <p className="mt-4 text-xs text-muted-foreground text-center max-w-md">
-              Rules implemented: Basic piece movements, captures, turn management, check, checkmate, stalemate, pawn promotion.
-              (En passant, castling coming soon!)
+              Rules implemented: Basic piece movements, captures, check, checkmate, stalemate, pawn promotion, en passant, and castling.
             </p>
           </CardContent>
         </Card>
