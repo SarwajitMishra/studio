@@ -5,13 +5,13 @@ import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Sparkles, XCircle, CheckCircle, RotateCcw, HelpCircle } from "lucide-react";
+import { ArrowLeft, Sparkles, XCircle, CheckCircle, RotateCcw, HelpCircle, Loader2 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { searchImages } from "@/services/pixabay";
-import { ENGLISH_PUZZLE_DATA, type EnglishPuzzleItem, type EnglishPuzzleSubtype, type Difficulty } from "@/lib/constants";
+import type { EnglishPuzzleItem, EnglishPuzzleSubtype, Difficulty } from "@/lib/constants";
+import { generateEnglishPuzzle, type GenerateEnglishPuzzleInput } from "@/ai/flows/generate-english-puzzle-flow";
 
 const shuffleArray = <T,>(array: T[]): T[] => {
   const newArray = [...array];
@@ -41,22 +41,22 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
   const [isAnswered, setIsAnswered] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [isRoundOver, setIsRoundOver] = useState(false);
-  const [allPuzzlesCompleted, setAllPuzzlesCompleted] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(true);
 
   const { toast } = useToast();
-  const sessionKey = `usedEnglishPuzzles_${puzzleType}_${difficulty}`;
+  const sessionKey = `usedEnglishWords_${puzzleType}_${difficulty}`;
 
-  const getUsedPuzzleIdsFromSession = (): string[] => {
+  const getUsedWordsFromSession = (): string[] => {
     if (typeof window === 'undefined') return [];
     const stored = sessionStorage.getItem(sessionKey);
     return stored ? JSON.parse(stored) : [];
   };
 
-  const addUsedPuzzleIdToSession = (id: string) => {
+  const addUsedWordToSession = (word: string) => {
     if (typeof window === 'undefined') return;
-    const currentIds = getUsedPuzzleIdsFromSession();
-    const newIds = [...currentIds, id];
-    sessionStorage.setItem(sessionKey, JSON.stringify(newIds));
+    const currentWords = getUsedWordsFromSession();
+    const newWords = [...currentWords, word];
+    sessionStorage.setItem(sessionKey, JSON.stringify(newWords));
   };
   
   const resetSessionHistory = () => {
@@ -65,59 +65,65 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
     }
   };
 
-  const loadNextPuzzle = useCallback(() => {
-    const usedIds = getUsedPuzzleIdsFromSession();
-    const availablePuzzles = ENGLISH_PUZZLE_DATA.filter(p =>
-        p.type === puzzleType &&
-        p.difficulty === difficulty &&
-        !usedIds.includes(p.id)
-    );
-
-    if (availablePuzzles.length === 0) {
-      setAllPuzzlesCompleted(true);
-      setCurrentPuzzle(null);
-      setFeedback({ message: "You've completed all puzzles in this category!", type: "info" });
-      setIsRoundOver(true); // End the round if no more puzzles are available
-      return;
-    }
-
-    const nextPuzzle = availablePuzzles[Math.floor(Math.random() * availablePuzzles.length)];
-    addUsedPuzzleIdToSession(nextPuzzle.id);
-    
-    setCurrentPuzzle(nextPuzzle);
-    setShuffledOptions(shuffleArray(nextPuzzle.options));
-    setIsAnswered(false);
-    setSelectedAnswer(null);
+  const loadNextPuzzle = useCallback(async () => {
+    setIsGenerating(true);
     setFeedback(null);
-    
-    const apiKey = process.env.NEXT_PUBLIC_PIXABAY_API_KEY;
-    if (apiKey) {
-      const searchQuery = nextPuzzle.type === 'matchWord' ? nextPuzzle.correctWord : nextPuzzle.fullWord;
-      searchImages(searchQuery, apiKey, { perPage: 5 }).then(images => {
-        if (images && images.length > 0) {
-          setCurrentPuzzle(p => p && p.id === nextPuzzle.id ? {...p, imageSrc: images[0].largeImageURL, imageAlt: images[0].tags} : p);
-        }
-      }).catch(error => {
-        console.error("Error fetching image from Pixabay:", error);
-      });
-    }
-  }, [puzzleType, difficulty, sessionKey]);
+    setCurrentPuzzle(null);
 
-  const startNewRound = useCallback((clearHistory = false) => {
-    if (clearHistory) {
-      resetSessionHistory();
+    try {
+      const usedWords = getUsedWordsFromSession();
+      const input: GenerateEnglishPuzzleInput = {
+        puzzleType,
+        difficulty,
+        wordsToExclude: usedWords,
+      };
+
+      const newPuzzle = await generateEnglishPuzzle(input);
+      
+      const newWord = newPuzzle.type === 'matchWord' ? newPuzzle.correctWord : newPuzzle.fullWord;
+      addUsedWordToSession(newWord);
+
+      setCurrentPuzzle(newPuzzle);
+      setShuffledOptions(shuffleArray(newPuzzle.options));
+      setIsAnswered(false);
+      setSelectedAnswer(null);
+
+      const apiKey = process.env.NEXT_PUBLIC_PIXABAY_API_KEY;
+      if (apiKey && newPuzzle.imageQuery) {
+        searchImages(newPuzzle.imageQuery, apiKey, { perPage: 1 }).then(images => {
+          if (images && images.length > 0) {
+            setCurrentPuzzle(p => p && p.id === newPuzzle.id ? {...p, imageSrc: images[0].largeImageURL, imageAlt: images[0].tags} : p);
+          }
+        }).catch(error => {
+          console.error("Error fetching image from Pixabay:", error);
+        });
+      }
+    } catch (error) {
+      console.error("Failed to generate puzzle:", error);
+      toast({
+        variant: "destructive",
+        title: "Puzzle Generation Failed",
+        description: "Could not create a new puzzle. Please try again later.",
+      });
+      setIsRoundOver(true);
+      setFeedback({ message: "Oops! We couldn't create a new puzzle right now.", type: "info" });
+    } finally {
+      setIsGenerating(false);
     }
+  }, [puzzleType, difficulty, sessionKey, toast]);
+
+  const startNewRound = useCallback(() => {
+    resetSessionHistory(); // Clear history for a completely new round
     setScore(0);
     setQuestionsAnswered(0);
     setIsRoundOver(false);
-    setAllPuzzlesCompleted(false);
     setFeedback(null);
     loadNextPuzzle();
   }, [loadNextPuzzle]);
 
   useEffect(() => {
-    startNewRound(false);
-  }, [difficulty, puzzleType, startNewRound]);
+    startNewRound();
+  }, [difficulty, puzzleType]);
 
 
   const handleAnswer = (selectedOption: string) => {
@@ -170,6 +176,7 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
   };
   
   const getPuzzleInstruction = () => {
+    if (isGenerating) return "Generating a new puzzle...";
     if (!currentPuzzle) return "Loading...";
     return currentPuzzle.type === "matchWord" 
       ? "Which word matches the picture?" 
@@ -177,15 +184,22 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
   };
 
   const renderGameOverView = () => (
-    <div className="space-y-4">
+    <div className="space-y-4 text-center">
       <Sparkles size={64} className="mx-auto text-yellow-500" />
       <p className="text-2xl font-semibold text-accent">
-        {feedback?.message || "Loading Puzzles..."}
+        {feedback?.message || "Round complete!"}
       </p>
-      <Button onClick={() => startNewRound(allPuzzlesCompleted)} className="bg-accent text-accent-foreground hover:bg-accent/90">
+      <Button onClick={startNewRound} className="bg-accent text-accent-foreground hover:bg-accent/90">
         <RotateCcw className="mr-2" /> 
-        {allPuzzlesCompleted ? "Play Again (Reset History)" : "Play Again"}
+        Play Again
       </Button>
+    </div>
+  );
+  
+  const renderLoadingView = () => (
+    <div className="text-center p-6 space-y-4">
+      <Loader2 size={48} className="mx-auto text-primary animate-spin" />
+      <p className="text-lg text-muted-foreground">Generating a fun new puzzle for you...</p>
     </div>
   );
 
@@ -203,14 +217,14 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
             </Button>
           </div>
           <CardDescription className="text-center text-md text-foreground/80 pt-2 min-h-[3em]">
-            Score: {score} / {MAX_QUESTIONS} | Round: {Math.min(questionsAnswered + 1, MAX_QUESTIONS)} | Difficulty: <span className="capitalize">{difficulty}</span>
-            {currentPuzzle && !isRoundOver && (
-               <p className="text-sm text-muted-foreground mt-1">{getPuzzleInstruction()}</p>
-            )}
+            Score: {score} / {MAX_QUESTIONS} | Question: {Math.min(questionsAnswered + 1, MAX_QUESTIONS)} | Difficulty: <span className="capitalize">{difficulty}</span>
+            <p className="text-sm text-muted-foreground mt-1">{getPuzzleInstruction()}</p>
           </CardDescription>
         </CardHeader>
-        <CardContent className="p-6 text-center space-y-6">
-          {currentPuzzle && !isRoundOver ? (
+        <CardContent className="p-6 text-center space-y-6 min-h-[400px] flex flex-col justify-center">
+          {isGenerating && !isRoundOver ? (
+            renderLoadingView()
+          ) : currentPuzzle && !isRoundOver ? (
             <>
               <div className="relative w-full h-48 sm:h-64 rounded-lg overflow-hidden shadow-md border-2 border-primary/30 bg-slate-100">
                 <Image
@@ -218,7 +232,7 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
                   alt={currentPuzzle.imageAlt}
                   layout="fill"
                   objectFit="contain" 
-                  data-ai-hint={currentPuzzle.type === 'matchWord' ? currentPuzzle.correctWord : currentPuzzle.fullWord}
+                  data-ai-hint={currentPuzzle.imageQuery}
                   priority
                   unoptimized={currentPuzzle.imageSrc.includes('pixabay.com')}
                 />
@@ -277,16 +291,6 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
             </>
           ) : (
              renderGameOverView()
-          )}
-          
-          {(isRoundOver || (allPuzzlesCompleted && !currentPuzzle)) ? null : (
-            <div className="mt-8 pt-6 border-t">
-              <Button asChild variant="outline" className="w-full sm:w-auto">
-                <Link href="/puzzles">
-                  <ArrowLeft size={16} className="mr-2" /> Back to All Puzzles
-                </Link>
-              </Button>
-            </div>
           )}
         </CardContent>
       </Card>
