@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Sparkles, XCircle, CheckCircle, RotateCcw, HelpCircle, Loader2 } from "lucide-react";
+import { ArrowLeft, Sparkles, XCircle, CheckCircle, RotateCcw, HelpCircle, Loader2, Lightbulb } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -250,13 +250,21 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
               )}
 
               {currentPuzzle.type === "missingLetter" && (
-                <p className="text-3xl sm:text-4xl font-bold tracking-wider my-4">
-                  {currentPuzzle.wordPattern.split('').map((char, idx) => (
-                    <span key={idx} className={char === '_' ? 'text-destructive mx-1' : 'mx-0.5'}>
-                      {char === '_' ? ' __ ' : char}
-                    </span>
-                  ))}
-                </p>
+                <>
+                  <p className="text-3xl sm:text-4xl font-bold tracking-wider my-4">
+                    {currentPuzzle.wordPattern.split('').map((char, idx) => (
+                      <span key={idx} className={char === '_' ? 'text-destructive mx-1' : 'mx-0.5'}>
+                        {char === '_' ? ' __ ' : char}
+                      </span>
+                    ))}
+                  </p>
+                  {currentPuzzle.hint && (
+                    <div className="mt-2 mb-4 p-3 bg-yellow-100/70 border border-yellow-400/50 rounded-lg text-yellow-800 text-sm flex items-center justify-center">
+                        <Lightbulb size={18} className="mr-2 flex-shrink-0" />
+                        <span><strong>Hint:</strong> {currentPuzzle.hint}</span>
+                    </div>
+                  )}
+                </>
               )}
 
               <div className={cn(

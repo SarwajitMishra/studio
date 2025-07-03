@@ -257,6 +257,7 @@ interface MissingLetterPuzzle extends EnglishPuzzleItemBase {
   correctLetter: string;
   options: string[];
   fullWord: string;
+  hint?: string;
 }
 
 export type EnglishPuzzleItem = WordMatchPuzzle | MissingLetterPuzzle;

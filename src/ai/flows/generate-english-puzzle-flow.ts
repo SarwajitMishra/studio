@@ -14,6 +14,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import type { EnglishPuzzleItem } from '@/lib/constants';
+import { searchImages } from '@/services/pixabay';
 
 // Define Zod schemas that match the existing types for validation and structured output.
 const GenerateEnglishPuzzleInputSchema = z.object({
@@ -39,6 +40,7 @@ const MissingLetterPuzzleSchema = z.object({
   wordPattern: z.string().describe('The word with one letter replaced by an underscore (e.g., "AP_LE").'),
   correctLetter: z.string().length(1).describe('The single correct letter that was replaced.'),
   options: z.array(z.string().length(1)).length(4).describe('An array of 4 single letters, including the correct one and three distractors.'),
+  hint: z.string().describe('A short, simple hint or an alternative meaning for the word to help the user guess.'),
 });
 
 const EnglishPuzzleOutputSchema = z.union([WordMatchPuzzleSchema, MissingLetterPuzzleSchema]);
@@ -48,13 +50,12 @@ export async function generateEnglishPuzzle(input: GenerateEnglishPuzzleInput): 
   const llmResponse = await generateEnglishPuzzleFlow(input);
 
   if (llmResponse.type === 'matchWord') {
-    const queryWord = llmResponse.correctWord;
     return {
       id: `ai-${Date.now()}`,
       difficulty: input.difficulty,
       imageSrc: 'https://placehold.co/400x300.png', // Default placeholder
-      imageAlt: queryWord,
-      imageQuery: queryWord,
+      imageAlt: llmResponse.correctWord,
+      imageQuery: llmResponse.correctWord,
       type: 'matchWord',
       correctWord: llmResponse.correctWord,
       options: llmResponse.options,
@@ -68,6 +69,7 @@ export async function generateEnglishPuzzle(input: GenerateEnglishPuzzleInput): 
       wordPattern: llmResponse.wordPattern,
       correctLetter: llmResponse.correctLetter,
       options: llmResponse.options,
+      hint: llmResponse.hint,
     };
   }
 }
@@ -100,6 +102,7 @@ const puzzleGenerationPrompt = ai.definePrompt({
     - **Your output JSON 'type' field must be 'matchWord'.**
   - If the puzzle type is 'missingLetter':
     - **Task:** Generate a word matching the difficulty. Create a pattern by replacing ONE letter with an underscore. Provide the correct letter and three distractor letters as options. The final 'options' array must contain exactly 4 single letters and must include the correct letter.
+    - **IMPORTANT:** You MUST also provide a short, simple hint or an alternative meaning for the word in the 'hint' field to help the user. For example, if the word is "ELEPHANT", a good hint would be "A very large gray animal with a trunk."
     - **Your output JSON 'type' field must be 'missingLetter'.**
 
 - **Final Output:** Your response must be a single JSON object matching the requested output schema. Do NOT create an image query.
