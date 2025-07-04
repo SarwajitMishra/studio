@@ -21,42 +21,42 @@ interface LudoBoardProps {
 const GRID_SIZE = 15;
 
 // The full 52-square path, 0-indexed, manually mapped for correctness.
-// Starts with Green's path start (top-left) and goes clockwise.
+// Starts with Red's path start (top-left) and goes clockwise.
 const pathCoords: { row: number, col: number }[] = [
-    // Green's path to Yellow's area
-    { row: 6, col: 1 }, { row: 6, col: 2 }, { row: 6, col: 3 }, { row: 6, col: 4 }, { row: 6, col: 5 }, // 0-4
-    { row: 5, col: 6 }, { row: 4, col: 6 }, { row: 3, col: 6 }, { row: 2, col: 6 }, { row: 1, col: 6 }, // 5-9
-    { row: 0, col: 6 }, { row: 0, col: 7 }, { row: 0, col: 8 }, // 10-12 (Index 11 is before yellow home)
-    // Yellow's path to Blue's area
-    { row: 1, col: 8 }, { row: 2, col: 8 }, { row: 3, col: 8 }, { row: 4, col: 8 }, { row: 5, col: 8 }, // 13-17
-    { row: 6, col: 9 }, { row: 6, col: 10 }, { row: 6, col: 11 }, { row: 6, col: 12 }, { row: 6, col: 13 }, // 18-22
-    { row: 6, col: 14 }, { row: 7, col: 14 }, { row: 8, col: 14 }, // 23-25 (Index 24 is before blue home)
-    // Blue's path to Red's area
-    { row: 8, col: 13 }, { row: 8, col: 12 }, { row: 8, col: 11 }, { row: 8, col: 10 }, { row: 8, col: 9 }, // 26-30
-    { row: 9, col: 8 }, { row: 10, col: 8 }, { row: 11, col: 8 }, { row: 12, col: 8 }, { row: 13, col: 8 }, // 31-35
-    { row: 14, col: 8 }, { row: 14, col: 7 }, { row: 14, col: 6 }, // 36-38 (Index 37 is before red home)
-    // Red's path back to Green's area
-    { row: 13, col: 6 }, { row: 12, col: 6 }, { row: 11, col: 6 }, { row: 10, col: 6 }, { row: 9, col: 6 }, // 39-43
-    { row: 8, col: 5 }, { row: 8, col: 4 }, { row: 8, col: 3 }, { row: 8, col: 2 }, { row: 8, col: 1 }, // 44-48
-    { row: 8, col: 0 }, { row: 7, col: 0 }, { row: 6, col: 0 }, // 49-51 (Index 50 is before green home)
+    // Red's path to Green's area
+    { row: 6, col: 1 }, { row: 6, col: 2 }, { row: 6, col: 3 }, { row: 6, col: 4 }, { row: 6, col: 5 },
+    { row: 5, col: 6 }, { row: 4, col: 6 }, { row: 3, col: 6 }, { row: 2, col: 6 }, { row: 1, col: 6 },
+    { row: 0, col: 6 }, { row: 0, col: 7 }, { row: 0, col: 8 },
+    // Green's path to Blue's area
+    { row: 1, col: 8 }, { row: 2, col: 8 }, { row: 3, col: 8 }, { row: 4, col: 8 }, { row: 5, col: 8 },
+    { row: 6, col: 9 }, { row: 6, col: 10 }, { row: 6, col: 11 }, { row: 6, col: 12 }, { row: 6, col: 13 },
+    { row: 6, col: 14 }, { row: 7, col: 14 }, { row: 8, col: 14 },
+    // Blue's path to Yellow's area
+    { row: 8, col: 13 }, { row: 8, col: 12 }, { row: 8, col: 11 }, { row: 8, col: 10 }, { row: 8, col: 9 },
+    { row: 9, col: 8 }, { row: 10, col: 8 }, { row: 11, col: 8 }, { row: 12, col: 8 }, { row: 13, col: 8 },
+    { row: 14, col: 8 }, { row: 14, col: 7 }, { row: 14, col: 6 },
+    // Yellow's path back to Red's area
+    { row: 13, col: 6 }, { row: 12, col: 6 }, { row: 11, col: 6 }, { row: 10, col: 6 }, { row: 9, col: 6 },
+    { row: 8, col: 5 }, { row: 8, col: 4 }, { row: 8, col: 3 }, { row: 8, col: 2 }, { row: 8, col: 1 },
+    { row: 8, col: 0 }, { row: 7, col: 0 }, { row: 6, col: 0 },
 ];
 
 
 // Corrected home stretch coordinates for each color.
 const homeStretchCoords: Record<PlayerColor, { row: number, col: number }[]> = {
-  green:  [ { row: 7, col: 1 }, { row: 7, col: 2 }, { row: 7, col: 3 }, { row: 7, col: 4 }, { row: 7, col: 5 }, { row: 7, col: 6 } ],
-  yellow: [ { row: 1, col: 7 }, { row: 2, col: 7 }, { row: 3, col: 7 }, { row: 4, col: 7 }, { row: 5, col: 7 }, { row: 6, col: 7 } ],
-  blue:   [ { row: 7, col: 13 }, { row: 7, col: 12 }, { row: 7, col: 11 }, { row: 7, col: 10 }, { row: 7, col: 9 }, { row: 7, col: 8 } ],
-  red:    [ { row: 13, col: 7 }, { row: 12, col: 7 }, { row: 11, col: 7 }, { row: 10, col: 7 }, { row: 9, col: 7 }, { row: 8, col: 7 } ]
+  red:    [ { row: 1, col: 7 }, { row: 2, col: 7 }, { row: 3, col: 7 }, { row: 4, col: 7 }, { row: 5, col: 7 }, { row: 6, col: 7 } ],
+  green:  [ { row: 7, col: 13 }, { row: 7, col: 12 }, { row: 7, col: 11 }, { row: 7, col: 10 }, { row: 7, col: 9 }, { row: 7, col: 8 } ],
+  blue:   [ { row: 13, col: 7 }, { row: 12, col: 7 }, { row: 11, col: 7 }, { row: 10, col: 7 }, { row: 9, col: 7 }, { row: 8, col: 7 } ],
+  yellow: [ { row: 7, col: 1 }, { row: 7, col: 2 }, { row: 7, col: 3 }, { row: 7, col: 4 }, { row: 7, col: 5 }, { row: 7, col: 6 } ],
 };
 
 // Coordinates are 0-indexed for a 15x15 grid.
 // These are designed to center tokens inside the 2x2 quadrants of each 6x6 home area.
 const baseCoords: Record<PlayerColor, { row: number, col: number }[]> = {
-  green:  [{row:1, col:1}, {row:1, col:4}, {row:4, col:1}, {row:4, col:4}],
-  yellow: [{row:1, col:10}, {row:1, col:13}, {row:4, col:10}, {row:4, col:13}],
+  red:    [{row:1, col:1}, {row:1, col:4}, {row:4, col:1}, {row:4, col:4}],
+  green:  [{row:1, col:10}, {row:1, col:13}, {row:4, col:10}, {row:4, col:13}],
   blue:   [{row:10, col:10}, {row:10, col:13}, {row:13, col:10}, {row:13, col:13}],
-  red:    [{row:10, col:1}, {row:10, col:4}, {row:13, col:1}, {row:13, col:4}],
+  yellow: [{row:10, col:1}, {row:10, col:4}, {row:13, col:1}, {row:13, col:4}],
 };
 
 
@@ -91,10 +91,10 @@ const PlayerArea = ({ player, isCurrentPlayer }: {
     isCurrentPlayer: boolean;
 }) => {
     const areaStyles: Record<PlayerColor, string> = {
-        green: '1 / 1 / span 6 / span 6',
-        yellow: '1 / 10 / span 6 / span 6',
+        red: '1 / 1 / span 6 / span 6',
+        green: '1 / 10 / span 6 / span 6',
         blue: '10 / 10 / span 6 / span 6',
-        red: '10 / 1 / span 6 / span 6',
+        yellow: '10 / 1 / span 6 / span 6',
     };
 
     return (

@@ -5,17 +5,17 @@ export const MAIN_PATH_LENGTH = 52; // Corrected to 52 squares (0-51)
 export const HOME_STRETCH_LENGTH = 6;
 export const NUM_TOKENS_PER_PLAYER = 4;
 
-// Corrected to match the visual board layout (Green top-left, etc.) and standard clockwise play.
+// Corrected to match the visual board layout (Red top-left, etc.) and standard clockwise play.
 export const PLAYER_CONFIG: Record<PlayerColor, { name: string; baseClass: string; textClass: string; pathStartIndex: number; homeEntryPathIndex: number; tokenImageUrl: string; }> = {
-  green:  { name: "Green",  baseClass: "bg-green-500",  textClass: "text-green-700",  pathStartIndex: 0,   homeEntryPathIndex: 50, tokenImageUrl: '/images/ludo/token-green.png' },
-  yellow: { name: "Yellow", baseClass: "bg-yellow-400", textClass: "text-yellow-700", pathStartIndex: 13,  homeEntryPathIndex: 11, tokenImageUrl: '/images/ludo/token-yellow.png' },
+  red:    { name: "Red",    baseClass: "bg-red-500",    textClass: "text-red-700",    pathStartIndex: 0,   homeEntryPathIndex: 50, tokenImageUrl: '/images/ludo/token-red.png' },
+  green:  { name: "Green",  baseClass: "bg-green-500",  textClass: "text-green-700",  pathStartIndex: 13,  homeEntryPathIndex: 11, tokenImageUrl: '/images/ludo/token-green.png' },
   blue:   { name: "Blue",   baseClass: "bg-blue-500",   textClass: "text-blue-700",   pathStartIndex: 26,  homeEntryPathIndex: 24, tokenImageUrl: '/images/ludo/token-blue.png' },
-  red:    { name: "Red",    baseClass: "bg-red-500",    textClass: "text-red-700",    pathStartIndex: 39,  homeEntryPathIndex: 37, tokenImageUrl: '/images/ludo/token-red.png' },
+  yellow: { name: "Yellow", baseClass: "bg-yellow-400", textClass: "text-yellow-700", pathStartIndex: 39,  homeEntryPathIndex: 37, tokenImageUrl: '/images/ludo/token-yellow.png' },
 };
 
 // Safe squares are based on their path index. The stars on the board.
-// Corrected to match the new path.
-export const SAFE_SQUARE_INDICES = [8, 21, 34, 47];
+// Corrected to match the new path. Start squares + 8 squares from each start.
+export const SAFE_SQUARE_INDICES = [0, 8, 13, 21, 26, 34, 39, 47];
 
 
 export const initialPlayerState = (
@@ -30,12 +30,11 @@ export const initialPlayerState = (
   if (mode === 'offline' && offlinePlayerColors && offlinePlayerColors.length === numPlayersToCreate) {
     activePlayerColors = offlinePlayerColors;
   } else if (mode === 'ai') {
-     // Player is blue, AI is yellow. This might need to be re-evaluated based on the board.
-     // Let's stick with the user's layout. Blue vs Yellow.
+     // AI mode: Player is blue, AI is yellow as per setup page.
      activePlayerColors = ['blue', 'yellow']; 
   } else {
     // Default order for offline multiplayer, matching board's clockwise setup.
-    activePlayerColors = (['green', 'yellow', 'blue', 'red'] as PlayerColor[]).slice(0, numPlayersToCreate);
+    activePlayerColors = (['red', 'green', 'blue', 'yellow'] as PlayerColor[]).slice(0, numPlayersToCreate);
   }
 
   return activePlayerColors.map((color, index) => {
