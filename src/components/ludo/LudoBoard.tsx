@@ -16,47 +16,47 @@ interface LudoBoardProps {
   movableTokens: Token[];
   isRolling: boolean;
   gameView: GameView;
-  handleDiceRoll: () => void;
-  isDiceButtonClickable: boolean;
 }
 
 const GRID_SIZE = 15;
 
 // The full 52-square path, 0-indexed, manually mapped for correctness.
+// Starts with Green's path start (top-left) and goes clockwise.
 const pathCoords: { row: number, col: number }[] = [
-    // Path from Red's area to Green's
+    // Green's path to Yellow's area
     { row: 6, col: 1 }, { row: 6, col: 2 }, { row: 6, col: 3 }, { row: 6, col: 4 }, { row: 6, col: 5 }, // 0-4
     { row: 5, col: 6 }, { row: 4, col: 6 }, { row: 3, col: 6 }, { row: 2, col: 6 }, { row: 1, col: 6 }, // 5-9
-    { row: 0, col: 6 }, { row: 0, col: 7 }, { row: 0, col: 8 }, // 10-12
-    // Path from Green's area to Blue's
+    { row: 0, col: 6 }, { row: 0, col: 7 }, { row: 0, col: 8 }, // 10-12 (Index 11 is before yellow home)
+    // Yellow's path to Blue's area
     { row: 1, col: 8 }, { row: 2, col: 8 }, { row: 3, col: 8 }, { row: 4, col: 8 }, { row: 5, col: 8 }, // 13-17
     { row: 6, col: 9 }, { row: 6, col: 10 }, { row: 6, col: 11 }, { row: 6, col: 12 }, { row: 6, col: 13 }, // 18-22
-    { row: 6, col: 14 }, { row: 7, col: 14 }, { row: 8, col: 14 }, // 23-25
-    // Path from Blue's area to Yellow's
+    { row: 6, col: 14 }, { row: 7, col: 14 }, { row: 8, col: 14 }, // 23-25 (Index 24 is before blue home)
+    // Blue's path to Red's area
     { row: 8, col: 13 }, { row: 8, col: 12 }, { row: 8, col: 11 }, { row: 8, col: 10 }, { row: 8, col: 9 }, // 26-30
     { row: 9, col: 8 }, { row: 10, col: 8 }, { row: 11, col: 8 }, { row: 12, col: 8 }, { row: 13, col: 8 }, // 31-35
-    { row: 14, col: 8 }, { row: 14, col: 7 }, { row: 14, col: 6 }, // 36-38
-    // Path from Yellow's area to Red's
+    { row: 14, col: 8 }, { row: 14, col: 7 }, { row: 14, col: 6 }, // 36-38 (Index 37 is before red home)
+    // Red's path back to Green's area
     { row: 13, col: 6 }, { row: 12, col: 6 }, { row: 11, col: 6 }, { row: 10, col: 6 }, { row: 9, col: 6 }, // 39-43
     { row: 8, col: 5 }, { row: 8, col: 4 }, { row: 8, col: 3 }, { row: 8, col: 2 }, { row: 8, col: 1 }, // 44-48
-    { row: 7, col: 0 }, { row: 6, col: 0 }, // 49-50 (Path has 51 squares, 0-50)
+    { row: 8, col: 0 }, { row: 7, col: 0 }, { row: 6, col: 0 }, // 49-51 (Index 50 is before green home)
 ];
 
 
+// Corrected home stretch coordinates for each color.
 const homeStretchCoords: Record<PlayerColor, { row: number, col: number }[]> = {
-  red:    [ { row: 7, col: 1 }, { row: 7, col: 2 }, { row: 7, col: 3 }, { row: 7, col: 4 }, { row: 7, col: 5 }, { row: 7, col: 6 } ],
-  green:  [ { row: 1, col: 7 }, { row: 2, col: 7 }, { row: 3, col: 7 }, { row: 4, col: 7 }, { row: 5, col: 7 }, { row: 6, col: 7 } ],
-  blue:   [ { row: 13, col: 7 }, { row: 12, col: 7 }, { row: 11, col: 7 }, { row: 10, col: 7 }, { row: 9, col: 7 }, { row: 8, col: 7 } ],
-  yellow: [ { row: 7, col: 13 }, { row: 7, col: 12 }, { row: 7, col: 11 }, { row: 7, col: 10 }, { row: 7, col: 9 }, { row: 7, col: 8 } ]
+  green:  [ { row: 7, col: 1 }, { row: 7, col: 2 }, { row: 7, col: 3 }, { row: 7, col: 4 }, { row: 7, col: 5 }, { row: 7, col: 6 } ],
+  yellow: [ { row: 1, col: 7 }, { row: 2, col: 7 }, { row: 3, col: 7 }, { row: 4, col: 7 }, { row: 5, col: 7 }, { row: 6, col: 7 } ],
+  blue:   [ { row: 7, col: 13 }, { row: 7, col: 12 }, { row: 7, col: 11 }, { row: 7, col: 10 }, { row: 7, col: 9 }, { row: 7, col: 8 } ],
+  red:    [ { row: 13, col: 7 }, { row: 12, col: 7 }, { row: 11, col: 7 }, { row: 10, col: 7 }, { row: 9, col: 7 }, { row: 8, col: 7 } ]
 };
 
 // Coordinates are 0-indexed for a 15x15 grid.
 // These are designed to center tokens inside the 2x2 quadrants of each 6x6 home area.
 const baseCoords: Record<PlayerColor, { row: number, col: number }[]> = {
-  red:    [{row:1, col:1}, {row:1, col:4}, {row:4, col:1}, {row:4, col:4}],
-  green:  [{row:1, col:10}, {row:1, col:13}, {row:4, col:10}, {row:4, col:13}],
-  yellow: [{row:10, col:1}, {row:10, col:4}, {row:13, col:1}, {row:13, col:4}],
+  green:  [{row:1, col:1}, {row:1, col:4}, {row:4, col:1}, {row:4, col:4}],
+  yellow: [{row:1, col:10}, {row:1, col:13}, {row:4, col:10}, {row:4, col:13}],
   blue:   [{row:10, col:10}, {row:10, col:13}, {row:13, col:10}, {row:13, col:13}],
+  red:    [{row:10, col:1}, {row:10, col:4}, {row:13, col:1}, {row:13, col:4}],
 };
 
 
@@ -86,49 +86,30 @@ const getTokenPositionStyle = (token: Token): React.CSSProperties => {
   return { display: 'none' };
 };
 
-const PlayerArea = ({ player, isCurrentPlayer, diceValue, isRolling, onDiceRoll, isDiceButtonClickable }: {
+const PlayerArea = ({ player, isCurrentPlayer }: {
     player: Player;
     isCurrentPlayer: boolean;
-    diceValue: number | null;
-    isRolling: boolean;
-    onDiceRoll: () => void;
-    isDiceButtonClickable: boolean;
 }) => {
-    const DICE_IMAGE_URLS: Record<number, string> = {
-        1: '/images/ludo/dice-1.png', 2: '/images/ludo/dice-2.png', 3: '/images/ludo/dice-3.png',
-        4: '/images/ludo/dice-4.png', 5: '/images/ludo/dice-5.png', 6: '/images/ludo/dice-6.png',
-    };
     const areaStyles: Record<PlayerColor, string> = {
-        red: '1 / 1 / span 6 / span 6',
-        green: '1 / 10 / span 6 / span 6',
-        yellow: '10 / 1 / span 6 / span 6',
+        green: '1 / 1 / span 6 / span 6',
+        yellow: '1 / 10 / span 6 / span 6',
         blue: '10 / 10 / span 6 / span 6',
+        red: '10 / 1 / span 6 / span 6',
     };
 
     return (
-        <div style={{ gridArea: areaStyles[player.color] }} className={cn("relative flex items-center justify-center", isCurrentPlayer ? "animate-pulse" : "")}>
+        <div style={{gridArea: areaStyles[player.color]}} className={cn("relative flex items-center justify-center", isCurrentPlayer ? "animate-pulse" : "")}>
             <div className="absolute flex flex-col items-center justify-center p-2 rounded-lg transition-all duration-300 w-24 h-24 sm:w-28 sm:h-28">
                 <p className="text-xs sm:text-sm font-semibold truncate mb-1 text-center text-white drop-shadow-[0_1.2px_1.2px_rgba(0,0,0,0.8)]" title={player.name}>
                     {player.name} {player.isAI && <Cpu size={14} className="inline ml-1" />}
                 </p>
-                {isCurrentPlayer && (
-                    <button onClick={onDiceRoll} disabled={!isDiceButtonClickable} className="w-12 h-12 sm:w-16 sm:h-16">
-                        <Image
-                            src={DICE_IMAGE_URLS[diceValue || 1]}
-                            alt={`Dice showing ${diceValue || 'face'}`}
-                            width={64} height={64}
-                            className={cn("transition-transform duration-300 hover:scale-110", isRolling ? "animate-dice-roll" : "")}
-                            data-ai-hint={`dice ${diceValue || 'one'}`}
-                        />
-                    </button>
-                )}
             </div>
         </div>
     );
 }
 
 export const LudoBoard: React.FC<LudoBoardProps> = (props) => {
-  const { players, onTokenClick, currentPlayerIndex, movableTokens, isRolling, gameView, diceValue, handleDiceRoll, isDiceButtonClickable } = props;
+  const { players, onTokenClick, currentPlayerIndex, movableTokens, isRolling, gameView } = props;
   const currentPlayer = players[currentPlayerIndex];
 
   const tokensByPosition: Record<string, Token[]> = {};
@@ -161,10 +142,6 @@ export const LudoBoard: React.FC<LudoBoardProps> = (props) => {
             key={p.color} 
             player={p} 
             isCurrentPlayer={index === currentPlayerIndex} 
-            diceValue={diceValue} 
-            isRolling={isRolling}
-            onDiceRoll={handleDiceRoll}
-            isDiceButtonClickable={isDiceButtonClickable}
         />
       ))}
       
