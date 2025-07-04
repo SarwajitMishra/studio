@@ -22,20 +22,24 @@ interface LudoBoardProps {
 
 const GRID_SIZE = 15;
 
-// The full 52-square path, 0-indexed.
+// The full 52-square path, 0-indexed, manually mapped for correctness.
 const pathCoords: { row: number, col: number }[] = [
-    { row: 6, col: 1 }, { row: 6, col: 2 }, { row: 6, col: 3 }, { row: 6, col: 4 }, { row: 6, col: 5 },
-    { row: 5, col: 6 }, { row: 4, col: 6 }, { row: 3, col: 6 }, { row: 2, col: 6 }, { row: 1, col: 6 },
-    { row: 0, col: 6 }, { row: 0, col: 7 }, { row: 0, col: 8 },
-    { row: 1, col: 8 }, { row: 2, col: 8 }, { row: 3, col: 8 }, { row: 4, col: 8 }, { row: 5, col: 8 },
-    { row: 6, col: 9 }, { row: 6, col: 10 }, { row: 6, col: 11 }, { row: 6, col: 12 }, { row: 6, col: 13 },
-    { row: 7, col: 14 }, { row: 8, col: 14 },
-    { row: 8, col: 13 }, { row: 8, col: 12 }, { row: 8, col: 11 }, { row: 8, col: 10 }, { row: 8, col: 9 },
-    { row: 9, col: 8 }, { row: 10, col: 8 }, { row: 11, col: 8 }, { row: 12, col: 8 }, { row: 13, col: 8 },
-    { row: 14, col: 8 }, { row: 14, col: 7 },
-    { row: 14, col: 6 }, { row: 13, col: 6 }, { row: 12, col: 6 }, { row: 11, col: 6 }, { row: 10, col: 6 }, { row: 9, col: 6 },
-    { row: 8, col: 5 }, { row: 8, col: 4 }, { row: 8, col: 3 }, { row: 8, col: 2 }, { row: 8, col: 1 },
-    { row: 8, col: 0 }, { row: 7, col: 0 }
+    // Path from Red's area to Green's
+    { row: 6, col: 1 }, { row: 6, col: 2 }, { row: 6, col: 3 }, { row: 6, col: 4 }, { row: 6, col: 5 }, // 0-4
+    { row: 5, col: 6 }, { row: 4, col: 6 }, { row: 3, col: 6 }, { row: 2, col: 6 }, { row: 1, col: 6 }, // 5-9
+    { row: 0, col: 6 }, { row: 0, col: 7 }, { row: 0, col: 8 }, // 10-12
+    // Path from Green's area to Blue's
+    { row: 1, col: 8 }, { row: 2, col: 8 }, { row: 3, col: 8 }, { row: 4, col: 8 }, { row: 5, col: 8 }, // 13-17
+    { row: 6, col: 9 }, { row: 6, col: 10 }, { row: 6, col: 11 }, { row: 6, col: 12 }, { row: 6, col: 13 }, // 18-22
+    { row: 6, col: 14 }, { row: 7, col: 14 }, { row: 8, col: 14 }, // 23-25
+    // Path from Blue's area to Yellow's
+    { row: 8, col: 13 }, { row: 8, col: 12 }, { row: 8, col: 11 }, { row: 8, col: 10 }, { row: 8, col: 9 }, // 26-30
+    { row: 9, col: 8 }, { row: 10, col: 8 }, { row: 11, col: 8 }, { row: 12, col: 8 }, { row: 13, col: 8 }, // 31-35
+    { row: 14, col: 8 }, { row: 14, col: 7 }, { row: 14, col: 6 }, // 36-38
+    // Path from Yellow's area to Red's
+    { row: 13, col: 6 }, { row: 12, col: 6 }, { row: 11, col: 6 }, { row: 10, col: 6 }, { row: 9, col: 6 }, // 39-43
+    { row: 8, col: 5 }, { row: 8, col: 4 }, { row: 8, col: 3 }, { row: 8, col: 2 }, { row: 8, col: 1 }, // 44-48
+    { row: 7, col: 0 }, { row: 6, col: 0 }, // 49-50 (Path has 51 squares, 0-50)
 ];
 
 

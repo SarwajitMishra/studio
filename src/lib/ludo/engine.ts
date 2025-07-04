@@ -1,12 +1,12 @@
 
 import type { Player, Token, PlayerColor, GameMode } from './types';
 
-export const MAIN_PATH_LENGTH = 52;
+export const MAIN_PATH_LENGTH = 51;
 export const HOME_STRETCH_LENGTH = 6;
 export const NUM_TOKENS_PER_PLAYER = 4;
 
 export const PLAYER_CONFIG: Record<PlayerColor, { name: string; baseClass: string; textClass: string; pathStartIndex: number; homeEntryPathIndex: number; tokenImageUrl: string; }> = {
-  red:    { name: "Red",    baseClass: "bg-red-500",    textClass: "text-red-700",    pathStartIndex: 0,   homeEntryPathIndex: 51, tokenImageUrl: '/images/ludo/token-red.png' },
+  red:    { name: "Red",    baseClass: "bg-red-500",    textClass: "text-red-700",    pathStartIndex: 0,   homeEntryPathIndex: 50, tokenImageUrl: '/images/ludo/token-red.png' },
   green:  { name: "Green",  baseClass: "bg-green-500",  textClass: "text-green-700",  pathStartIndex: 13,  homeEntryPathIndex: 11, tokenImageUrl: '/images/ludo/token-green.png' },
   blue:   { name: "Blue",   baseClass: "bg-blue-500",   textClass: "text-blue-700",   pathStartIndex: 26,  homeEntryPathIndex: 24, tokenImageUrl: '/images/ludo/token-blue.png' },
   yellow: { name: "Yellow", baseClass: "bg-yellow-400", textClass: "text-yellow-700", pathStartIndex: 39,  homeEntryPathIndex: 37, tokenImageUrl: '/images/ludo/token-yellow.png' },
@@ -62,8 +62,6 @@ export const initialPlayerState = (
 export const getMovableTokens = (player: Player, roll: number): Token[] => {
     if (!player) return [];
     
-    const playerStartSquare = PLAYER_CONFIG[player.color].pathStartIndex;
-    
     return player.tokens.filter(token => {
       // Cannot move a finished token
       if (token.position >= 200) return false; 
@@ -102,30 +100,32 @@ export const moveToken = (
   if (tokenToMove.position === -1 && roll === 6) {
     tokenToMove.position = playerConfig.pathStartIndex;
   } 
-  // Moving on the main path
-  else if (tokenToMove.position >= 0 && tokenToMove.position < MAIN_PATH_LENGTH) {
+  // Moving on the main path or into home stretch
+  else if (tokenToMove.position >= 0 && tokenToMove.position < 100) {
     const currentPos = tokenToMove.position;
     const homeEntry = playerConfig.homeEntryPathIndex;
-    let newPosition = currentPos;
-    let enteredHomeStretch = false;
-
-    // Check if the token will pass or land on its home entry
-    for (let i = 1; i <= roll; i++) {
-        newPosition = (currentPos + i) % MAIN_PATH_LENGTH;
-        if (newPosition === homeEntry) {
-            const stepsIntoStretch = roll - i;
-            if (stepsIntoStretch < HOME_STRETCH_LENGTH) {
-                tokenToMove.position = 100 + stepsIntoStretch;
-                enteredHomeStretch = true;
-            }
-            break;
-        }
+    
+    let tempPos = currentPos;
+    let stepsToHomeEntry = 0;
+    let passedHomeEntry = false;
+    
+    // Calculate distance to home entry
+    if (currentPos > homeEntry) { // e.g. red player at pos 50, home entry is 50
+        stepsToHomeEntry = (MAIN_PATH_LENGTH - currentPos) + homeEntry + 1;
+    } else {
+        stepsToHomeEntry = homeEntry - currentPos;
     }
-    if (!enteredHomeStretch) {
-        tokenToMove.position = (currentPos + roll) % MAIN_PATH_LENGTH;
+
+    if (roll > stepsToHomeEntry) {
+      const stepsIntoStretch = roll - stepsToHomeEntry - 1;
+      if (stepsIntoStretch < HOME_STRETCH_LENGTH) {
+        tokenToMove.position = 100 + stepsIntoStretch;
+      }
+    } else {
+      tokenToMove.position = (currentPos + roll) % (MAIN_PATH_LENGTH + 1);
     }
   } 
-  // Moving in the home stretch
+  // Moving within the home stretch
   else if (tokenToMove.position >= 100 && tokenToMove.position < 200) {
     const currentStretchPos = tokenToMove.position % 100;
     const newStretchPos = currentStretchPos + roll;
@@ -139,12 +139,15 @@ export const moveToken = (
   const finalPos = tokenToMove.position;
   const isSafeSquare = SAFE_SQUARE_INDICES.includes(finalPos);
   
-  if (finalPos >= 0 && finalPos < MAIN_PATH_LENGTH && !isSafeSquare) {
+  if (finalPos >= 0 && finalPos < 100 && !isSafeSquare) {
     newPlayers.forEach((p, p_idx) => {
-      // Don't capture own tokens
-      if(p_idx === playerIndex) return;
+      // Don't capture own tokens or tokens on the same start square
+      if(p_idx === playerIndex || finalPos === PLAYER_CONFIG[p.color].pathStartIndex) return;
+
       p.tokens.forEach(t => {
-        if (t.position === finalPos) {
+        // Only capture single tokens
+        const tokensOnSquare = newPlayers.flatMap(pl => pl.tokens).filter(tok => tok.position === finalPos);
+        if (t.position === finalPos && tokensOnSquare.length === 1) {
           t.position = -1; // Send back to base
           captured = true;
         }
