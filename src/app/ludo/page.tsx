@@ -369,7 +369,7 @@ export default function LudoPage() {
 
               {selectedMode === 'ai' && (
                 <div className="pt-4 space-y-2">
-                    <p className="text-center text-muted-foreground">You (Red) vs. Shravya AI (Yellow)</p>
+                    <p className="text-center text-muted-foreground">You (Blue) vs. Shravya AI (Yellow)</p>
                     <div>
                         <Label htmlFor="humanPlayerName" className="text-lg font-medium">Your Name</Label>
                         <Input

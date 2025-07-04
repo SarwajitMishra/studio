@@ -5,13 +5,11 @@ export const MAIN_PATH_LENGTH = 52;
 export const HOME_STRETCH_LENGTH = 6;
 export const NUM_TOKENS_PER_PLAYER = 4;
 
-// The PLAYER_CONFIG now correctly maps player colors to their visual layout on the board.
-// Green (Top-Left), Red (Top-Right), Blue (Bottom-Right), Yellow (Bottom-Left)
 export const PLAYER_CONFIG: Record<PlayerColor, { name: string; baseClass: string; textClass: string; pathStartIndex: number; homeEntryPathIndex: number; tokenImageUrl: string; }> = {
   green:  { name: "Green",  baseClass: "bg-green-500",  textClass: "text-green-700",  pathStartIndex: 1,   homeEntryPathIndex: 51, tokenImageUrl: '/images/ludo/token-green.png' },
   red:    { name: "Red",    baseClass: "bg-red-500",    textClass: "text-red-700",    pathStartIndex: 14,  homeEntryPathIndex: 12, tokenImageUrl: '/images/ludo/token-red.png' },
-  blue:   { name: "Blue",   baseClass: "bg-blue-500",   textClass: "text-blue-700",   pathStartIndex: 27,  homeEntryPathIndex: 25, tokenImageUrl: '/images/ludo/token-blue.png' },
-  yellow: { name: "Yellow", baseClass: "bg-yellow-400", textClass: "text-yellow-700", pathStartIndex: 40,  homeEntryPathIndex: 38, tokenImageUrl: '/images/ludo/token-yellow.png' },
+  blue:   { name: "Blue",   baseClass: "bg-blue-500",   textClass: "text-blue-700",   pathStartIndex: 40,  homeEntryPathIndex: 38, tokenImageUrl: '/images/ludo/token-blue.png' },
+  yellow: { name: "Yellow", baseClass: "bg-yellow-400", textClass: "text-yellow-700", pathStartIndex: 27,  homeEntryPathIndex: 25, tokenImageUrl: '/images/ludo/token-yellow.png' },
 };
 
 // Safe squares are based on their path index.
@@ -33,7 +31,7 @@ export const initialPlayerState = (
      activePlayerColors = ['blue', 'yellow']; 
   } else {
     // Default order matches the new visual layout if not otherwise specified
-    activePlayerColors = (['green', 'red', 'blue', 'yellow'] as PlayerColor[]).slice(0, numPlayersToCreate);
+    activePlayerColors = (['green', 'red', 'yellow', 'blue'] as PlayerColor[]).slice(0, numPlayersToCreate);
   }
 
   return activePlayerColors.map((color, index) => {
@@ -102,19 +100,19 @@ export const moveToken = (
     // Check if the move will cross or land on the home entry point
     // This logic handles the wrap-around path for Green player correctly
     let effectiveEndPos = (newPosition + roll);
-    if ((newPosition < homeEntry && effectiveEndPos >= homeEntry) || // Standard crossing
-        (newPosition > homeEntry && (effectiveEndPos % MAIN_PATH_LENGTH) < newPosition && (effectiveEndPos % MAIN_PATH_LENGTH) >= homeEntry) // Wrap-around crossing for Green
+    if ((newPosition <= homeEntry && effectiveEndPos > homeEntry) || // Standard crossing
+        (newPosition > homeEntry && (effectiveEndPos % MAIN_PATH_LENGTH) < newPosition)
     ) {
        let stepsAfterEntry = 0;
-       if (newPosition < homeEntry) {
+       if (newPosition <= homeEntry) {
            stepsAfterEntry = effectiveEndPos - homeEntry;
        } else {
            stepsAfterEntry = (effectiveEndPos % MAIN_PATH_LENGTH) - homeEntry;
            if(stepsAfterEntry < 0) stepsAfterEntry += MAIN_PATH_LENGTH;
        }
 
-       if (stepsAfterEntry < HOME_STRETCH_LENGTH) {
-            tokenToMove.position = 100 + stepsAfterEntry;
+       if (stepsAfterEntry <= HOME_STRETCH_LENGTH) { // Allow landing on home
+            tokenToMove.position = 100 + stepsAfterEntry - 1; // 0-indexed home stretch
             movedPastEntry = true;
        }
     }
