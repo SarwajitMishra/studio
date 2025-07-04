@@ -1,6 +1,6 @@
 
 import type { LucideIcon } from 'lucide-react';
-import { LayoutGrid, Puzzle, BookOpen, UserCircle, Settings, BarChart3, Zap, Apple, Banana, Cherry, Grape, Carrot, Pizza, CakeSlice, IceCream2, Swords, Bot, Search, Sigma, Brain, ToyBrick, Star as StarIcon, Coins as CoinsIcon, BookMarked, Target, Calculator, ListOrdered, SpellCheck, CaseLower, AlignJustify, Filter, Keyboard, Gamepad2, Languages, Lightbulb, Mail, Calendar, Heart } from 'lucide-react';
+import { Crown, Puzzle, BookOpen, UserCircle, Settings, BarChart3, Zap, Apple, Banana, Cherry, Grape, Carrot, Pizza, CakeSlice, IceCream2, Swords, Bot, Search, Sigma, Brain, ToyBrick, Star as StarIcon, Coins as CoinsIcon, BookMarked, Target, Calculator, ListOrdered, SpellCheck, CaseLower, AlignJustify, Filter, Keyboard, Gamepad2, Languages, Lightbulb, Mail, Calendar, Heart } from 'lucide-react';
 
 export type GameCategory = 'Strategy' | 'Puzzles' | 'Learning';
 
@@ -20,7 +20,7 @@ export const GAMES: Game[] = [
     id: 'chess',
     title: 'Chess',
     category: 'Strategy',
-    Icon: LayoutGrid, // Using a generic board game icon for Chess
+    Icon: Crown,
     description: 'Classic strategy board game. Sharpen your mind!',
     href: '/chess',
     color: 'text-sky-600',
@@ -47,7 +47,7 @@ export const GAMES: Game[] = [
     id: 'memory-match',
     title: 'Memory Match',
     category: 'Puzzles',
-    Icon: Zap, // Brain might be better if Zap is too generic
+    Icon: Brain,
     description: 'Test your memory by matching pairs of cards.',
     href: '/puzzles/memory',
     color: 'text-pink-600',
@@ -56,7 +56,7 @@ export const GAMES: Game[] = [
     id: 'number-puzzles',
     title: 'Number Puzzles',
     category: 'Learning',
-    Icon: BookOpen, // Or Calculator icon
+    Icon: Calculator,
     description: 'Fun with numbers! Solve engaging math puzzles.',
     href: '/puzzles/numbers', 
     color: 'text-green-600',
@@ -65,7 +65,7 @@ export const GAMES: Game[] = [
     id: 'easy-english',
     title: 'Easy English Fun',
     category: 'Learning',
-    Icon: BookMarked,
+    Icon: Languages,
     description: 'Learn basic English words through fun, interactive puzzles!',
     href: '/puzzles/easy-english',
     color: 'text-indigo-500',
@@ -95,7 +95,7 @@ export const PUZZLE_TYPES: PuzzleType[] = [
   {
     id: 'memory',
     name: 'Memory Match',
-    Icon: Zap, // Consider Brain icon from lucide-react
+    Icon: Brain,
     description: 'Find matching pairs of cards. Click to reveal!',
     color: 'text-pink-600',
     href: '/puzzles/memory',
@@ -104,7 +104,7 @@ export const PUZZLE_TYPES: PuzzleType[] = [
   {
     id: 'numbers',
     name: 'Number Puzzles',
-    Icon: BookOpen, // Or Calculator
+    Icon: Calculator,
     description: 'Solve math and logic puzzles. Learn while you play!',
     color: 'text-green-600',
     href: '/puzzles/numbers',
@@ -113,7 +113,7 @@ export const PUZZLE_TYPES: PuzzleType[] = [
   {
     id: 'easy-english',
     name: 'Easy English Fun',
-    Icon: BookMarked,
+    Icon: Languages,
     description: 'Learn basic English words and improve typing skills.',
     color: 'text-indigo-500',
     href: '/puzzles/easy-english',

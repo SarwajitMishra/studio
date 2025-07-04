@@ -46,19 +46,19 @@ const DIFFICULTY_LEVELS: DifficultyOption[] = [
 
 const PUZZLE_IMAGES_BY_DIFFICULTY: Record<Difficulty, PuzzleImage[]> = {
   beginner: [
-    { alt: "A cute cartoon animal", hint: "cute animal" },
-    { alt: "A colorful cartoon landscape", hint: "cartoon landscape" },
-    { alt: "A simple nature scene", hint: "nature scene" },
+    { alt: "A smiling cartoon sun in a pastel sky", hint: "cartoon sun" },
+    { alt: "A friendly cartoon lion in a jungle", hint: "cartoon lion" },
+    { alt: "A colorful butterfly on a flower", hint: "butterfly flower" },
   ],
   expert: [
-    { alt: "A beautiful landscape", hint: "beautiful landscape" },
-    { alt: "A fantasy world illustration", hint: "fantasy world" },
-    { alt: "A detailed city", hint: "detailed city" },
+    { alt: "A magical forest with glowing mushrooms", hint: "enchanted forest" },
+    { alt: "A playful dolphin jumping in the ocean", hint: "cartoon dolphin" },
+    { alt: "A vibrant cartoon farm with animals", hint: "cartoon farm" },
   ],
   pro: [
-    { alt: "A detailed cityscape", hint: "cityscape" },
-    { alt: "A complex abstract pattern", hint: "abstract pattern" },
-    { alt: "A busy space scene", hint: "space scene" },
+    { alt: "An underwater castle with colorful fish", hint: "underwater castle" },
+    { alt: "A bustling cartoon city with funny cars", hint: "cartoon city" },
+    { alt: "A whimsical treehouse in a fantasy forest", hint: "fantasy treehouse" },
   ],
 };
 
@@ -255,8 +255,6 @@ export default function JigsawPuzzlePage() {
         const tempCol = newPieces[piece1Index].currentCol;
         newPieces[piece1Index].currentRow = newPieces[piece2Index].currentRow;
         newPieces[piece1Index].currentCol = newPieces[piece2Index].currentCol;
-        newPieces[piece2Index].currentRow = tempRow;
-        newPieces[piece2Index].currentCol = tempCol;
         
         // Actually swap their positions in the array for rendering
         [newPieces[piece1Index], newPieces[piece2Index]] = [newPieces[piece2Index], newPieces[piece1Index]];
