@@ -6,14 +6,14 @@ export const HOME_STRETCH_LENGTH = 6;
 export const NUM_TOKENS_PER_PLAYER = 4;
 
 export const PLAYER_CONFIG: Record<PlayerColor, { name: string; baseClass: string; textClass: string; pathStartIndex: number; homeEntryPathIndex: number; tokenImageUrl: string; }> = {
-  red:    { name: "Red",    baseClass: "bg-red-500",    textClass: "text-red-700",    pathStartIndex: 1,   homeEntryPathIndex: 51, tokenImageUrl: '/images/ludo/token-red.png' },
-  green:  { name: "Green",  baseClass: "bg-green-500",  textClass: "text-green-700",  pathStartIndex: 14,  homeEntryPathIndex: 12, tokenImageUrl: '/images/ludo/token-green.png' },
-  yellow: { name: "Yellow", baseClass: "bg-yellow-400", textClass: "text-yellow-700", pathStartIndex: 27,  homeEntryPathIndex: 25, tokenImageUrl: '/images/ludo/token-yellow.png' },
-  blue:   { name: "Blue",   baseClass: "bg-blue-500",   textClass: "text-blue-700",   pathStartIndex: 40,  homeEntryPathIndex: 38, tokenImageUrl: '/images/ludo/token-blue.png' },
+  red:    { name: "Red",    baseClass: "bg-red-500",    textClass: "text-red-700",    pathStartIndex: 0,   homeEntryPathIndex: 51, tokenImageUrl: '/images/ludo/token-red.png' },
+  green:  { name: "Green",  baseClass: "bg-green-500",  textClass: "text-green-700",  pathStartIndex: 13,  homeEntryPathIndex: 11, tokenImageUrl: '/images/ludo/token-green.png' },
+  blue:   { name: "Blue",   baseClass: "bg-blue-500",   textClass: "text-blue-700",   pathStartIndex: 26,  homeEntryPathIndex: 24, tokenImageUrl: '/images/ludo/token-blue.png' },
+  yellow: { name: "Yellow", baseClass: "bg-yellow-400", textClass: "text-yellow-700", pathStartIndex: 39,  homeEntryPathIndex: 37, tokenImageUrl: '/images/ludo/token-yellow.png' },
 };
 
-// Safe squares are based on their path index.
-export const SAFE_SQUARE_INDICES = [1, 9, 14, 22, 27, 35, 40, 48];
+// Safe squares are based on their path index. The stars on the board.
+export const SAFE_SQUARE_INDICES = [8, 21, 34, 47];
 
 
 export const initialPlayerState = (
@@ -30,7 +30,7 @@ export const initialPlayerState = (
   } else if (mode === 'ai') {
      activePlayerColors = ['blue', 'yellow']; 
   } else {
-    // Default order matches the new visual layout if not otherwise specified
+    // Default order: Red (TL), Green (TR), Blue (BR), Yellow (BL)
     activePlayerColors = (['red', 'green', 'blue', 'yellow'] as PlayerColor[]).slice(0, numPlayersToCreate);
   }
 
@@ -62,13 +62,22 @@ export const initialPlayerState = (
 export const getMovableTokens = (player: Player, roll: number): Token[] => {
     if (!player) return [];
     
+    const playerStartSquare = PLAYER_CONFIG[player.color].pathStartIndex;
+    
     return player.tokens.filter(token => {
-      if (token.position >= 200) return false;
+      // Cannot move a finished token
+      if (token.position >= 200) return false; 
+      
+      // Can only move from base with a 6
       if (token.position === -1) return roll === 6;
+
+      // Check if a token in the home stretch can move
       if (token.position >= 100) {
         const stretchPos = token.position % 100;
         return (stretchPos + roll) < HOME_STRETCH_LENGTH;
       }
+      
+      // All other tokens on the main path are movable
       return true;
     });
 };
@@ -89,39 +98,34 @@ export const moveToken = (
   const playerConfig = PLAYER_CONFIG[playerToMove.color];
   let captured = false;
 
+  // Moving from base
   if (tokenToMove.position === -1 && roll === 6) {
     tokenToMove.position = playerConfig.pathStartIndex;
   } 
+  // Moving on the main path
   else if (tokenToMove.position >= 0 && tokenToMove.position < MAIN_PATH_LENGTH) {
-    let newPosition = tokenToMove.position;
+    const currentPos = tokenToMove.position;
     const homeEntry = playerConfig.homeEntryPathIndex;
-    
-    let movedPastEntry = false;
-    // Check if the move will cross or land on the home entry point
-    // This logic handles the wrap-around path for Green player correctly
-    let effectiveEndPos = (newPosition + roll);
-    if ((newPosition <= homeEntry && effectiveEndPos > homeEntry) || // Standard crossing
-        (newPosition > homeEntry && (effectiveEndPos % MAIN_PATH_LENGTH) < newPosition && newPosition !== 0 && playerToMove.color === 'red' ) || // Red wrap-around
-        (newPosition > homeEntry && (effectiveEndPos % MAIN_PATH_LENGTH) > homeEntry && playerToMove.color !== 'red') // Standard non-wrap
-    ) {
-       let stepsAfterEntry = 0;
-       if (newPosition <= homeEntry) {
-           stepsAfterEntry = effectiveEndPos - homeEntry;
-       } else {
-           stepsAfterEntry = (effectiveEndPos % MAIN_PATH_LENGTH) - homeEntry;
-           if(stepsAfterEntry < 0) stepsAfterEntry += MAIN_PATH_LENGTH;
-       }
+    let newPosition = currentPos;
+    let enteredHomeStretch = false;
 
-       if (stepsAfterEntry <= HOME_STRETCH_LENGTH) { // Allow landing on home
-            tokenToMove.position = 100 + stepsAfterEntry - 1; // 0-indexed home stretch
-            movedPastEntry = true;
-       }
+    // Check if the token will pass or land on its home entry
+    for (let i = 1; i <= roll; i++) {
+        newPosition = (currentPos + i) % MAIN_PATH_LENGTH;
+        if (newPosition === homeEntry) {
+            const stepsIntoStretch = roll - i;
+            if (stepsIntoStretch < HOME_STRETCH_LENGTH) {
+                tokenToMove.position = 100 + stepsIntoStretch;
+                enteredHomeStretch = true;
+            }
+            break;
+        }
     }
-
-    if (!movedPastEntry) {
-        tokenToMove.position = (tokenToMove.position + roll) % MAIN_PATH_LENGTH;
+    if (!enteredHomeStretch) {
+        tokenToMove.position = (currentPos + roll) % MAIN_PATH_LENGTH;
     }
   } 
+  // Moving in the home stretch
   else if (tokenToMove.position >= 100 && tokenToMove.position < 200) {
     const currentStretchPos = tokenToMove.position % 100;
     const newStretchPos = currentStretchPos + roll;
@@ -132,11 +136,15 @@ export const moveToken = (
   }
   
   // Check for captures if the token landed on the main path
-  if (tokenToMove.position >= 0 && tokenToMove.position < MAIN_PATH_LENGTH && !SAFE_SQUARE_INDICES.includes(tokenToMove.position)) {
+  const finalPos = tokenToMove.position;
+  const isSafeSquare = SAFE_SQUARE_INDICES.includes(finalPos);
+  
+  if (finalPos >= 0 && finalPos < MAIN_PATH_LENGTH && !isSafeSquare) {
     newPlayers.forEach((p, p_idx) => {
+      // Don't capture own tokens
       if(p_idx === playerIndex) return;
       p.tokens.forEach(t => {
-        if (t.position === tokenToMove.position) {
+        if (t.position === finalPos) {
           t.position = -1; // Send back to base
           captured = true;
         }
@@ -144,11 +152,11 @@ export const moveToken = (
     })
   }
 
-  // Handle reaching home
+  // Handle reaching home (final square of home stretch)
   if (tokenToMove.position >= 100) {
       const stretchPos = tokenToMove.position % 100;
-      if (stretchPos === HOME_STRETCH_LENGTH - 1) { // Final home square
-          tokenToMove.position = 200 + tokenToMove.id;
+      if (stretchPos === HOME_STRETCH_LENGTH - 1) { 
+          tokenToMove.position = 200 + tokenToMove.id; // Mark as finished
       }
   }
 
