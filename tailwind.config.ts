@@ -18,7 +18,6 @@ export default {
     },
   	extend: {
       fontFamily: {
-        // Changed from Inter to Quicksand
         sans: ["var(--font-quicksand)", "system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", "Noto Sans", "sans-serif"],
       },
   		colors: {

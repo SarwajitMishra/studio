@@ -8,14 +8,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { RotateCcw, Copy, Users, Cpu, Globe, User as UserIcon } from 'lucide-react';
+import { RotateCcw, Users, Cpu, Globe, User as UserIcon } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
-import { db, auth, type User } from '@/lib/firebase';
-import { doc, setDoc, getDoc, onSnapshot, updateDoc, serverTimestamp } from 'firebase/firestore';
 
-import { PLAYER_COLORS, type Player, type Token, type GameView, type GameMode, type PlayerColor } from '@/lib/ludo/types';
+import { PLAYER_COLORS, type Player, type GameView, type GameMode, type PlayerColor } from '@/lib/ludo/types';
 import { initialPlayerState, getMovableTokens, isWinner, moveToken as moveTokenEngine, PLAYER_CONFIG } from '@/lib/ludo/engine';
 import { getAIMove } from '@/lib/ludo/ai';
 import { LudoBoard } from '@/components/ludo/LudoBoard';
@@ -41,67 +39,41 @@ export default function LudoPage() {
   const [gameMessage, setGameMessage] = useState("Welcome to Ludo! Set up your game.");
   const { toast } = useToast();
 
-  const [user, setUser] = useState<User | null>(null);
-  const [gameId, setGameId] = useState<string | null>(null);
-  const [joinGameId, setJoinGameId] = useState("");
-  const [onlineGameData, setOnlineGameData] = useState<any>(null);
-
   const currentPlayer = players[currentPlayerIndex];
 
-  useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => setUser(user));
-    return () => unsubscribe();
-  }, []);
-  
-  useEffect(() => {
-    if (!gameId) return;
-
-    const gameRef = doc(db, 'ludo-games', gameId);
-    const unsubscribe = onSnapshot(gameRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        setOnlineGameData(data);
-        setPlayers(data.players);
-        setCurrentPlayerIndex(data.currentPlayerIndex);
-        setDiceValue(data.diceValue);
-        setGameMessage(data.gameMessage);
-        
-        if (data.status === 'playing') setGameView('playing');
-        else if (data.status === 'gameOver') setGameView('gameOver');
-
-      } else {
-        toast({ title: "Game not found", description: "The game session has ended or could not be found.", variant: "destructive" });
-        setGameId(null);
-        setGameView('setup');
-      }
-    });
-
-    return () => unsubscribe();
-  }, [gameId, toast]);
-
   const passTurn = useCallback((isTurnEnding: boolean, turnForfeited = false) => {
-      const currentPlayer = players[currentPlayerIndex];
-      let nextIndex = currentPlayerIndex;
-
-      if (turnForfeited || isTurnEnding || !currentPlayer?.hasRolledSix) {
-          nextIndex = (currentPlayerIndex + 1) % players.length;
+      const activePlayers = players.filter(p => p.tokens.some(t => t.position < 200));
+      if (activePlayers.length <= 1) {
+        setGameView('gameOver');
+        setGameMessage(`${activePlayers[0]?.name || 'Winner'} wins the game!`);
+        return;
+      }
+      
+      let nextIndex = (currentPlayerIndex + 1) % players.length;
+      while(isWinner(players[nextIndex])) {
+        nextIndex = (nextIndex + 1) % players.length;
       }
 
+      if (turnForfeited || isTurnEnding || !players[currentPlayerIndex]?.hasRolledSix) {
+          setCurrentPlayerIndex(nextIndex);
+      } else {
+        // Player rolled a 6 and gets another turn, no index change needed.
+      }
+      
       setPlayers(currentPlayers => currentPlayers.map((p, idx) => {
           if (idx === currentPlayerIndex) return { ...p, sixStreak: 0, hasRolledSix: false };
           return p;
       }));
       setDiceValue(null);
 
-      if (nextIndex !== currentPlayerIndex) {
-          const nextPlayer = players[nextIndex];
-          if (nextPlayer) setGameMessage(`${nextPlayer.name}'s turn. ${nextPlayer.isAI ? 'AI is thinking...' : 'Click your dice to roll!'}`);
-      } else {
-          const nextPlayer = players[nextIndex];
-          if (nextPlayer) setGameMessage(`${nextPlayer.name} rolled a 6 and gets another turn.`);
+      const nextPlayer = players[nextIndex];
+      const currentPlayerGetsAnotherTurn = !isTurnEnding && players[currentPlayerIndex]?.hasRolledSix;
+
+      if (currentPlayerGetsAnotherTurn) {
+        setGameMessage(`${players[currentPlayerIndex].name} rolled a 6 and gets another turn.`);
+      } else if (nextPlayer) {
+        setGameMessage(`${nextPlayer.name}'s turn. ${nextPlayer.isAI ? 'AI is thinking...' : 'Click your dice to roll!'}`);
       }
-      
-      setCurrentPlayerIndex(nextIndex);
   }, [players, currentPlayerIndex]);
 
   const handleTokenMove = useCallback((playerIndex: number, tokenId: number, roll: number) => {
@@ -143,6 +115,8 @@ export default function LudoPage() {
               setPlayers(updatedPlayers.map((p,idx) => idx === currentPlayerIndex ? {...p, sixStreak: 0, hasRolledSix: false} : p));
               return;
           }
+      } else {
+         updatedPlayers = updatedPlayers.map((p, idx) => idx === currentPlayerIndex ? { ...p, hasRolledSix: false, sixStreak: 0 } : p);
       }
       
       const playerWithUpdatedSixRoll = updatedPlayers[currentPlayerIndex];
@@ -151,7 +125,7 @@ export default function LudoPage() {
       if (movableTokens.length === 0) {
           currentMessage += ` No valid moves. Passing turn.`;
           setGameMessage(currentMessage);
-          setTimeout(() => passTurn(roll !== 6), 1500);
+          setTimeout(() => passTurn(true), 1500); // Always pass turn if no moves
       } else {
           setGameMessage(currentMessage + (playerWithUpdatedSixRoll.isAI ? ` AI thinking...` : ` Select a token to move.`));
       }
@@ -159,7 +133,7 @@ export default function LudoPage() {
   }, [players, currentPlayerIndex, passTurn]);
 
   const handleDiceRoll = useCallback(() => {
-    if (isRolling) return;
+    if (isRolling || gameView !== 'playing') return;
     
     const player = players[currentPlayerIndex];
     if (!player || (player.isAI && diceValue !== null)) return;
@@ -178,14 +152,14 @@ export default function LudoPage() {
         setIsRolling(false);
         processDiceRoll(finalRoll);
       }
-    }, 70); // Faster interval for a quicker animation feel
-  }, [isRolling, players, currentPlayerIndex, diceValue, processDiceRoll]);
+    }, 70);
+  }, [isRolling, players, currentPlayerIndex, diceValue, processDiceRoll, gameView]);
 
   useEffect(() => {
-    if (gameView === 'playing' && currentPlayer?.isAI) {
-      if (diceValue === null && !isRolling) {
+    if (gameView === 'playing' && currentPlayer?.isAI && !isRolling) {
+      if (diceValue === null) {
           setTimeout(() => handleDiceRoll(), 1500);
-      } else if (diceValue !== null) {
+      } else {
           setTimeout(() => {
             const tokenId = getAIMove(players, currentPlayerIndex, diceValue);
             if (tokenId !== null) {
@@ -201,7 +175,7 @@ export default function LudoPage() {
 
   const handleTokenClick = (playerIndex: number, tokenId: number) => {
     const player = players[playerIndex];
-    if (isRolling || playerIndex !== currentPlayerIndex || !diceValue || !player || player.isAI) return;
+    if (isRolling || playerIndex !== currentPlayerIndex || !diceValue || !player || player.isAI || gameView !== 'playing') return;
 
     const movable = getMovableTokens(player, diceValue);
     if (!movable.some(t => t.id === tokenId)) {
@@ -404,7 +378,6 @@ export default function LudoPage() {
       <meta name="description" content="Play the classic game of Ludo online." />
       <div className="flex flex-col lg:flex-row gap-4 lg:gap-8 items-center lg:items-start justify-center p-2 md:p-4 bg-gradient-to-br from-primary/20 to-background overflow-hidden">
         
-        {/* Game Board */}
         <div className="w-full max-w-[600px] lg:max-w-none lg:w-auto lg:flex-1 flex justify-center">
             <LudoBoard
                 players={players}
@@ -417,7 +390,6 @@ export default function LudoPage() {
             />
         </div>
         
-        {/* Control Panel */}
         <div className="w-full lg:w-80 flex-shrink-0 space-y-4">
           <Card className="shadow-xl bg-card/80 backdrop-blur-sm">
              <CardHeader className="text-center">

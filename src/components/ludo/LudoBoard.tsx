@@ -41,17 +41,13 @@ const pathCoords: { row: number, col: number }[] = [
     { row: 8, col: 0 }, { row: 7, col: 0 }, { row: 6, col: 0 },
 ];
 
-
-// Corrected home stretch coordinates for each color.
 const homeStretchCoords: Record<PlayerColor, { row: number, col: number }[]> = {
-  red:    [ { row: 1, col: 7 }, { row: 2, col: 7 }, { row: 3, col: 7 }, { row: 4, col: 7 }, { row: 5, col: 7 }, { row: 6, col: 7 } ],
-  green:  [ { row: 7, col: 13 }, { row: 7, col: 12 }, { row: 7, col: 11 }, { row: 7, col: 10 }, { row: 7, col: 9 }, { row: 7, col: 8 } ],
-  blue:   [ { row: 13, col: 7 }, { row: 12, col: 7 }, { row: 11, col: 7 }, { row: 10, col: 7 }, { row: 9, col: 7 }, { row: 8, col: 7 } ],
-  yellow: [ { row: 7, col: 1 }, { row: 7, col: 2 }, { row: 7, col: 3 }, { row: 7, col: 4 }, { row: 7, col: 5 }, { row: 7, col: 6 } ],
+  red:    [ { row: 7, col: 1 }, { row: 7, col: 2 }, { row: 7, col: 3 }, { row: 7, col: 4 }, { row: 7, col: 5 }, { row: 7, col: 6 } ],
+  green:  [ { row: 1, col: 7 }, { row: 2, col: 7 }, { row: 3, col: 7 }, { row: 4, col: 7 }, { row: 5, col: 7 }, { row: 6, col: 7 } ],
+  blue:   [ { row: 7, col: 13 }, { row: 7, col: 12 }, { row: 7, col: 11 }, { row: 7, col: 10 }, { row: 7, col: 9 }, { row: 7, col: 8 } ],
+  yellow: [ { row: 13, col: 7 }, { row: 12, col: 7 }, { row: 11, col: 7 }, { row: 10, col: 7 }, { row: 9, col: 7 }, { row: 8, col: 7 } ],
 };
 
-// Coordinates are 0-indexed for a 15x15 grid.
-// These are designed to center tokens inside the 2x2 quadrants of each 6x6 home area.
 const baseCoords: Record<PlayerColor, { row: number, col: number }[]> = {
   red:    [{row:1, col:1}, {row:1, col:4}, {row:4, col:1}, {row:4, col:4}],
   green:  [{row:1, col:10}, {row:1, col:13}, {row:4, col:10}, {row:4, col:13}],
@@ -59,8 +55,6 @@ const baseCoords: Record<PlayerColor, { row: number, col: number }[]> = {
   yellow: [{row:10, col:1}, {row:10, col:4}, {row:13, col:1}, {row:13, col:4}],
 };
 
-
-// Where finished tokens are placed (center of the board).
 const homeBaseCoords: { row: number, col: number } = {row: 7, col: 7};
 
 const getTokenPositionStyle = (token: Token): React.CSSProperties => {
@@ -136,7 +130,6 @@ export const LudoBoard: React.FC<LudoBoardProps> = (props) => {
       }}
       aria-label="Ludo board"
     >
-      {/* Player areas in corners */}
       {players.map((p, index) => (
         <PlayerArea 
             key={p.color} 
@@ -145,7 +138,6 @@ export const LudoBoard: React.FC<LudoBoardProps> = (props) => {
         />
       ))}
       
-      {/* Render All Tokens */}
       {players.flatMap((player, playerIndex) => {
          return player.tokens.map(token => {
             const isMovable = movableTokens.some(mt => mt.id === token.id && mt.color === token.color);
@@ -154,10 +146,10 @@ export const LudoBoard: React.FC<LudoBoardProps> = (props) => {
             const tokensOnThisCell = tokensByPosition[positionKey] || [];
             const cellIndex = tokensOnThisCell.findIndex(t => t.id === token.id && t.color === token.color);
 
-            let transform = 'translate(-50%, -50%)'; // Center tokens by default
+            let transform = 'translate(-50%, -50%)';
             if (tokensOnThisCell.length > 1) {
                 const angle = (cellIndex / tokensOnThisCell.length) * 2 * Math.PI;
-                const x = Math.cos(angle) * 20; // 20% offset
+                const x = Math.cos(angle) * 20;
                 const y = Math.sin(angle) * 20;
                 transform = `translate(calc(-50% + ${x}%), calc(-50% + ${y}%))`;
             }

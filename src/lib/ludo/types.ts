@@ -1,8 +1,8 @@
 
-export const PLAYER_COLORS = ['red', 'green', 'yellow', 'blue'] as const;
+export const PLAYER_COLORS = ['red', 'green', 'blue', 'yellow'] as const;
 export type PlayerColor = typeof PLAYER_COLORS[number];
 
-export type GameView = 'setup' | 'playing' | 'gameOver' | 'waitingForPlayers';
+export type GameView = 'setup' | 'playing' | 'gameOver';
 export type GameMode = 'offline' | 'ai' | 'online' | null;
 
 export interface Token {
@@ -25,5 +25,4 @@ export interface Player {
   hasRolledSix: boolean;
   sixStreak: number;
   isAI?: boolean;
-  uid?: string; // For online players
 }
