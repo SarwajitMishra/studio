@@ -193,7 +193,7 @@ export default function JigsawPuzzlePage() {
             }
 
             const imagePromises = imagesForDifficulty.map(async (img) => {
-                const results = await searchImages(img.hint, apiKey, { perPage: 1 });
+                const results = await searchImages(img.hint, apiKey, { perPage: 3 });
                 if (results.length > 0) {
                     return { ...img, src: results[0].largeImageURL };
                 }
