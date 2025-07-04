@@ -29,10 +29,10 @@ export const HOME_STRETCH_COORDINATES: Record<PlayerColor, { row: number; col: n
 };
 
 export const PLAYER_CONFIG: Record<PlayerColor, { name: string; baseClass: string; textClass: string; pathStartIndex: number; homeEntryPathIndex: number; houseCoords: {row: number, col: number}[]; tokenImageUrl: string; }> = {
-  red:    { name: "Red",    baseClass: "bg-red-500",    textClass: "text-red-700",    pathStartIndex: 0,  homeEntryPathIndex: 50, houseCoords: [{row:1,col:1},{row:1,col:4},{row:4,col:1},{row:4,col:4}], tokenImageUrl: '/images/ludo/token-red.png' },
-  green:  { name: "Green",  baseClass: "bg-green-500",  textClass: "text-green-700",  pathStartIndex: 13, homeEntryPathIndex: 11, houseCoords: [{row:1,col:10},{row:1,col:13},{row:4,col:10},{row:4,col:13}], tokenImageUrl: '/images/ludo/token-green.png' },
-  yellow: { name: "Yellow", baseClass: "bg-yellow-400", textClass: "text-yellow-700", pathStartIndex: 26, homeEntryPathIndex: 24, houseCoords: [{row:10,col:10},{row:10,col:13},{row:13,col:10},{row:13,col:13}], tokenImageUrl: '/images/ludo/token-yellow.png' },
-  blue:   { name: "Blue",   baseClass: "bg-blue-500",   textClass: "text-blue-700",   pathStartIndex: 39, homeEntryPathIndex: 37, houseCoords: [{row:10,col:1},{row:10,col:4},{row:13,col:1},{row:13,col:4}], tokenImageUrl: '/images/ludo/token-blue.png' },
+  red:    { name: "Red",    baseClass: "bg-red-500",    textClass: "text-red-700",    pathStartIndex: 0,  homeEntryPathIndex: 50, houseCoords: [{row:10,col:1},{row:10,col:4},{row:13,col:1},{row:13,col:4}], tokenImageUrl: '/images/ludo/token-red.png' },
+  green:  { name: "Green",  baseClass: "bg-green-500",  textClass: "text-green-700",  pathStartIndex: 39, homeEntryPathIndex: 37, houseCoords: [{row:1,col:1},{row:1,col:4},{row:4,col:1},{row:4,col:4}], tokenImageUrl: '/images/ludo/token-green.png' },
+  yellow: { name: "Yellow", baseClass: "bg-yellow-400", textClass: "text-yellow-700", pathStartIndex: 13, homeEntryPathIndex: 11, houseCoords: [{row:1,col:10},{row:1,col:13},{row:4,col:10},{row:4,col:13}], tokenImageUrl: '/images/ludo/token-yellow.png' },
+  blue:   { name: "Blue",   baseClass: "bg-blue-500",   textClass: "text-blue-700",   pathStartIndex: 26, homeEntryPathIndex: 24, houseCoords: [{row:10,col:10},{row:10,col:13},{row:13,col:10},{row:13,col:13}], tokenImageUrl: '/images/ludo/token-blue.png' },
 };
 
 export const SAFE_SQUARE_INDICES = [0, 8, 13, 21, 26, 34, 39, 47];
