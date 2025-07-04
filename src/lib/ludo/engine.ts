@@ -6,10 +6,10 @@ export const HOME_STRETCH_LENGTH = 6;
 export const NUM_TOKENS_PER_PLAYER = 4;
 
 export const PLAYER_CONFIG: Record<PlayerColor, { name: string; baseClass: string; textClass: string; pathStartIndex: number; homeEntryPathIndex: number; tokenImageUrl: string; }> = {
-  green:  { name: "Green",  baseClass: "bg-green-500",  textClass: "text-green-700",  pathStartIndex: 1,   homeEntryPathIndex: 51, tokenImageUrl: '/images/ludo/token-green.png' },
-  red:    { name: "Red",    baseClass: "bg-red-500",    textClass: "text-red-700",    pathStartIndex: 14,  homeEntryPathIndex: 12, tokenImageUrl: '/images/ludo/token-red.png' },
-  blue:   { name: "Blue",   baseClass: "bg-blue-500",   textClass: "text-blue-700",   pathStartIndex: 40,  homeEntryPathIndex: 38, tokenImageUrl: '/images/ludo/token-blue.png' },
+  red:    { name: "Red",    baseClass: "bg-red-500",    textClass: "text-red-700",    pathStartIndex: 1,   homeEntryPathIndex: 51, tokenImageUrl: '/images/ludo/token-red.png' },
+  green:  { name: "Green",  baseClass: "bg-green-500",  textClass: "text-green-700",  pathStartIndex: 14,  homeEntryPathIndex: 12, tokenImageUrl: '/images/ludo/token-green.png' },
   yellow: { name: "Yellow", baseClass: "bg-yellow-400", textClass: "text-yellow-700", pathStartIndex: 27,  homeEntryPathIndex: 25, tokenImageUrl: '/images/ludo/token-yellow.png' },
+  blue:   { name: "Blue",   baseClass: "bg-blue-500",   textClass: "text-blue-700",   pathStartIndex: 40,  homeEntryPathIndex: 38, tokenImageUrl: '/images/ludo/token-blue.png' },
 };
 
 // Safe squares are based on their path index.
@@ -31,7 +31,7 @@ export const initialPlayerState = (
      activePlayerColors = ['blue', 'yellow']; 
   } else {
     // Default order matches the new visual layout if not otherwise specified
-    activePlayerColors = (['green', 'red', 'yellow', 'blue'] as PlayerColor[]).slice(0, numPlayersToCreate);
+    activePlayerColors = (['red', 'green', 'blue', 'yellow'] as PlayerColor[]).slice(0, numPlayersToCreate);
   }
 
   return activePlayerColors.map((color, index) => {
@@ -101,7 +101,8 @@ export const moveToken = (
     // This logic handles the wrap-around path for Green player correctly
     let effectiveEndPos = (newPosition + roll);
     if ((newPosition <= homeEntry && effectiveEndPos > homeEntry) || // Standard crossing
-        (newPosition > homeEntry && (effectiveEndPos % MAIN_PATH_LENGTH) < newPosition)
+        (newPosition > homeEntry && (effectiveEndPos % MAIN_PATH_LENGTH) < newPosition && newPosition !== 0 && playerToMove.color === 'red' ) || // Red wrap-around
+        (newPosition > homeEntry && (effectiveEndPos % MAIN_PATH_LENGTH) > homeEntry && playerToMove.color !== 'red') // Standard non-wrap
     ) {
        let stepsAfterEntry = 0;
        if (newPosition <= homeEntry) {

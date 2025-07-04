@@ -2,12 +2,13 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { RotateCcw, Copy, Users, Cpu, Globe } from 'lucide-react';
+import { RotateCcw, Copy, Users, Cpu, Globe, User as UserIcon } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
@@ -18,6 +19,11 @@ import { PLAYER_COLORS, type Player, type Token, type GameView, type GameMode, t
 import { initialPlayerState, getMovableTokens, isWinner, moveToken as moveTokenEngine, PLAYER_CONFIG } from '@/lib/ludo/engine';
 import { getAIMove } from '@/lib/ludo/ai';
 import { LudoBoard } from '@/components/ludo/LudoBoard';
+
+const DICE_IMAGE_URLS: Record<number, string> = {
+    1: '/images/ludo/dice-1.png', 2: '/images/ludo/dice-2.png', 3: '/images/ludo/dice-3.png',
+    4: '/images/ludo/dice-4.png', 5: '/images/ludo/dice-5.png', 6: '/images/ludo/dice-6.png',
+};
 
 export default function LudoPage() {
   const [gameView, setGameView] = useState<GameView>('setup');
@@ -172,7 +178,7 @@ export default function LudoPage() {
         setIsRolling(false);
         processDiceRoll(finalRoll);
       }
-    }, 100);
+    }, 70); // Faster interval for a quicker animation feel
   }, [isRolling, players, currentPlayerIndex, diceValue, processDiceRoll]);
 
   useEffect(() => {
@@ -254,7 +260,7 @@ export default function LudoPage() {
     setCurrentPlayerIndex(0);
     setDiceValue(null);
     setGameView('playing');
-    setGameMessage(`${newPlayers[0].name}'s turn. Click your dice to roll!`);
+    setGameMessage(`${newPlayers[0].name}'s turn. Click the dice to roll!`);
   };
 
   const resetGame = useCallback(() => {
@@ -268,6 +274,8 @@ export default function LudoPage() {
     setGameMessage("Game Reset. Set up your new game!");
     toast({ title: "Game Reset", description: "Ludo game has been reset to setup." });
   }, [toast]);
+  
+  const isDiceButtonClickable = currentPlayer && !currentPlayer.isAI && gameView === 'playing' && !isRolling && (diceValue === null || currentPlayer.hasRolledSix);
 
   if (gameView === 'setup') {
     return (
@@ -394,16 +402,10 @@ export default function LudoPage() {
     <>
       <title>Ludo Game | Shravya Playhouse</title>
       <meta name="description" content="Play the classic game of Ludo online." />
-      <div className="flex flex-col items-center justify-start min-h-screen w-full p-1 sm:p-2 md:p-4 bg-gradient-to-br from-primary/30 to-background overflow-x-hidden">
+      <div className="flex flex-col lg:flex-row gap-4 lg:gap-8 items-center lg:items-start justify-center p-2 md:p-4 bg-gradient-to-br from-primary/20 to-background overflow-hidden">
         
-        <div className="mb-2 sm:mb-3 p-2 rounded-lg shadow-md bg-card/90 backdrop-blur-sm max-w-md text-center">
-            <h2 className="text-base sm:text-lg font-semibold text-primary">
-                {gameView === 'gameOver' ? "Game Over!" : (currentPlayer ? `Turn: ${currentPlayer.name}` : "Loading...")}
-            </h2>
-            <p className="text-xs sm:text-sm text-foreground/90 min-h-[1.5em]">{gameMessage}</p>
-        </div>
-        
-        <div className="w-full flex justify-center">
+        {/* Game Board */}
+        <div className="w-full max-w-[600px] lg:max-w-none lg:w-auto lg:flex-1 flex justify-center">
             <LudoBoard
                 players={players}
                 onTokenClick={handleTokenClick}
@@ -412,14 +414,44 @@ export default function LudoPage() {
                 movableTokens={currentPlayer && diceValue ? getMovableTokens(currentPlayer, diceValue) : []}
                 isRolling={isRolling}
                 gameView={gameView}
-                onDiceRoll={handleDiceRoll}
             />
         </div>
         
-        <div className="mt-3 sm:mt-4">
-             <Button onClick={resetGame} variant="outline" className="shadow-lg bg-card/80 hover:bg-card">
-              <RotateCcw className="mr-2 h-4 w-4" /> Reset Game
-            </Button>
+        {/* Control Panel */}
+        <div className="w-full lg:w-80 flex-shrink-0 space-y-4">
+          <Card className="shadow-xl bg-card/80 backdrop-blur-sm">
+             <CardHeader className="text-center">
+                <UserIcon className="h-16 w-16 mx-auto p-2 rounded-full bg-primary/20 text-primary border-2 border-primary/50" />
+                <CardTitle className="text-xl pt-2">Game Host</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-center">
+                <div className="p-3 min-h-[60px] bg-muted rounded-md shadow-inner text-center flex items-center justify-center">
+                  <p className="text-foreground/90 font-semibold">{gameMessage}</p>
+                </div>
+                 
+                <div className="flex justify-center py-4">
+                  <Image
+                      src={DICE_IMAGE_URLS[diceValue || 1]}
+                      alt={`Dice showing ${diceValue || 'face'}`}
+                      width={100} height={100}
+                      className={cn("transition-transform duration-300", isRolling ? "animate-dice-roll" : "")}
+                      data-ai-hint={`dice ${diceValue || 'one'}`}
+                  />
+                </div>
+
+                <Button 
+                  onClick={handleDiceRoll} 
+                  disabled={!isDiceButtonClickable}
+                  className="w-full text-lg py-6 bg-accent text-accent-foreground hover:bg-accent/90 shadow-lg"
+                >
+                  Roll Dice
+                </Button>
+                
+                <Button onClick={resetGame} variant="outline" className="w-full shadow-md">
+                  <RotateCcw className="mr-2 h-4 w-4" /> Reset Game
+                </Button>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </>

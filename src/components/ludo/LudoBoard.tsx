@@ -4,7 +4,7 @@
 import React from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Cpu } from 'lucide-react';
+import { Cpu, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Player, Token, PlayerColor, GameView } from '@/lib/ludo/types';
 import { PLAYER_CONFIG } from '@/lib/ludo/engine';
@@ -12,7 +12,6 @@ import { PLAYER_CONFIG } from '@/lib/ludo/engine';
 interface LudoBoardProps {
   players: Player[];
   onTokenClick: (playerIndex: number, tokenId: number) => void;
-  onDiceRoll: () => void;
   currentPlayerIndex: number;
   diceValue: number | null;
   movableTokens: Token[];
@@ -38,22 +37,22 @@ const pathCoords: { row: number, col: number }[] = [
 ];
 
 const homeStretchCoords: Record<PlayerColor, { row: number, col: number }[]> = {
-  green:  [ { row: 7, col: 1 }, { row: 7, col: 2 }, { row: 7, col: 3 }, { row: 7, col: 4 }, { row: 7, col: 5 }, {row: 7, col: 6} ],
-  red:    [ { row: 1, col: 7 }, { row: 2, col: 7 }, { row: 3, col: 7 }, { row: 4, col: 7 }, { row: 5, col: 7 }, {row: 6, col: 7} ],
-  blue:   [ { row: 7, col: 13 }, { row: 7, col: 12 }, { row: 7, col: 11 }, { row: 7, col: 10 }, { row: 7, col: 9 }, {row: 7, col: 8} ],
-  yellow: [ { row: 13, col: 7 }, { row: 12, col: 7 }, { row: 11, col: 7 }, { row: 10, col: 7 }, { row: 9, col: 7 }, {row: 8, col: 7} ],
+  red:    [ { row: 7, col: 1 }, { row: 7, col: 2 }, { row: 7, col: 3 }, { row: 7, col: 4 }, { row: 7, col: 5 }, {row: 7, col: 6} ],
+  green:  [ { row: 1, col: 7 }, { row: 2, col: 7 }, { row: 3, col: 7 }, { row: 4, col: 7 }, { row: 5, col: 7 }, {row: 6, col: 7} ],
+  yellow: [ { row: 7, col: 13 }, { row: 7, col: 12 }, { row: 7, col: 11 }, { row: 7, col: 10 }, { row: 7, col: 9 }, {row: 7, col: 8} ],
+  blue:   [ { row: 13, col: 7 }, { row: 12, col: 7 }, { row: 11, col: 7 }, { row: 10, col: 7 }, { row: 9, col: 7 }, {row: 8, col: 7} ],
 };
 
 const baseCoords: Record<PlayerColor, { row: number, col: number }[]> = {
-  green:  [{row:1,col:1},{row:1,col:4},{row:4,col:1},{row:4,col:4}],
-  red:    [{row:1,col:10},{row:1,col:13},{row:4,col:10},{row:4,col:13}],
+  red:    [{row:1,col:1},{row:1,col:4},{row:4,col:1},{row:4,col:4}],
+  green:  [{row:1,col:10},{row:1,col:13},{row:4,col:10},{row:4,col:13}],
   blue:   [{row:10,col:10},{row:10,col:13},{row:13,col:10},{row:13,col:13}],
   yellow: [{row:10,col:1},{row:10,col:4},{row:13,col:1},{row:13,col:4}],
 };
 
 const homeBaseCoords: Record<PlayerColor, { row: number, col: number }> = {
-  green:  {row: 7, col: 7},
   red:    {row: 7, col: 7},
+  green:  {row: 7, col: 7},
   blue:   {row: 7, col: 7},
   yellow: {row: 7, col: 7},
 };
@@ -82,60 +81,6 @@ const getTokenPositionStyle = (token: Token): React.CSSProperties => {
   return { display: 'none' };
 };
 
-const PlayerArea: React.FC<{
-  player: Player,
-  isCurrentPlayer: boolean,
-  diceValue: number | null,
-  isRolling: boolean,
-  onDiceRoll: () => void,
-  gameView: GameView
-}> = ({ player, isCurrentPlayer, diceValue, isRolling, onDiceRoll, gameView }) => {
-  
-  const DICE_IMAGE_URLS: Record<number, string> = {
-    1: '/images/ludo/dice-1.png', 2: '/images/ludo/dice-2.png', 3: '/images/ludo/dice-3.png',
-    4: '/images/ludo/dice-4.png', 5: '/images/ludo/dice-5.png', 6: '/images/ludo/dice-6.png',
-  };
-  
-  const diceImageUrlToShow = (isCurrentPlayer && diceValue) ? DICE_IMAGE_URLS[diceValue] : DICE_IMAGE_URLS[6];
-  const isDiceButtonClickable = isCurrentPlayer && !player.isAI && gameView === 'playing' && !isRolling && (diceValue === null || player.hasRolledSix);
-
-  const areaStyles: Record<PlayerColor, string> = {
-    green: "1 / 1 / span 6 / span 6",
-    red: "1 / 10 / span 6 / span 6",
-    yellow: "10 / 1 / span 6 / span 6",
-    blue: "10 / 10 / span 6 / span 6",
-  };
-  
-  return (
-    <div style={{gridArea: areaStyles[player.color]}} className={cn("relative flex items-center justify-center", isCurrentPlayer ? "animate-pulse" : "")}>
-        <div className="absolute flex flex-col items-center justify-center p-2 rounded-lg transition-all duration-300 w-24 h-24 sm:w-28 sm:h-28">
-            <p className="text-xs sm:text-sm font-semibold truncate mb-1 text-center text-white drop-shadow-[0_1.2px_1.2px_rgba(0,0,0,0.8)]" title={player.name}>
-                {player.name} {player.isAI && <Cpu size={14} className="inline ml-1"/>}
-            </p>
-            <Button
-                variant="outline"
-                size="icon"
-                className={cn(
-                    "border-2 border-dashed rounded-lg shadow-sm flex items-center justify-center p-0",
-                    "h-8 w-8 sm:h-10 sm:w-10",
-                    isDiceButtonClickable ? "cursor-pointer bg-white/30 hover:bg-white/50" : "border-muted-foreground/30 cursor-not-allowed opacity-70",
-                )}
-                onClick={() => { if (isDiceButtonClickable) onDiceRoll(); }}
-                disabled={!isDiceButtonClickable || gameView === 'gameOver'}
-                aria-label={`Roll dice for ${player.name}`}
-            >
-                <Image
-                    src={diceImageUrlToShow}
-                    alt={`Dice showing ${diceValue || 'face'}`}
-                    width={32} height={32}
-                    className={cn("w-5 h-5 sm:w-6 sm:h-6", isRolling && isCurrentPlayer ? "animate-spin" : "")}
-                    data-ai-hint={`dice ${diceValue || 'six'}`}
-                />
-            </Button>
-        </div>
-    </div>
-  );
-};
 
 export const LudoBoard: React.FC<LudoBoardProps> = (props) => {
   const { players, onTokenClick, currentPlayerIndex, movableTokens, isRolling, gameView } = props;
@@ -165,10 +110,29 @@ export const LudoBoard: React.FC<LudoBoardProps> = (props) => {
       }}
       aria-label="Ludo board"
     >
-      {/* Player Info and Dice Areas */}
-      {players.map((p, index) => (
-        <PlayerArea key={p.color} player={p} isCurrentPlayer={index === currentPlayerIndex} {...props} />
-      ))}
+      {/* Player name labels in corners */}
+      {players.map((p, index) => {
+        const config = PLAYER_CONFIG[p.color];
+        const isCurrent = index === currentPlayerIndex;
+        let positionClass = '';
+        switch(p.color) {
+            case 'red': positionClass = 'top-2 left-2'; break;
+            case 'green': positionClass = 'top-2 right-2'; break;
+            case 'yellow': positionClass = 'bottom-2 left-2'; break;
+            case 'blue': positionClass = 'bottom-2 right-2'; break;
+        }
+        return (
+            <div key={p.color} className={cn(
+                'absolute p-2 rounded-lg bg-card/70 backdrop-blur-sm shadow-md transition-all duration-300',
+                positionClass,
+                isCurrent ? 'ring-2 ring-accent scale-105' : 'ring-1 ring-black/10'
+            )}>
+                <p className="text-sm font-semibold truncate text-center text-foreground drop-shadow-[0_1.2px_1.2px_rgba(0,0,0,0.8)]" title={p.name}>
+                    {p.name} {p.isAI && <Cpu size={14} className="inline ml-1"/>}
+                </p>
+            </div>
+        )
+      })}
       
       {/* Render All Tokens */}
       {players.flatMap((player, playerIndex) => {
