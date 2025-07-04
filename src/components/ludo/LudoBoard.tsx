@@ -54,63 +54,39 @@ const getTokenForCell = (players: Player[], rowIndex: number, colIndex: number):
     return tokensOnThisCell;
 };
 
-const getCellBackgroundColor = (rowIndex: number, colIndex: number): string => {
-    const playerColors = Object.keys(PLAYER_CONFIG) as (keyof typeof PLAYER_CONFIG)[];
-    
-    for (const color of playerColors) {
-        const config = PLAYER_CONFIG[color];
-        if (config.houseCoords.some(c => c.row === rowIndex && c.col === colIndex)) {
-            return `${config.baseClass}/30`;
-        }
-        if (HOME_STRETCH_COORDINATES[color].some(c => c.row === rowIndex && c.col === colIndex)) {
-            return `${config.baseClass}/40`;
-        }
-    }
-    
-    if (rowIndex >= 6 && rowIndex <= 8 && colIndex >= 6 && colIndex <= 8) {
-        if(rowIndex === 7 && colIndex === 7) return "bg-primary/30";
-        if (HOME_STRETCH_COORDINATES.red[HOME_STRETCH_LENGTH-1].row === rowIndex && HOME_STRETCH_COORDINATES.red[HOME_STRETCH_LENGTH-1].col === colIndex) return PLAYER_CONFIG.red.baseClass + "/90";
-        if (HOME_STRETCH_COORDINATES.green[HOME_STRETCH_LENGTH-1].row === rowIndex && HOME_STRETCH_COORDINATES.green[HOME_STRETCH_LENGTH-1].col === colIndex) return PLAYER_CONFIG.green.baseClass + "/90";
-        if (HOME_STRETCH_COORDINATES.yellow[HOME_STRETCH_LENGTH-1].row === rowIndex && HOME_STRETCH_COORDINATES.yellow[HOME_STRETCH_LENGTH-1].col === colIndex) return PLAYER_CONFIG.yellow.baseClass + "/90";
-        if (HOME_STRETCH_COORDINATES.blue[HOME_STRETCH_LENGTH-1].row === rowIndex && HOME_STRETCH_COORDINATES.blue[HOME_STRETCH_LENGTH-1].col === colIndex) return PLAYER_CONFIG.blue.baseClass + "/90";
-        return "bg-primary/30";
-    }
-
-    if (MAIN_PATH_COORDINATES.some(p => p.row === rowIndex && p.col === colIndex)) {
-      return "bg-slate-50";
-    }
-    
-    return "bg-background";
-};
-
 export const LudoBoard: React.FC<LudoBoardProps> = ({ players, onTokenClick, currentPlayerIndex, movableTokens, isRolling, gameView }) => {
   const boardCells = Array(BOARD_GRID_SIZE * BOARD_GRID_SIZE).fill(null).map((_, i) => i);
   const currentPlayer = players[currentPlayerIndex];
 
   return (
     <div
-      className="grid gap-px border-2 border-neutral-700 rounded overflow-hidden shadow-lg bg-neutral-300 w-full max-w-[300px] sm:max-w-[400px] md:max-w-[480px] lg:max-w-[540px] aspect-square"
-      style={{ gridTemplateColumns: `repeat(${BOARD_GRID_SIZE}, minmax(0, 1fr))` }}
+      className="relative grid border-2 border-neutral-700 rounded overflow-hidden shadow-lg bg-cover bg-center w-full max-w-[300px] sm:max-w-[400px] md:max-w-[480px] lg:max-w-[540px] aspect-square"
+      style={{
+        gridTemplateColumns: `repeat(${BOARD_GRID_SIZE}, minmax(0, 1fr))`,
+        backgroundImage: "url('/images/ludo/board.png')"
+      }}
       aria-label="Ludo board"
     >
       {boardCells.map((_, cellFlatIndex) => {
         const rowIndex = Math.floor(cellFlatIndex / BOARD_GRID_SIZE);
         const colIndex = cellFlatIndex % BOARD_GRID_SIZE;
         const tokensOnThisCell = getTokenForCell(players, rowIndex, colIndex);
-        const cellBg = getCellBackgroundColor(rowIndex, colIndex);
         const pathIndex = MAIN_PATH_COORDINATES.findIndex(p => p.row === rowIndex && p.col === colIndex);
         const isSafe = SAFE_SQUARE_INDICES.includes(pathIndex);
 
         const startColor = (Object.keys(PLAYER_CONFIG) as PlayerColor[]).find(
-          (color) => PLAYER_CONFIG[color].pathStartIndex === pathIndex
+          (color) => {
+              if(!players.some(p => p.color === color)) return false;
+              return PLAYER_CONFIG[color].pathStartIndex === pathIndex
+          }
         );
         
-        const isStart = !!(startColor && players.some(p => p.color === startColor));
+        const isStart = !!startColor;
 
         return (
           <div
             key={`${rowIndex}-${colIndex}`}
-            className={cn("aspect-square flex items-center justify-center text-xs relative", cellBg, "border border-neutral-400/30")}
+            className="aspect-square flex items-center justify-center text-xs relative"
           >
             {isSafe && !isStart && <Star size={12} className="absolute text-yellow-500/70 opacity-70 z-0"/>}
             {isStart && <Star size={16} className={cn("absolute z-0 opacity-80", PLAYER_CONFIG[startColor].textClass)}/>}
@@ -142,7 +118,8 @@ export const LudoBoard: React.FC<LudoBoardProps> = ({ players, onTokenClick, cur
                      style={{
                         transform: tokensOnThisCell.length === 2 ? (idx === 0 ? 'translateX(-20%)' : 'translateX(20%)') :
                                    tokensOnThisCell.length === 3 ? (idx === 0 ? 'translateX(-20%) translateY(-15%)' : idx === 1 ? 'translateX(20%) translateY(-15%)' : 'translateY(15%)') :
-                                   tokensOnThisCell.length === 4 ? (idx === 0 ? 'translate(-20%, -20%)' : idx === 1 ? 'translate(20%, -20%)' : idx === 2 ? 'translate(-20%, 20%)' : 'translate(20%, 20%)') : 'translate(0,0)',
+                                   tokensOnThisCell.length === 4 ? (idx === 0 ? 'translate(-20%, -20%)' : idx === 1 ? 'translate(20%, -20%)' : idx === 2 ? 'translate(-20%, 20%)' : 'translate(Y(15%)') :
+                                   'translate(0,0)',
                         zIndex: 10 + idx
                     }}
                     aria-label={`Token ${token.color} ${token.id + 1}`}
