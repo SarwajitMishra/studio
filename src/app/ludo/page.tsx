@@ -18,7 +18,6 @@ import { PLAYER_COLORS, type Player, type Token, type GameView, type GameMode, t
 import { initialPlayerState, getMovableTokens, isWinner, moveToken as moveTokenEngine, PLAYER_CONFIG } from '@/lib/ludo/engine';
 import { getAIMove } from '@/lib/ludo/ai';
 import { LudoBoard } from '@/components/ludo/LudoBoard';
-import { PlayerInfoCard } from '@/components/ludo/PlayerInfoCard';
 
 export default function LudoPage() {
   const [gameView, setGameView] = useState<GameView>('setup');
@@ -270,11 +269,6 @@ export default function LudoPage() {
     toast({ title: "Game Reset", description: "Ludo game has been reset to setup." });
   }, [toast]);
 
-  const player1 = players.find(p => p.color === 'red');
-  const player2 = players.find(p => p.color === 'green');
-  const player3 = players.find(p => p.color === 'yellow');
-  const player4 = players.find(p => p.color === 'blue');
-
   if (gameView === 'setup') {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-br from-primary/30 to-background">
@@ -409,35 +403,19 @@ export default function LudoPage() {
             <p className="text-xs sm:text-sm text-foreground/90 min-h-[1.5em]">{gameMessage}</p>
         </div>
         
-        <div className="relative w-full max-w-[700px] mx-auto aspect-square">
-            {/* Centered Board */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full p-8 sm:p-12 md:p-16">
-                 <LudoBoard players={players} onTokenClick={handleTokenClick} currentPlayerIndex={currentPlayerIndex} diceValue={diceValue} movableTokens={currentPlayer && diceValue ? getMovableTokens(currentPlayer, diceValue) : []} isRolling={isRolling} gameView={gameView} />
-            </div>
-
-            {/* Player Cards in Corners */}
-            {player2 && ( // Green - Top Left
-                <div className="absolute top-0 left-0">
-                    <PlayerInfoCard player={player2} isCurrentPlayer={currentPlayer?.color === player2.color} diceValue={diceValue} isRolling={isRolling} onDiceRoll={handleDiceRoll} gameView={gameView} />
-                </div>
-            )}
-            {player3 && ( // Yellow - Top Right
-                <div className="absolute top-0 right-0">
-                    <PlayerInfoCard player={player3} isCurrentPlayer={currentPlayer?.color === player3.color} diceValue={diceValue} isRolling={isRolling} onDiceRoll={handleDiceRoll} gameView={gameView} />
-                </div>
-            )}
-            {player1 && ( // Red - Bottom Left
-                <div className="absolute bottom-0 left-0">
-                    <PlayerInfoCard player={player1} isCurrentPlayer={currentPlayer?.color === player1.color} diceValue={diceValue} isRolling={isRolling} onDiceRoll={handleDiceRoll} gameView={gameView} />
-                </div>
-            )}
-             {player4 && ( // Blue - Bottom Right
-                <div className="absolute bottom-0 right-0">
-                    <PlayerInfoCard player={player4} isCurrentPlayer={currentPlayer?.color === player4.color} diceValue={diceValue} isRolling={isRolling} onDiceRoll={handleDiceRoll} gameView={gameView} />
-                </div>
-            )}
+        <div className="w-full flex justify-center">
+            <LudoBoard
+                players={players}
+                onTokenClick={handleTokenClick}
+                currentPlayerIndex={currentPlayerIndex}
+                diceValue={diceValue}
+                movableTokens={currentPlayer && diceValue ? getMovableTokens(currentPlayer, diceValue) : []}
+                isRolling={isRolling}
+                gameView={gameView}
+                onDiceRoll={handleDiceRoll}
+            />
         </div>
-
+        
         <div className="mt-3 sm:mt-4">
              <Button onClick={resetGame} variant="outline" className="shadow-lg bg-card/80 hover:bg-card">
               <RotateCcw className="mr-2 h-4 w-4" /> Reset Game
