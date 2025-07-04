@@ -22,12 +22,12 @@ export const PlayerInfoCard: React.FC<PlayerInfoCardProps> = ({ player, isCurren
   const playerSpecificConfig = PLAYER_CONFIG[player.color];
   
   const DICE_IMAGE_URLS: Record<number, string> = {
-    1: 'https://placehold.co/48x48.png',
-    2: 'https://placehold.co/48x48.png',
-    3: 'https://placehold.co/48x48.png',
-    4: 'https://placehold.co/48x48.png',
-    5: 'https://placehold.co/48x48.png',
-    6: 'https://placehold.co/48x48.png',
+    1: '/images/ludo/dice-1.png',
+    2: '/images/ludo/dice-2.png',
+    3: '/images/ludo/dice-3.png',
+    4: '/images/ludo/dice-4.png',
+    5: '/images/ludo/dice-5.png',
+    6: '/images/ludo/dice-6.png',
   };
   
   let diceImageUrlToShow = DICE_IMAGE_URLS[6];
