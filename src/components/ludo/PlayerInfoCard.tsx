@@ -2,9 +2,9 @@
 "use client";
 
 import React from 'react';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Cpu } from 'lucide-react';
-import * as LucideIcons from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Player, GameView } from '@/lib/ludo/types';
 import { PLAYER_CONFIG } from '@/lib/ludo/engine';
@@ -21,17 +21,24 @@ interface PlayerInfoCardProps {
 export const PlayerInfoCard: React.FC<PlayerInfoCardProps> = ({ player, isCurrentPlayer, diceValue, isRolling, onDiceRoll, gameView }) => {
   const playerSpecificConfig = PLAYER_CONFIG[player.color];
   
-  const DICE_ICONS: Record<number, React.ElementType> = {
-    1: LucideIcons.Dice1, 2: LucideIcons.Dice2, 3: LucideIcons.Dice3, 4: LucideIcons.Dice4, 5: LucideIcons.Dice5, 6: LucideIcons.Dice6
+  const DICE_IMAGE_URLS: Record<number, string> = {
+    1: 'https://placehold.co/48x48.png',
+    2: 'https://placehold.co/48x48.png',
+    3: 'https://placehold.co/48x48.png',
+    4: 'https://placehold.co/48x48.png',
+    5: 'https://placehold.co/48x48.png',
+    6: 'https://placehold.co/48x48.png',
   };
   
-  let DiceIconToRender = LucideIcons.Dice6;
-  let isDiceButtonClickable = false;
-
+  let diceImageUrlToShow = DICE_IMAGE_URLS[6];
   if (isCurrentPlayer && player) {
     if (diceValue) {
-      DiceIconToRender = DICE_ICONS[diceValue] || LucideIcons.Dice6;
+      diceImageUrlToShow = DICE_IMAGE_URLS[diceValue] || DICE_IMAGE_URLS[6];
     }
+  }
+
+  let isDiceButtonClickable = false;
+  if (isCurrentPlayer && player) {
     if (!player.isAI && gameView === 'playing' && !isRolling && (diceValue === null || player.hasRolledSix)) {
       isDiceButtonClickable = true;
     }
@@ -58,7 +65,7 @@ export const PlayerInfoCard: React.FC<PlayerInfoCardProps> = ({ player, isCurren
         variant="outline"
         size="icon"
         className={cn(
-          "border-2 border-dashed rounded-lg shadow-sm flex items-center justify-center",
+          "border-2 border-dashed rounded-lg shadow-sm flex items-center justify-center p-0",
           "h-10 w-10 sm:h-12 sm:w-12",
           isDiceButtonClickable
             ? cn("cursor-pointer", playerSpecificConfig.baseClass + "/30", `hover:${playerSpecificConfig.baseClass}/50`)
@@ -70,7 +77,14 @@ export const PlayerInfoCard: React.FC<PlayerInfoCardProps> = ({ player, isCurren
         disabled={!isDiceButtonClickable || gameView === 'gameOver'}
         aria-label={`Roll dice for ${player.name}`}
       >
-        <DiceIconToRender size={24} className={cn(isRolling ? "animate-spin text-muted-foreground" : playerSpecificConfig.textClass)} />
+        <Image
+            src={diceImageUrlToShow}
+            alt={`Dice showing ${diceValue || 'face'}`}
+            width={32}
+            height={32}
+            className={cn(isRolling ? "animate-spin" : "")}
+            data-ai-hint={`dice ${diceValue || 'six'}`}
+        />
       </Button>
     </div>
   );

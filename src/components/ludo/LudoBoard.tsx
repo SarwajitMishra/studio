@@ -2,6 +2,7 @@
 "use client";
 
 import React from 'react';
+import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import type { Player, Token, PlayerColor } from '@/lib/ludo/types';
 import { 
@@ -100,13 +101,11 @@ export const LudoBoard: React.FC<LudoBoardProps> = ({ players, onTokenClick, cur
         const pathIndex = MAIN_PATH_COORDINATES.findIndex(p => p.row === rowIndex && p.col === colIndex);
         const isSafe = SAFE_SQUARE_INDICES.includes(pathIndex);
 
-        // Find which color this start square belongs to
         const startColor = (Object.keys(PLAYER_CONFIG) as PlayerColor[]).find(
           (color) => PLAYER_CONFIG[color].pathStartIndex === pathIndex
         );
         
-        // A start square only shows its star if a player of that color is in the game.
-        const isStart = startColor && players.some(p => p.color === startColor);
+        const isStart = !!(startColor && players.some(p => p.color === startColor));
 
         return (
           <div
@@ -114,7 +113,7 @@ export const LudoBoard: React.FC<LudoBoardProps> = ({ players, onTokenClick, cur
             className={cn("aspect-square flex items-center justify-center text-xs relative", cellBg, "border border-neutral-400/30")}
           >
             {isSafe && !isStart && <Star size={12} className="absolute text-yellow-500/70 opacity-70 z-0"/>}
-            {isStart && <Star size={16} className={cn("absolute z-0 opacity-80", PLAYER_CONFIG[startColor!].textClass)}/>}
+            {isStart && <Star size={16} className={cn("absolute z-0 opacity-80", PLAYER_CONFIG[startColor].textClass)}/>}
 
             {tokensOnThisCell.map((token, idx) => {
                  const playerOfToken = players.find(p => p.color === token.color);
@@ -135,10 +134,10 @@ export const LudoBoard: React.FC<LudoBoardProps> = ({ players, onTokenClick, cur
                     }
                     className={cn(
                         "rounded-full flex items-center justify-center border-2 md:border-4 border-white/90 hover:ring-2 hover:ring-offset-1 absolute shadow-xl transition-transform duration-200",
-                        PLAYER_CONFIG[token.color].baseClass,
                         isMovable && currentPlayerIndex === playerIndexOfToken && !playerOfToken?.isAI ? "cursor-pointer ring-4 ring-yellow-400 ring-offset-2 animate-gentle-bounce" : "cursor-default",
                         "z-10",
                         tokensOnThisCell.length > 1 ? 'w-[75%] h-[75%]' : 'w-[85%] h-[85%]',
+                        'bg-transparent p-0'
                     )}
                      style={{
                         transform: tokensOnThisCell.length === 2 ? (idx === 0 ? 'translateX(-20%)' : 'translateX(20%)') :
@@ -148,6 +147,14 @@ export const LudoBoard: React.FC<LudoBoardProps> = ({ players, onTokenClick, cur
                     }}
                     aria-label={`Token ${token.color} ${token.id + 1}`}
                     >
+                      <Image
+                        src={PLAYER_CONFIG[token.color].tokenImageUrl}
+                        alt={`${token.color} token`}
+                        width={40}
+                        height={40}
+                        className="rounded-full object-cover"
+                        data-ai-hint={`${token.color} ludo token`}
+                      />
                       <div className="absolute inset-0 rounded-full shadow-inner"/>
                 </button>
             )})}

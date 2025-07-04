@@ -5,7 +5,6 @@ export const MAIN_PATH_LENGTH = 52;
 export const HOME_STRETCH_LENGTH = 6;
 export const NUM_TOKENS_PER_PLAYER = 4;
 export const BOARD_GRID_SIZE = 15;
-export const DICE_ICONS = ["Dice1", "Dice2", "Dice3", "Dice4", "Dice5", "Dice6"]; // String names for dynamic import
 
 export const MAIN_PATH_COORDINATES: { row: number; col: number }[] = [
   { row: 6, col: 1 }, { row: 6, col: 2 }, { row: 6, col: 3 }, { row: 6, col: 4 }, { row: 6, col: 5 },
@@ -29,11 +28,11 @@ export const HOME_STRETCH_COORDINATES: Record<PlayerColor, { row: number; col: n
   blue:   [ { row: 13, col: 7 }, { row: 12, col: 7 }, { row: 11, col: 7 }, { row: 10, col: 7 }, { row: 9, col: 7 }, {row: 8, col: 7} ],
 };
 
-export const PLAYER_CONFIG: Record<PlayerColor, { name: string; baseClass: string; textClass: string; pathStartIndex: number; homeEntryPathIndex: number; houseCoords: {row: number, col: number}[] }> = {
-  red:    { name: "Red",    baseClass: "bg-red-500",    textClass: "text-red-700",    pathStartIndex: 0,  homeEntryPathIndex: 50, houseCoords: [{row:1,col:1},{row:1,col:4},{row:4,col:1},{row:4,col:4}] },
-  green:  { name: "Green",  baseClass: "bg-green-500",  textClass: "text-green-700",  pathStartIndex: 13, homeEntryPathIndex: 11, houseCoords: [{row:1,col:10},{row:1,col:13},{row:4,col:10},{row:4,col:13}] },
-  yellow: { name: "Yellow", baseClass: "bg-yellow-400", textClass: "text-yellow-700", pathStartIndex: 26, homeEntryPathIndex: 24, houseCoords: [{row:10,col:10},{row:10,col:13},{row:13,col:10},{row:13,col:13}] },
-  blue:   { name: "Blue",   baseClass: "bg-blue-500",   textClass: "text-blue-700",   pathStartIndex: 39, homeEntryPathIndex: 37, houseCoords: [{row:10,col:1},{row:10,col:4},{row:13,col:1},{row:13,col:4}] },
+export const PLAYER_CONFIG: Record<PlayerColor, { name: string; baseClass: string; textClass: string; pathStartIndex: number; homeEntryPathIndex: number; houseCoords: {row: number, col: number}[]; tokenImageUrl: string; }> = {
+  red:    { name: "Red",    baseClass: "bg-red-500",    textClass: "text-red-700",    pathStartIndex: 0,  homeEntryPathIndex: 50, houseCoords: [{row:1,col:1},{row:1,col:4},{row:4,col:1},{row:4,col:4}], tokenImageUrl: 'https://placehold.co/40x40.png' },
+  green:  { name: "Green",  baseClass: "bg-green-500",  textClass: "text-green-700",  pathStartIndex: 13, homeEntryPathIndex: 11, houseCoords: [{row:1,col:10},{row:1,col:13},{row:4,col:10},{row:4,col:13}], tokenImageUrl: 'https://placehold.co/40x40.png' },
+  yellow: { name: "Yellow", baseClass: "bg-yellow-400", textClass: "text-yellow-700", pathStartIndex: 26, homeEntryPathIndex: 24, houseCoords: [{row:10,col:10},{row:10,col:13},{row:13,col:10},{row:13,col:13}], tokenImageUrl: 'https://placehold.co/40x40.png' },
+  blue:   { name: "Blue",   baseClass: "bg-blue-500",   textClass: "text-blue-700",   pathStartIndex: 39, homeEntryPathIndex: 37, houseCoords: [{row:10,col:1},{row:10,col:4},{row:13,col:1},{row:13,col:4}], tokenImageUrl: 'https://placehold.co/40x40.png' },
 };
 
 export const SAFE_SQUARE_INDICES = [0, 8, 13, 21, 26, 34, 39, 47];
