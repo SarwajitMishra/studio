@@ -7,16 +7,16 @@ export type ColorTheme = {
 
 // HSL values as strings
 export const COLOR_THEMES: Record<string, ColorTheme> = {
-  default: { // Current Theme: Sky Blue & Sunny Yellow
+  default: { // New Theme: Playful Pastel
     light: {
-      'background-h': '207', 'background-s': '83%', 'background-l': '93%',
-      'primary-h': '197', 'primary-s': '71%', 'primary-l': '73%',
-      'accent-h': '51', 'accent-s': '100%', 'accent-l': '50%',
+      'background-h': '200', 'background-s': '100%', 'background-l': '97%',
+      'primary-h': '220', 'primary-s': '70%', 'primary-l': '75%',
+      'accent-h': '40', 'accent-s': '100%', 'accent-l': '60%',
     },
     dark: {
-      'background-h': '215', 'background-s': '25%', 'background-l': '15%',
-      'primary-h': '197', 'primary-s': '71%', 'primary-l': '65%',
-      'accent-h': '51', 'accent-s': '100%', 'accent-l': '55%',
+      'background-h': '220', 'background-s': '25%', 'background-l': '15%',
+      'primary-h': '220', 'primary-s': '60%', 'primary-l': '65%',
+      'accent-h': '40', 'accent-s': '95%', 'accent-l': '55%',
     }
   },
   red: { // Sunset Theme
