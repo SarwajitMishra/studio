@@ -6,19 +6,28 @@ export const HOME_STRETCH_LENGTH = 6;
 export const NUM_TOKENS_PER_PLAYER = 4;
 export const BOARD_GRID_SIZE = 15;
 
-export const MAIN_PATH_COORDINATES: { row: number; col: number }[] = [
-  { row: 6, col: 1 }, { row: 6, col: 2 }, { row: 6, col: 3 }, { row: 6, col: 4 }, { row: 6, col: 5 },
-  { row: 5, col: 6 }, { row: 4, col: 6 }, { row: 3, col: 6 }, { row: 2, col: 6 }, { row: 1, col: 6 }, { row: 0, col: 6 },
-  { row: 0, col: 8 },
-  { row: 1, col: 8 }, { row: 2, col: 8 }, { row: 3, col: 8 }, { row: 4, col: 8 }, { row: 5, col: 8 },
-  { row: 6, col: 9 }, { row: 6, col: 10 }, { row: 6, col: 11 }, { row: 6, col: 12 }, { row: 6, col: 13 }, { row: 6, col: 14 },
-  { row: 8, col: 14 },
-  { row: 8, col: 13 }, { row: 8, col: 12 }, { row: 8, col: 11 }, { row: 8, col: 10 }, { row: 8, col: 9 },
-  { row: 9, col: 8 }, { row: 10, col: 8 }, { row: 11, col: 8 }, { row: 12, col: 8 }, { row: 13, col: 8 }, { row: 14, col: 8 },
-  { row: 14, col: 6 },
-  { row: 13, col: 6 }, { row: 12, col: 6 }, { row: 11, col: 6 }, { row: 10, col: 6 }, { row: 9, col: 6 },
-  { row: 8, col: 5 }, { row: 8, col: 4 }, { row: 8, col: 3 }, { row: 8, col: 2 }, { row: 8, col: 1 }, { row: 8, col: 0 },
-  { row: 6, col: 0 }
+// Corrected path for a clockwise movement starting from Red's path entry.
+export const MAIN_PATH_COORDINATES = [
+    // Red's Path (Bottom-Left quadrant)
+    { row: 8, col: 1 }, { row: 8, col: 2 }, { row: 8, col: 3 }, { row: 8, col: 4 }, { row: 8, col: 5 },
+    { row: 9, col: 6 }, { row: 10, col: 6 }, { row: 11, col: 6 }, { row: 12, col: 6 }, { row: 13, col: 6 },
+    { row: 14, col: 6 },
+    { row: 14, col: 8 },
+    // Blue's Path (Bottom-Right quadrant)
+    { row: 13, col: 8 }, { row: 12, col: 8 }, { row: 11, col: 8 }, { row: 10, col: 8 }, { row: 9, col: 8 },
+    { row: 8, col: 9 }, { row: 8, col: 10 }, { row: 8, col: 11 }, { row: 8, col: 12 }, { row: 8, col: 13 },
+    { row: 8, col: 14 },
+    { row: 6, col: 14 },
+    // Yellow's Path (Top-Right quadrant)
+    { row: 6, col: 13 }, { row: 6, col: 12 }, { row: 6, col: 11 }, { row: 6, col: 10 }, { row: 6, col: 9 },
+    { row: 5, col: 8 }, { row: 4, col: 8 }, { row: 3, col: 8 }, { row: 2, col: 8 }, { row: 1, col: 8 },
+    { row: 0, col: 8 },
+    { row: 0, col: 6 },
+    // Green's Path (Top-Left quadrant)
+    { row: 1, col: 6 }, { row: 2, col: 6 }, { row: 3, col: 6 }, { row: 4, col: 6 }, { row: 5, col: 6 },
+    { row: 6, col: 5 }, { row: 6, col: 4 }, { row: 6, col: 3 }, { row: 6, col: 2 }, { row: 6, col: 1 },
+    { row: 6, col: 0 },
+    { row: 8, col: 0 },
 ];
 
 export const HOME_STRETCH_COORDINATES: Record<PlayerColor, { row: number; col: number }[]> = {
@@ -126,27 +135,31 @@ export const moveToken = (
     const homeEntry = playerConfig.homeEntryPathIndex;
     const currentPosOnGlobalTrack = tokenToMove.position;
     
-    let stepsToHomeEntry = (homeEntry - currentPosOnGlobalTrack + MAIN_PATH_LENGTH) % MAIN_PATH_LENGTH;
-     if (currentPosOnGlobalTrack > homeEntry) {
-        stepsToHomeEntry = MAIN_PATH_LENGTH - currentPosOnGlobalTrack + homeEntry;
-    } else {
-        stepsToHomeEntry = homeEntry - currentPosOnGlobalTrack;
-    }
+    // This logic correctly calculates if the token's path will cross the home entry point
+    const crossesEntry = (currentPosOnGlobalTrack <= homeEntry && currentPosOnGlobalTrack + roll > homeEntry) ||
+                         (currentPosOnGlobalTrack > homeEntry && (currentPosOnGlobalTrack + roll) % MAIN_PATH_LENGTH > homeEntry && (currentPosOnGlobalTrack + roll) % MAIN_PATH_LENGTH < currentPosOnGlobalTrack);
 
-    if (roll > stepsToHomeEntry + 1) {
-      const stepsIntoHomeStretch = roll - (stepsToHomeEntry + 1);
-      tokenToMove.position = 100 + stepsIntoHomeStretch;
+    if (crossesEntry) {
+      const stepsAfterEntry = (currentPosOnGlobalTrack + roll) - (homeEntry + 1);
+      const stepsIntoHomeStretch = (stepsAfterEntry + MAIN_PATH_LENGTH) % MAIN_PATH_LENGTH;
+      
+      if (stepsIntoHomeStretch < HOME_STRETCH_LENGTH) {
+        tokenToMove.position = 100 + stepsIntoHomeStretch;
+      }
     } else {
       tokenToMove.position = (currentPosOnGlobalTrack + roll) % MAIN_PATH_LENGTH;
     }
   } 
   // Move in the home stretch
   else if (tokenToMove.position >= 100 && tokenToMove.position < 200) {
-    tokenToMove.position = tokenToMove.position + roll;
+    const newStretchPos = (tokenToMove.position % 100) + roll;
+     if (newStretchPos < HOME_STRETCH_LENGTH) {
+        tokenToMove.position = 100 + newStretchPos;
+    }
   }
 
   // Mark as home if it reached the end of the home stretch
-  if (tokenToMove.position === 100 + HOME_STRETCH_LENGTH - 1) {
+  if (tokenToMove.position === 100 + HOME_STRETCH_LENGTH) {
     tokenToMove.position = 200 + tokenToMove.id;
   }
   
