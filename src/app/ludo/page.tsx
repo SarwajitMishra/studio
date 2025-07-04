@@ -408,15 +408,34 @@ export default function LudoPage() {
             </h2>
             <p className="text-xs sm:text-sm text-foreground/90 min-h-[1.5em]">{gameMessage}</p>
         </div>
+        
+        <div className="relative w-full max-w-[700px] mx-auto aspect-square">
+            {/* Centered Board */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full p-8 sm:p-12 md:p-16">
+                 <LudoBoard players={players} onTokenClick={handleTokenClick} currentPlayerIndex={currentPlayerIndex} diceValue={diceValue} movableTokens={currentPlayer && diceValue ? getMovableTokens(currentPlayer, diceValue) : []} isRolling={isRolling} gameView={gameView} />
+            </div>
 
-        <div className="flex w-full max-w-5xl items-center justify-center gap-2 sm:gap-4">
-            {player1 && <PlayerInfoCard player={player1} isCurrentPlayer={currentPlayer?.color === player1.color} diceValue={diceValue} isRolling={isRolling} onDiceRoll={handleDiceRoll} gameView={gameView} />}
-            {player3 && <PlayerInfoCard player={player3} isCurrentPlayer={currentPlayer?.color === player3.color} diceValue={diceValue} isRolling={isRolling} onDiceRoll={handleDiceRoll} gameView={gameView} />}
-            
-            <LudoBoard players={players} onTokenClick={handleTokenClick} currentPlayerIndex={currentPlayerIndex} diceValue={diceValue} movableTokens={currentPlayer && diceValue ? getMovableTokens(currentPlayer, diceValue) : []} isRolling={isRolling} gameView={gameView} />
-            
-            {player2 && <PlayerInfoCard player={player2} isCurrentPlayer={currentPlayer?.color === player2.color} diceValue={diceValue} isRolling={isRolling} onDiceRoll={handleDiceRoll} gameView={gameView} />}
-            {player4 && <PlayerInfoCard player={player4} isCurrentPlayer={currentPlayer?.color === player4.color} diceValue={diceValue} isRolling={isRolling} onDiceRoll={handleDiceRoll} gameView={gameView} />}
+            {/* Player Cards in Corners */}
+            {player2 && ( // Green - Top Left
+                <div className="absolute top-0 left-0">
+                    <PlayerInfoCard player={player2} isCurrentPlayer={currentPlayer?.color === player2.color} diceValue={diceValue} isRolling={isRolling} onDiceRoll={handleDiceRoll} gameView={gameView} />
+                </div>
+            )}
+            {player3 && ( // Yellow - Top Right
+                <div className="absolute top-0 right-0">
+                    <PlayerInfoCard player={player3} isCurrentPlayer={currentPlayer?.color === player3.color} diceValue={diceValue} isRolling={isRolling} onDiceRoll={handleDiceRoll} gameView={gameView} />
+                </div>
+            )}
+            {player1 && ( // Red - Bottom Left
+                <div className="absolute bottom-0 left-0">
+                    <PlayerInfoCard player={player1} isCurrentPlayer={currentPlayer?.color === player1.color} diceValue={diceValue} isRolling={isRolling} onDiceRoll={handleDiceRoll} gameView={gameView} />
+                </div>
+            )}
+             {player4 && ( // Blue - Bottom Right
+                <div className="absolute bottom-0 right-0">
+                    <PlayerInfoCard player={player4} isCurrentPlayer={currentPlayer?.color === player4.color} diceValue={diceValue} isRolling={isRolling} onDiceRoll={handleDiceRoll} gameView={gameView} />
+                </div>
+            )}
         </div>
 
         <div className="mt-3 sm:mt-4">
@@ -428,5 +447,3 @@ export default function LudoPage() {
     </>
   );
 }
-
-    

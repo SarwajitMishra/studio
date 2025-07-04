@@ -45,14 +45,14 @@ export const PlayerInfoCard: React.FC<PlayerInfoCardProps> = ({ player, isCurren
   }
 
   const panelClasses = cn(
-    "flex flex-col items-center justify-center p-3 sm:p-4 rounded-lg shadow-lg border-2 bg-card/90 backdrop-blur-sm transition-all duration-300",
+    "flex flex-col items-center justify-center p-2 sm:p-3 rounded-lg shadow-lg border-2 bg-card/90 backdrop-blur-sm transition-all duration-300",
     isCurrentPlayer ? "border-yellow-400 ring-4 ring-yellow-400/50 animate-pulse" : "border-primary/20",
     playerSpecificConfig.baseClass + "/20",
-    "w-36 sm:w-48 h-auto"
+    "w-28 sm:w-36 h-auto"
   );
   
   const nameClasses = cn(
-    "text-sm sm:text-base font-semibold truncate mb-2 text-center", 
+    "text-xs sm:text-sm font-semibold truncate mb-1 text-center", 
     playerSpecificConfig.textClass
   );
 
@@ -66,7 +66,7 @@ export const PlayerInfoCard: React.FC<PlayerInfoCardProps> = ({ player, isCurren
         size="icon"
         className={cn(
           "border-2 border-dashed rounded-lg shadow-sm flex items-center justify-center p-0",
-          "h-10 w-10 sm:h-12 sm:w-12",
+          "h-8 w-8 sm:h-10 sm:w-10",
           isDiceButtonClickable
             ? cn("cursor-pointer", playerSpecificConfig.baseClass + "/30", `hover:${playerSpecificConfig.baseClass}/50`)
             : "border-muted-foreground/30 cursor-not-allowed opacity-70",
@@ -82,7 +82,7 @@ export const PlayerInfoCard: React.FC<PlayerInfoCardProps> = ({ player, isCurren
             alt={`Dice showing ${diceValue || 'face'}`}
             width={32}
             height={32}
-            className={cn(isRolling ? "animate-spin" : "")}
+            className={cn("w-5 h-5 sm:w-6 sm:h-6", isRolling ? "animate-spin" : "")}
             data-ai-hint={`dice ${diceValue || 'six'}`}
         />
       </Button>
