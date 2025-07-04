@@ -100,10 +100,10 @@ const PlayerArea: React.FC<{
   const isDiceButtonClickable = isCurrentPlayer && !player.isAI && gameView === 'playing' && !isRolling && (diceValue === null || player.hasRolledSix);
 
   const areaStyles: Record<PlayerColor, string> = {
-    green: "grid-area: 1 / 1 / span 6 / span 6;",
-    red: "grid-area: 1 / 10 / span 6 / span 6;",
-    yellow: "grid-area: 10 / 1 / span 6 / span 6;",
-    blue: "grid-area: 10 / 10 / span 6 / span 6;",
+    green: "1 / 1 / span 6 / span 6",
+    red: "1 / 10 / span 6 / span 6",
+    yellow: "10 / 1 / span 6 / span 6",
+    blue: "10 / 10 / span 6 / span 6",
   };
   
   return (
