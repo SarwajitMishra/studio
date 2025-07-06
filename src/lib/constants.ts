@@ -6,8 +6,7 @@ import {
     Sigma, Brain, ToyBrick, Star as StarIcon, Coins as CoinsIcon, BookMarked, 
     Target, Calculator, ListOrdered, SpellCheck, CaseLower, AlignJustify, Filter, 
     Keyboard, Gamepad2, Languages, Lightbulb, Mail, Calendar, Heart, Hash, CircleDot,
-    // New Icons for new games
-    Shapes, Grid3x3, Route, Blocks, KeyRound, LayoutGrid, XCircle 
+    Shapes, Grid3x3, Route, Blocks, KeyRound, LayoutGrid
 } from 'lucide-react';
 
 export type GameCategory = 'Strategy' | 'Puzzles' | 'Learning';
@@ -34,16 +33,6 @@ export const GAMES: Game[] = [
     color: 'text-sky-600',
   },
   {
-    id: 'gobblet-gobblers',
-    title: 'Gobblet Gobblers',
-    category: 'Strategy',
-    Icon: Shapes,
-    description: "A fun strategy game of nesting cups. Like Tic-Tac-Toe, but with a twist!",
-    href: '/gobblet-gobblers',
-    color: 'text-orange-500',
-    disabled: true,
-  },
-  {
     id: 'tower-of-hanoi',
     title: 'Tower of Hanoi',
     category: 'Strategy',
@@ -53,13 +42,14 @@ export const GAMES: Game[] = [
     color: 'text-teal-600',
   },
   {
-    id: 'tictactoe',
-    title: 'Tic-Tac-Toe',
+    id: 'gobblet-gobblers',
+    title: 'Gobblet Gobblers',
     category: 'Strategy',
-    Icon: XCircle,
-    description: 'The classic game of X and O. Can you get three in a row?',
-    href: '/tictactoe',
-    color: 'text-rose-500',
+    Icon: Shapes,
+    description: "A fun strategy game of nesting cups. Like Tic-Tac-Toe, but with a twist!",
+    href: '/gobblet-gobblers',
+    color: 'text-orange-500',
+    disabled: true,
   },
   {
     id: 'jigsaw',
@@ -139,15 +129,6 @@ export const PUZZLE_TYPES: PuzzleType[] = [
     disabled: false,
   },
   {
-    id: 'sudoku',
-    name: 'Sudoku Challenge',
-    Icon: Grid3x3,
-    description: 'A classic logic puzzle with numbers.',
-    color: 'text-lime-600',
-    href: '/puzzles/sudoku',
-    disabled: true,
-  },
-  {
     id: 'memory-maze',
     name: 'Memory Maze',
     Icon: Route,
@@ -155,6 +136,15 @@ export const PUZZLE_TYPES: PuzzleType[] = [
     color: 'text-cyan-600',
     href: '/puzzles/memory-maze',
     disabled: false,
+  },
+  {
+    id: 'sudoku',
+    name: 'Sudoku Challenge',
+    Icon: Grid3x3,
+    description: 'A classic logic puzzle with numbers.',
+    color: 'text-lime-600',
+    href: '/puzzles/sudoku',
+    disabled: true,
   },
   {
     id: 'pattern-builder',
