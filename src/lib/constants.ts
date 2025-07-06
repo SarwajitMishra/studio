@@ -6,7 +6,7 @@ import {
     Sigma, Brain, ToyBrick, Star as StarIcon, Coins as CoinsIcon, BookMarked, 
     Target, Calculator, ListOrdered, SpellCheck, CaseLower, AlignJustify, Filter, 
     Keyboard, Gamepad2, Languages, Lightbulb, Mail, Calendar, Heart, Hash, CircleDot,
-    Shapes, Grid3x3, Route, Blocks, KeyRound, LayoutGrid
+    Grid3x3, Route, Blocks, KeyRound, LayoutGrid
 } from 'lucide-react';
 
 export type GameCategory = 'Strategy' | 'Puzzles' | 'Learning';
@@ -51,16 +51,6 @@ export const GAMES: Game[] = [
     color: 'text-cyan-600',
   },
   {
-    id: 'gobblet-gobblers',
-    title: 'Gobblet Gobblers',
-    category: 'Strategy',
-    Icon: Shapes,
-    description: "A fun strategy game of nesting cups. Like Tic-Tac-Toe, but with a twist!",
-    href: '/gobblet-gobblers',
-    color: 'text-orange-500',
-    disabled: false,
-  },
-  {
     id: 'jigsaw',
     title: 'Jigsaw Puzzles',
     category: 'Puzzles',
@@ -68,6 +58,15 @@ export const GAMES: Game[] = [
     description: 'Piece together beautiful images. Fun for all ages!',
     href: '/puzzles/jigsaw', 
     color: 'text-purple-600',
+  },
+   {
+    id: '2048',
+    title: '2048 Themed',
+    category: 'Puzzles',
+    Icon: Hash,
+    description: "Slide and merge tiles to reach 2048! With cute themes.",
+    href: '/2048',
+    color: 'text-rose-500',
   },
   {
     id: 'sudoku',
@@ -93,7 +92,7 @@ export const GAMES: Game[] = [
     title: 'Easy English Fun',
     category: 'Learning',
     Icon: Languages,
-    description: 'Learn basic English words through fun, interactive puzzles!',
+    description: 'Learn basic English words and improve typing skills!',
     href: '/puzzles/easy-english',
     color: 'text-indigo-500',
   },
@@ -366,3 +365,4 @@ export type EnglishPuzzleItem = WordMatchPuzzle | MissingLetterPuzzle | Sentence
 
 // Corrected XCircle import, should be here
 export { XCircle } from 'lucide-react';
+
