@@ -119,23 +119,32 @@ export default function Game2048Page() {
         setGameState('playing');
     }, [addRandomTile]);
 
-    const checkForPossibleMoves = (currentBoard: Board): boolean => {
+    const isGameOverCheck = (currentBoard: Board): boolean => {
+        let hasEmptyCell = false;
         for (let r = 0; r < GRID_SIZE; r++) {
             for (let c = 0; c < GRID_SIZE; c++) {
-                const currentValue = currentBoard[r][c];
-                if (currentValue === 0) return true;
+                if (currentBoard[r][c] === 0) {
+                    hasEmptyCell = true;
+                    break;
+                }
+            }
+            if (hasEmptyCell) break;
+        }
+        if (hasEmptyCell) return false;
 
-                // Check right neighbor
-                if (c < GRID_SIZE - 1 && currentValue === currentBoard[r][c + 1]) return true;
-                // Check bottom neighbor
-                if (r < GRID_SIZE - 1 && currentValue === currentBoard[r + 1][c]) return true;
+        for (let r = 0; r < GRID_SIZE; r++) {
+            for (let c = 0; c < GRID_SIZE; c++) {
+                const current = currentBoard[r][c];
+                if (c < GRID_SIZE - 1 && current === currentBoard[r][c + 1]) return false;
+                if (r < GRID_SIZE - 1 && current === currentBoard[r + 1][c]) return false;
             }
         }
-        return false;
+        return true;
     };
 
+
     const handleDragStart = (e: React.DragEvent<HTMLDivElement>, r: number, c: number, value: number) => {
-        e.dataTransfer.setData('application/json', JSON.stringify({ r, c, value }));
+        e.dataTransfer.setData('text/plain', JSON.stringify({ r, c, value }));
         e.dataTransfer.effectAllowed = 'move';
     };
 
@@ -148,24 +157,22 @@ export default function Game2048Page() {
         if (isGameOver) return;
         
         try {
-            const sourceData = JSON.parse(e.dataTransfer.getData('application/json'));
+            const data = e.dataTransfer.getData('text/plain');
+            if (!data) return;
+            const sourceData = JSON.parse(data);
             const { r: sourceR, c: sourceC, value: sourceValue } = sourceData;
             
-            // Cannot drop on itself
             if (sourceR === targetR && sourceC === targetC) return;
             
             const targetValue = board[targetR][targetC];
             
-            // Rule: can only drop on adjacent tiles (not diagonal)
             const isAdjacent = (Math.abs(sourceR - targetR) === 1 && sourceC === targetC) ||
                                (Math.abs(sourceC - targetC) === 1 && sourceR === targetR);
             
-            // Rule: values must match and not be zero
             if (!isAdjacent || sourceValue !== targetValue || sourceValue === 0) {
                 return;
             }
             
-            // Perform merge
             let newBoard = board.map(row => [...row]);
             const mergedValue = sourceValue * 2;
             newBoard[targetR][targetC] = mergedValue;
@@ -175,7 +182,7 @@ export default function Game2048Page() {
             setBoard(boardWithNewTile);
             setScore(s => s + mergedValue);
 
-            if (!checkForPossibleMoves(boardWithNewTile)) {
+            if (isGameOverCheck(boardWithNewTile)) {
                 setIsGameOver(true);
             }
 
@@ -185,7 +192,7 @@ export default function Game2048Page() {
     };
     
     useEffect(() => {
-        if (gameState === 'playing' && board.length > 0 && !checkForPossibleMoves(board)) {
+        if (gameState === 'playing' && board.length > 0 && isGameOverCheck(board)) {
             setIsGameOver(true);
         }
     }, [board, gameState]);
