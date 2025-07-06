@@ -1,14 +1,15 @@
 
 "use client";
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { RotateCw, Award, ArrowLeft, Shield, Star, Gem } from 'lucide-react';
+import { RotateCw, Award, ArrowLeft, ArrowRight, Shield, Star, Gem, Brain } from 'lucide-react';
 import { cn } from "@/lib/utils";
 
 type Towers = number[][];
 type Difficulty = 3 | 4 | 5 | 6;
+type GameState = 'setup' | 'howToPlay' | 'playing';
 
 // New distinct colors
 const DISK_COLORS = [
@@ -20,20 +21,68 @@ const MINIMUM_MOVES: Record<Difficulty, number> = {
     3: 7, 4: 15, 5: 31, 6: 63
 };
 
-const Disk = ({ size, color, draggable, onDragStart, isWon }: { size: number; color: string; draggable: boolean; onDragStart: (e: React.DragEvent) => void; isWon: boolean; }) => {
+const Disk = ({ size, color }: { size: number; color: string; }) => {
     return (
         <div
-            draggable={draggable && !isWon}
-            onDragStart={draggable && !isWon ? onDragStart : undefined}
-            className={cn(
-                "h-6 rounded-md shadow-md mx-auto transition-all duration-200",
-                color,
-                (draggable && !isWon) ? "cursor-grab active:cursor-grabbing" : ""
-            )}
+            className={cn("h-6 rounded-md shadow-md mx-auto transition-all duration-200", color)}
             style={{ width: `${30 + size * 10}%` }}
         />
     );
 };
+
+const HowToPlayHanoi = ({ onStartGame }: { onStartGame: () => void }) => {
+    const [step, setStep] = useState(0);
+
+    const steps = [
+        { text: "1. Goal: Move the entire stack of disks to another rod." },
+        { text: "2. Rule 1: Only move one disk at a time (the top-most one)." },
+        { text: "3. Rule 2: A larger disk cannot be placed on a smaller disk." },
+    ];
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setStep(prev => (prev + 1) % steps.length);
+        }, 3000);
+        return () => clearInterval(timer);
+    }, [steps.length]);
+
+    const currentStep = steps[step];
+
+    return (
+        <Card className="w-full max-w-md text-center shadow-xl">
+            <CardHeader>
+                <CardTitle className="text-2xl font-bold">How to Play</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div className="flex justify-around items-end h-32 bg-muted p-2 rounded-lg">
+                    {/* Rod 1 */}
+                    <div className="w-1/3 flex flex-col-reverse items-center space-y-1">
+                        {step === 0 && <><Disk size={1} color={DISK_COLORS[0]} /><Disk size={2} color={DISK_COLORS[1]} /><Disk size={3} color={DISK_COLORS[2]} /></>}
+                        {step === 1 && <><Disk size={2} color={DISK_COLORS[1]} /><Disk size={3} color={DISK_COLORS[2]} /></>}
+                        {step === 2 && <><Disk size={3} color={DISK_COLORS[2]} /></>}
+                        <div className="w-2 h-24 bg-neutral-600"></div>
+                    </div>
+                     {/* Rod 2 */}
+                    <div className="w-1/3 flex flex-col-reverse items-center space-y-1">
+                        {step === 2 && <Disk size={1} color={DISK_COLORS[0]} />}
+                        <div className="w-2 h-24 bg-neutral-600"></div>
+                    </div>
+                     {/* Rod 3 */}
+                    <div className="w-1/3 flex flex-col-reverse items-center space-y-1">
+                        {step === 1 && <Disk size={1} color={DISK_COLORS[0]} />}
+                         {step === 2 && <div className={cn("animate-pulse")}> <Disk size={2} color={DISK_COLORS[1]} /> </div>}
+                        <div className="w-2 h-24 bg-neutral-600"></div>
+                    </div>
+                </div>
+                <p className="min-h-[40px] font-medium text-foreground/90">{currentStep.text}</p>
+                <Button onClick={onStartGame} className="w-full text-lg bg-accent text-accent-foreground">
+                    Start Game! <ArrowRight className="ml-2" />
+                </Button>
+            </CardContent>
+        </Card>
+    );
+};
+
 
 const Rod = ({ disks, rodIndex, onClick, onDragOver, onDrop, onDiskDragStart, isSelected, isWon }: { 
     disks: number[], 
@@ -58,14 +107,17 @@ const Rod = ({ disks, rodIndex, onClick, onDragOver, onDrop, onDiskDragStart, is
             {/* Disks */}
             <div className="absolute bottom-2 w-full space-y-1">
                 {disks.map((diskSize, index) => (
-                    <Disk 
+                    <div
                         key={diskSize} 
-                        size={diskSize} 
-                        color={DISK_COLORS[diskSize - 1]}
-                        draggable={index === disks.length - 1} // Only top disk is draggable
-                        onDragStart={(e) => onDiskDragStart(e, rodIndex)}
-                        isWon={isWon}
-                    />
+                        draggable={index === disks.length - 1 && !isWon}
+                        onDragStart={(e) => index === disks.length - 1 && !isWon ? onDiskDragStart(e, rodIndex) : undefined}
+                        className={cn((index === disks.length-1 && !isWon) ? "cursor-grab active:cursor-grabbing" : "")}
+                    >
+                        <Disk 
+                            size={diskSize} 
+                            color={DISK_COLORS[diskSize - 1]}
+                        />
+                    </div>
                 ))}
             </div>
         </div>
@@ -78,24 +130,32 @@ const Rod = ({ disks, rodIndex, onClick, onDragOver, onDrop, onDiskDragStart, is
 
 export default function TowerOfHanoiPage() {
     const [difficulty, setDifficulty] = useState<Difficulty | null>(null);
+    const [gameState, setGameState] = useState<GameState>('setup');
     const [towers, setTowers] = useState<Towers>([[], [], []]);
     const [selectedRod, setSelectedRod] = useState<number | null>(null);
     const [moves, setMoves] = useState(0);
     const [isWon, setIsWon] = useState(false);
 
     const minMoves = useMemo(() => difficulty ? MINIMUM_MOVES[difficulty] : 0, [difficulty]);
-
-    const resetGame = (numDisks: Difficulty) => {
+    
+    const handleDifficultySelect = (numDisks: Difficulty) => {
+        setDifficulty(numDisks);
+        setGameState('howToPlay');
+    };
+    
+    const startGame = useCallback(() => {
+        if (!difficulty) return;
         const initialTowers: Towers = [[], [], []];
-        for (let i = numDisks; i > 0; i--) {
+        for (let i = difficulty; i > 0; i--) {
             initialTowers[0].push(i);
         }
         setTowers(initialTowers);
         setSelectedRod(null);
         setMoves(0);
         setIsWon(false);
-        setDifficulty(numDisks);
-    };
+        setGameState('playing');
+    }, [difficulty]);
+
 
     const moveDisk = useCallback((fromIndex: number, toIndex: number) => {
         if (isWon || fromIndex === toIndex) return;
@@ -156,7 +216,7 @@ export default function TowerOfHanoiPage() {
         }
     };
     
-    if (!difficulty) {
+    if (gameState === 'setup') {
         return (
              <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
                 <Card className="w-full max-w-md text-center shadow-xl">
@@ -165,14 +225,22 @@ export default function TowerOfHanoiPage() {
                         <CardDescription>Select a difficulty to start.</CardDescription>
                     </CardHeader>
                     <CardContent className="grid grid-cols-2 gap-4">
-                        <Button onClick={() => resetGame(3)} className="text-lg py-6"><Shield className="mr-2"/> 3 Disks</Button>
-                        <Button onClick={() => resetGame(4)} className="text-lg py-6"><Star className="mr-2"/> 4 Disks</Button>
-                        <Button onClick={() => resetGame(5)} className="text-lg py-6"><Gem className="mr-2"/> 5 Disks</Button>
-                        <Button onClick={() => resetGame(6)} className="text-lg py-6"><Award className="mr-2"/> 6 Disks</Button>
+                        <Button onClick={() => handleDifficultySelect(3)} className="text-lg py-6"><Shield className="mr-2"/> 3 Disks</Button>
+                        <Button onClick={() => handleDifficultySelect(4)} className="text-lg py-6"><Star className="mr-2"/> 4 Disks</Button>
+                        <Button onClick={() => handleDifficultySelect(5)} className="text-lg py-6"><Gem className="mr-2"/> 5 Disks</Button>
+                        <Button onClick={() => handleDifficultySelect(6)} className="text-lg py-6"><Award className="mr-2"/> 6 Disks</Button>
                     </CardContent>
                 </Card>
             </div>
         )
+    }
+
+     if (gameState === 'howToPlay') {
+        return (
+            <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
+               <HowToPlayHanoi onStartGame={startGame} />
+            </div>
+        );
     }
 
     return (
@@ -210,8 +278,8 @@ export default function TowerOfHanoiPage() {
                         ))}
                     </div>
                      <div className="mt-6 flex gap-4">
-                        <Button onClick={() => resetGame(difficulty)} className="w-full"><RotateCw className="mr-2"/> Reset</Button>
-                        <Button onClick={() => setDifficulty(null)} variant="outline" className="w-full"><ArrowLeft className="mr-2"/> Change Difficulty</Button>
+                        <Button onClick={startGame} className="w-full"><RotateCw className="mr-2"/> Reset</Button>
+                        <Button onClick={() => setGameState('setup')} variant="outline" className="w-full"><ArrowLeft className="mr-2"/> Change Difficulty</Button>
                     </div>
                 </CardContent>
             </Card>

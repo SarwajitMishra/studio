@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { useState, useEffect, useCallback, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { Crown, AlertTriangle, Timer, ListChecks } from "lucide-react";
+import { Crown, AlertTriangle, Timer, ListChecks, ArrowRight, Brain, Gamepad2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -21,6 +21,7 @@ interface SquarePosition {
 }
 
 type PlayerColor = "w" | "b";
+type GameState = 'setup' | 'howToPlay' | 'playing';
 
 const PIECE_UNICODE: Record<PlayerColor, Record<Piece["type"], string>> = {
   w: { K: "♔", Q: "♕", R: "♖", B: "♗", N: "♘", P: "♙" },
@@ -140,7 +141,78 @@ const ChessSquare = ({
   );
 };
 
+const HowToPlayChess = ({ onStartGame }: { onStartGame: () => void }) => {
+    const [step, setStep] = useState(0);
+
+    const steps = [
+        { text: "1. Each piece moves in a unique way. Pawns move forward.", piece: 'P', from: {r: 3, c: 1}, to: {r:2, c:1}},
+        { text: "2. The Knight moves in an 'L' shape, two squares then one.", piece: 'N', from: {r: 3, c: 2}, to: {r:1, c:3}},
+        { text: "3. Capture opponent pieces by landing on their square.", piece: 'B', from: {r: 3, c: 0}, to: {r:1, c:2}},
+        { text: "4. The goal is to 'checkmate' the opponent's King!", piece: 'K', from: {r: 0, c: 3}, checkmated: true},
+    ];
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setStep(prev => (prev + 1) % steps.length);
+        }, 3000);
+        return () => clearInterval(timer);
+    }, [steps.length]);
+
+    const currentStep = steps[step];
+
+    return (
+        <Card className="w-full max-w-md text-center shadow-xl">
+            <CardHeader>
+                <CardTitle className="text-2xl font-bold">How to Play Chess</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div className="flex justify-center">
+                    <div className="grid grid-cols-4 gap-0 bg-primary/20 p-1 rounded-md">
+                        {Array(16).fill(0).map((_, i) => {
+                            const r = Math.floor(i / 4);
+                            const c = i % 4;
+                            const isLight = (r + c) % 2 === 0;
+                            let pieceContent = null;
+                            if (currentStep.from?.r === r && currentStep.from?.c === c) {
+                                pieceContent = <span className="text-3xl text-white">{PIECE_UNICODE['w'][currentStep.piece as Piece['type']]}</span>;
+                            }
+                             if (currentStep.to?.r === r && currentStep.to?.c === c) {
+                                pieceContent = <span className="text-3xl text-white">{PIECE_UNICODE['w'][currentStep.piece as Piece['type']]}</span>;
+                            }
+                            if (r === 1 && c === 2 && currentStep.text.includes("Capture")) {
+                                pieceContent = <span className="text-3xl text-neutral-800">{PIECE_UNICODE['b']['P']}</span>;
+                            }
+                             if (currentStep.checkmated && r === 0 && c === 3) {
+                                pieceContent = <span className="text-3xl text-neutral-800">{PIECE_UNICODE['b']['K']}</span>;
+                             }
+                              if (currentStep.checkmated && r === 2 && c === 3) {
+                                pieceContent = <span className="text-3xl text-white">{PIECE_UNICODE['w']['Q']}</span>;
+                             }
+
+
+                            return (
+                                <div key={i} className={cn("w-16 h-16 flex items-center justify-center",
+                                    isLight ? 'bg-primary/30' : 'bg-primary/60',
+                                    currentStep.checkmated && r === 0 && c === 3 && 'bg-red-500/70 animate-pulse'
+                                )}>
+                                    {pieceContent}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+                <p className="min-h-[40px] font-medium text-foreground/90">{currentStep.text}</p>
+                <Button onClick={onStartGame} className="w-full text-lg bg-accent text-accent-foreground">
+                    Start Game! <ArrowRight className="ml-2" />
+                </Button>
+            </CardContent>
+        </Card>
+    );
+};
+
 export default function ChessPage() {
+  const [gameState, setGameState] = useState<GameState>('setup');
+
   const initialSetup = initialBoardSetup();
   const [board, setBoard] = useState<(Piece | null)[][]>(initialSetup.board);
   const [kingPositions, setKingPositions] = useState<Record<PlayerColor, SquarePosition>>(initialSetup.kings);
@@ -162,7 +234,7 @@ export default function ChessPage() {
   const { toast } = useToast();
   
   useEffect(() => {
-    if (gameOver) return;
+    if (gameOver || gameState !== 'playing') return;
 
     const timer = setInterval(() => {
       setPlayerTimers(prevTimers => {
@@ -184,7 +256,7 @@ export default function ChessPage() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [currentPlayer, gameOver, toast]);
+  }, [currentPlayer, gameOver, toast, gameState]);
 
   const isSquareOnBoard = (row: number, col: number): boolean => row >= 0 && row < 8 && col >= 0 && col < 8;
 
@@ -546,11 +618,37 @@ export default function ChessPage() {
     setCapturedPieces({ w: [], b: [] });
     setPlayerTimers({ w: 600, b: 600 });
     toast({ title: "Game Reset", description: "The board has been reset." });
+    setGameState('setup');
   };
   
   const movePairs = [];
   for (let i = 0; i < moveHistory.length; i += 2) {
     movePairs.push(moveHistory.slice(i, i + 2));
+  }
+
+  if (gameState === 'setup') {
+     return (
+        <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
+            <Card className="w-full max-w-md text-center shadow-xl">
+                <CardHeader>
+                    <CardTitle className="text-3xl font-bold">Classic Chess</CardTitle>
+                    <CardDescription>The ultimate game of strategy.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <Button onClick={() => setGameState('playing')} className="w-full text-lg"><Gamepad2 className="mr-2"/> Play Game</Button>
+                    <Button onClick={() => setGameState('howToPlay')} variant="outline" className="w-full text-lg"><Brain className="mr-2"/> How to Play</Button>
+                </CardContent>
+            </Card>
+        </div>
+      )
+  }
+
+  if (gameState === 'howToPlay') {
+      return (
+         <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
+            <HowToPlayChess onStartGame={() => setGameState('playing')} />
+        </div>
+      )
   }
 
   return (

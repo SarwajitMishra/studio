@@ -1,10 +1,10 @@
 
 "use client";
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { RotateCw, Award, Users, Cpu, ArrowLeft, Circle } from 'lucide-react';
+import { RotateCw, Award, Users, Cpu, ArrowLeft, ArrowRight, Circle, Brain } from 'lucide-react';
 import { cn } from "@/lib/utils";
 
 type PlayerId = 'P1' | 'P2';
@@ -22,6 +22,7 @@ interface BoardCell {
 
 type BoardState = BoardCell[][];
 type GameMode = 'player' | 'ai' | null;
+type GameState = 'setup' | 'howToPlay' | 'playing';
 
 const createInitialBoard = (): BoardState => Array(3).fill(null).map(() => Array(3).fill(null).map(() => ({ stack: [] })));
 
@@ -40,7 +41,6 @@ const createInitialPlayerPieces = (): Record<PlayerId, Piece[]> => {
 const checkWin = (board: BoardState): PlayerId | null => {
   const getTopPlayer = (r: number, c: number) => board[r][c].stack.length > 0 ? board[r][c].stack[board[r][c].stack.length - 1].player : null;
 
-  // Rows, Columns, Diagonals
   const lines = [
     // Rows
     [[0,0], [0,1], [0,2]], [[1,0], [1,1], [1,2]], [[2,0], [2,1], [2,2]],
@@ -90,8 +90,54 @@ const BoardSquare = ({ cell, onSelect, canDrop }: { cell: BoardCell; onSelect: (
   );
 };
 
+const HowToPlayGobblet = ({ onStartGame }: { onStartGame: () => void }) => {
+    const [step, setStep] = useState(0);
+
+    const steps = [
+        { text: "1. Place your pieces on the board. Get three in a row to win!" },
+        { text: "2. Larger pieces can 'gobble' and cover smaller pieces." },
+        { text: "3. You can move your pieces that are already on the board." },
+    ];
+    
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setStep(prev => (prev + 1) % steps.length);
+        }, 3000);
+        return () => clearInterval(timer);
+    }, [steps.length]);
+
+    const currentStep = steps[step];
+
+    return (
+        <Card className="w-full max-w-md text-center shadow-xl">
+            <CardHeader>
+                <CardTitle className="text-2xl font-bold">How to Play</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div className="flex justify-center">
+                    <div className="grid grid-cols-3 gap-1 bg-muted p-2 rounded-lg">
+                        {Array(9).fill(0).map((_, i) => (
+                           <div key={i} className="w-20 h-20 bg-card border rounded-md flex items-center justify-center">
+                               {step === 1 && i === 4 && <GobblerPiece piece={{id: 'p2-m', player: 'P2', size: 2}} isSelected={false} />}
+                               {step === 1 && i === 5 && <GobblerPiece piece={{id: 'p1-s', player: 'P1', size: 1}} isSelected={false} />}
+                               {step === 2 && i === 5 && <GobblerPiece piece={{id: 'p2-l', player: 'P2', size: 3}} isSelected={false} />}
+                               {step === 3 && i === 8 && <GobblerPiece piece={{id: 'p1-m', player: 'P1', size: 2}} isSelected={false} />}
+                           </div>
+                        ))}
+                    </div>
+                </div>
+                <p className="min-h-[40px] font-medium text-foreground/90">{currentStep.text}</p>
+                <Button onClick={onStartGame} className="w-full text-lg bg-accent text-accent-foreground">
+                    Start Game! <ArrowRight className="ml-2" />
+                </Button>
+            </CardContent>
+        </Card>
+    );
+};
+
 export default function GobbletGobblersPage() {
   const [gameMode, setGameMode] = useState<GameMode>(null);
+  const [gameState, setGameState] = useState<GameState>('setup');
   const [board, setBoard] = useState<BoardState>(createInitialBoard());
   const [playerPieces, setPlayerPieces] = useState(createInitialPlayerPieces());
   const [currentPlayer, setCurrentPlayer] = useState<PlayerId>('P1');
@@ -110,6 +156,16 @@ export default function GobbletGobblersPage() {
     setSelectedPiece(null);
     setWinner(null);
   }, []);
+
+  const handleModeSelect = (mode: GameMode) => {
+    setGameMode(mode);
+    setGameState('howToPlay');
+  };
+
+  const startGame = () => {
+    resetGame();
+    setGameState('playing');
+  };
 
   const handleSelectPiece = (piece: Piece, from?: {r: number, c: number}) => {
     if (winner || piece.player !== currentPlayer) return;
@@ -163,7 +219,7 @@ export default function GobbletGobblersPage() {
     setSelectedPiece(null);
   };
   
-  if (!gameMode) {
+  if (gameState === 'setup') {
       return (
         <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
             <Card className="w-full max-w-md text-center shadow-xl">
@@ -172,10 +228,18 @@ export default function GobbletGobblersPage() {
                     <CardDescription>Select a game mode to start.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <Button onClick={() => setGameMode('player')} className="w-full text-lg"><Users className="mr-2"/> Player vs Player</Button>
-                    <Button onClick={() => setGameMode('ai')} className="w-full text-lg" disabled><Cpu className="mr-2"/> Player vs AI (Soon)</Button>
+                    <Button onClick={() => handleModeSelect('player')} className="w-full text-lg"><Users className="mr-2"/> Player vs Player</Button>
+                    <Button onClick={() => handleModeSelect('ai')} className="w-full text-lg" disabled><Cpu className="mr-2"/> Player vs AI (Soon)</Button>
                 </CardContent>
             </Card>
+        </div>
+      )
+  }
+
+  if (gameState === 'howToPlay') {
+      return (
+        <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
+           <HowToPlayGobblet onStartGame={startGame} />
         </div>
       )
   }
@@ -229,8 +293,8 @@ export default function GobbletGobblersPage() {
       </div>
       
       <div className="w-full max-w-xl flex gap-4 mt-4">
-        <Button onClick={resetGame} className="w-full"><RotateCw className="mr-2"/> Reset Game</Button>
-        <Button onClick={() => setGameMode(null)} variant="outline" className="w-full"><ArrowLeft className="mr-2"/> Change Mode</Button>
+        <Button onClick={() => gameMode && resetGame()} className="w-full"><RotateCw className="mr-2"/> Reset Game</Button>
+        <Button onClick={() => setGameState('setup')} variant="outline" className="w-full"><ArrowLeft className="mr-2"/> Change Mode</Button>
       </div>
     </div>
   );
