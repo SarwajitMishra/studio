@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Grid3x3, RotateCw, Lightbulb, Check, ArrowLeft, Shield, Star, Gem } from 'lucide-react';
+import { Grid3x3, RotateCw, Lightbulb, ArrowLeft, Shield, Star, Gem } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
@@ -46,7 +46,6 @@ export default function SudokuPage() {
     const [grid, setGrid] = useState<SudokuGrid>([]);
     const [initialGrid, setInitialGrid] = useState<SudokuGrid>([]);
     const [solution, setSolution] = useState<SudokuGrid>([]);
-    const [selectedCell, setSelectedCell] = useState<{ row: number; col: number } | null>(null);
     const [isComplete, setIsComplete] = useState(false);
     const { toast } = useToast();
 
@@ -56,56 +55,54 @@ export default function SudokuPage() {
         setGrid(puzzle.map(row => [...row]));
         setInitialGrid(puzzle.map(row => [...row]));
         setSolution(sol);
-        setSelectedCell(null);
         setIsComplete(false);
     };
 
-    const handleCellClick = (row: number, col: number) => {
-        if (initialGrid[row][col] === null) {
-            setSelectedCell({ row, col });
-        }
-    };
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>, row: number, col: number) => {
+        if (isComplete) return;
     
-    const handleNumberInput = (num: number) => {
-        if (!selectedCell || isComplete) return;
-
-        const { row, col } = selectedCell;
+        const value = e.target.value.replace(/[^1-9]/g, ''); // Only allow numbers 1-9
         const newGrid = grid.map(r => [...r]);
-        newGrid[row][col] = num;
-        setGrid(newGrid);
-
-        // Check for win condition
-        const isSolved = newGrid.every((r, r_idx) => r.every((cell, c_idx) => cell === solution[r_idx][c_idx]));
-        if (isSolved) {
-            setIsComplete(true);
-            toast({ title: "Congratulations!", description: "You solved the Sudoku puzzle!", className: "bg-green-500 text-white" });
-        }
-    };
     
-    const handleErase = () => {
-        if (!selectedCell || isComplete) return;
-        const { row, col } = selectedCell;
-        if (initialGrid[row][col] !== null) return;
-        const newGrid = grid.map(r => [...r]);
-        newGrid[row][col] = null;
-        setGrid(newGrid);
+        if (value === '' || (value.length === 1)) {
+            newGrid[row][col] = value === '' ? null : parseInt(value, 10);
+            setGrid(newGrid);
+    
+            // Check for win condition if the board is full
+            const isBoardFull = newGrid.every(r => r.every(cell => cell !== null));
+            if (isBoardFull) {
+                const isSolved = newGrid.every((r, r_idx) => r.every((cell, c_idx) => cell === solution[r_idx][c_idx]));
+                if (isSolved) {
+                    setIsComplete(true);
+                    toast({ title: "Congratulations!", description: "You solved the Sudoku puzzle!", className: "bg-green-500 text-white" });
+                }
+            }
+        }
     };
     
     const solveOneCell = () => {
         if (isComplete) return;
-        const emptyCells = [];
+        const emptyCells: { r: number, c: number }[] = [];
         for (let r = 0; r < 9; r++) {
             for (let c = 0; c < 9; c++) {
                 if (grid[r][c] === null) {
-                    emptyCells.push({r, c});
+                    emptyCells.push({ r, c });
                 }
             }
         }
         if (emptyCells.length > 0) {
             const cellToSolve = emptyCells[Math.floor(Math.random() * emptyCells.length)];
-            handleNumberInput(solution[cellToSolve.r][cellToSolve.c]);
-            if (selectedCell && selectedCell.row === cellToSolve.r && selectedCell.col === cellToSolve.c) {
-                setSelectedCell(null);
+            const newGrid = grid.map(r => [...r]);
+            newGrid[cellToSolve.r][cellToSolve.c] = solution[cellToSolve.r][cellToSolve.c];
+            setGrid(newGrid);
+
+            const isBoardFull = newGrid.every(r => r.every(cell => cell !== null));
+            if (isBoardFull) {
+                const isSolved = newGrid.every((r, r_idx) => r.every((cell, c_idx) => cell === solution[r_idx][c_idx]));
+                if (isSolved) {
+                    setIsComplete(true);
+                    toast({ title: "Congratulations!", description: "You solved the Sudoku puzzle!", className: "bg-green-500 text-white" });
+                }
             }
         }
     };
@@ -139,27 +136,38 @@ export default function SudokuPage() {
                     <div className="grid grid-cols-9 bg-muted/30 p-1 rounded-md">
                         {grid.map((row, r_idx) => row.map((cell, c_idx) => {
                             const isInitial = initialGrid[r_idx][c_idx] !== null;
-                            const isSelected = selectedCell?.row === r_idx && selectedCell?.col === c_idx;
                             const borderRight = (c_idx + 1) % 3 === 0 && c_idx < 8;
                             const borderBottom = (r_idx + 1) % 3 === 0 && r_idx < 8;
 
                             return (
-                                <button 
+                                <div 
                                     key={`${r_idx}-${c_idx}`} 
-                                    onClick={() => handleCellClick(r_idx, c_idx)}
                                     className={cn(
-                                        "w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center text-lg sm:text-xl",
+                                        "w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center",
                                         "border border-border/50",
-                                        isInitial ? "font-bold text-foreground" : "text-primary cursor-pointer",
-                                        isSelected && "bg-primary/20 ring-2 ring-primary z-10",
                                         borderRight && "border-r-2 border-r-primary/70",
                                         borderBottom && "border-b-2 border-b-primary/70",
                                         (r_idx === 0) && "border-t-2 border-t-primary/70",
                                         (c_idx === 0) && "border-l-2 border-l-primary/70"
                                     )}
                                 >
-                                    {cell}
-                                </button>
+                                    {isInitial ? (
+                                        <span className="font-bold text-foreground text-lg sm:text-xl">{cell}</span>
+                                    ) : (
+                                        <input
+                                            type="text"
+                                            value={cell || ''}
+                                            onChange={(e) => handleInputChange(e, r_idx, c_idx)}
+                                            className={cn(
+                                                "w-full h-full bg-transparent text-center text-primary text-lg sm:text-xl font-semibold",
+                                                "focus:outline-none focus:ring-2 focus:ring-primary z-10 rounded-sm"
+                                            )}
+                                            maxLength={1}
+                                            pattern="[1-9]"
+                                            disabled={isComplete}
+                                        />
+                                    )}
+                                </div>
                             );
                         }))}
                     </div>
@@ -172,21 +180,10 @@ export default function SudokuPage() {
                         <h3 className="text-xl font-bold text-green-700 dark:text-green-300">You Win!</h3>
                     </Card>
                  )}
-                <Card>
-                    <CardHeader><CardTitle>Controls</CardTitle></CardHeader>
-                    <CardContent className="space-y-3">
-                        <div className="grid grid-cols-3 gap-2">
-                            {Array.from({length: 9}, (_, i) => i + 1).map(num => (
-                                <Button key={num} onClick={() => handleNumberInput(num)} disabled={isComplete}>{num}</Button>
-                            ))}
-                        </div>
-                         <Button variant="destructive" className="w-full" onClick={handleErase} disabled={isComplete || !selectedCell}>Erase</Button>
-                    </CardContent>
-                </Card>
                  <Card>
                     <CardHeader><CardTitle>Actions</CardTitle></CardHeader>
                     <CardContent className="space-y-3">
-                        <Button variant="outline" className="w-full" onClick={solveOneCell} disabled={isComplete}><Lightbulb className="mr-2"/> Hint</Button>
+                        <Button variant="outline" className="w-full" onClick={solveOneCell} disabled={isComplete}><Lightbulb className="mr-2"/> Hint / Peek</Button>
                         <Button variant="outline" className="w-full" onClick={() => startGame(difficulty)}><RotateCw className="mr-2"/> New Game</Button>
                         <Button variant="ghost" className="w-full" onClick={() => setDifficulty(null)}><ArrowLeft className="mr-2"/> Change Difficulty</Button>
                     </CardContent>
@@ -195,4 +192,3 @@ export default function SudokuPage() {
         </div>
     );
 }
-
