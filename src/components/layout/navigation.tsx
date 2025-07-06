@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Settings, UserCircle } from 'lucide-react';
+import { Settings, UserCircle, Home } from 'lucide-react';
 import { SETTINGS_MENU_ITEMS } from '@/lib/constants';
 
 export default function Navigation() {
@@ -20,6 +20,19 @@ export default function Navigation() {
 
   return (
     <nav className="flex items-center space-x-1 sm:space-x-2">
+      <Link href="/" aria-label="Go to Homepage">
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn(
+            "text-primary-foreground hover:bg-primary-foreground/10",
+            pathname === '/' && "bg-accent text-accent-foreground hover:bg-accent/90"
+          )}
+        >
+          <Home size={24} />
+        </Button>
+      </Link>
+
       <Link href="/profile" aria-label="View Profile">
         <Button
           variant="ghost"
