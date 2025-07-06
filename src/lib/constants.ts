@@ -7,7 +7,7 @@ import {
     Target, Calculator, ListOrdered, SpellCheck, CaseLower, AlignJustify, Filter, 
     Keyboard, Gamepad2, Languages, Lightbulb, Mail, Calendar, Heart, Hash, CircleDot,
     // New Icons for new games
-    Shapes, Grid3x3, Route, Blocks, KeyRound, LayoutGrid 
+    Shapes, Grid3x3, Route, Blocks, KeyRound, LayoutGrid, XCircle 
 } from 'lucide-react';
 
 export type GameCategory = 'Strategy' | 'Puzzles' | 'Learning';
@@ -51,6 +51,15 @@ export const GAMES: Game[] = [
     description: 'Solve the ancient puzzle by moving disks between towers.',
     href: '/tower-of-hanoi',
     color: 'text-teal-600',
+  },
+  {
+    id: 'tictactoe',
+    title: 'Tic-Tac-Toe',
+    category: 'Strategy',
+    Icon: XCircle,
+    description: 'The classic game of X and O. Can you get three in a row?',
+    href: '/tictactoe',
+    color: 'text-rose-500',
   },
   {
     id: 'jigsaw',
@@ -142,10 +151,10 @@ export const PUZZLE_TYPES: PuzzleType[] = [
     id: 'memory-maze',
     name: 'Memory Maze',
     Icon: Route,
-    description: 'Memorize the path and navigate the maze.',
+    description: 'Use short-term memory and path planning.',
     color: 'text-cyan-600',
     href: '/puzzles/memory-maze',
-    disabled: true,
+    disabled: false,
   },
   {
     id: 'pattern-builder',
