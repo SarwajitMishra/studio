@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 const HeadMetadata = () => {
   return (
     <>
-      <title>Memory Match Puzzle | Shravya Playhouse</title>
+      <title>Memory Matching Puzzle | Shravya Playhouse</title>
       <meta name="description" content="Test your memory by matching pairs of icons in Shravya Playhouse!" />
     </>
   );
@@ -168,7 +168,7 @@ const MemoryMatchPage: NextPage = () => {
           <CardHeader className="bg-primary/10">
             <div className="flex items-center justify-center space-x-3">
               <Brain size={36} className="text-primary" />
-              <CardTitle className="text-3xl font-bold text-primary">Memory Match</CardTitle>
+              <CardTitle className="text-3xl font-bold text-primary">Memory Matching</CardTitle>
             </div>
             <CardDescription className="text-center text-xl text-foreground/80 pt-3">
               Select your difficulty!
@@ -208,7 +208,7 @@ const MemoryMatchPage: NextPage = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <Brain className="mr-3 h-8 w-8 text-primary" />
-              <CardTitle className="text-3xl font-bold text-primary">Memory Match</CardTitle>
+              <CardTitle className="text-3xl font-bold text-primary">Memory Matching</CardTitle>
             </div>
             <Button variant="outline" size="sm" onClick={() => setView('select')}>
               <ArrowLeft size={16} className="mr-1" /> Change Difficulty

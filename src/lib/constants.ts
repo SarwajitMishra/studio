@@ -42,6 +42,15 @@ export const GAMES: Game[] = [
     color: 'text-teal-600',
   },
   {
+    id: 'memory-maze',
+    title: 'Memory Maze',
+    category: 'Strategy',
+    Icon: Route,
+    description: 'Use short-term memory and path planning to navigate the maze.',
+    href: '/memory-maze',
+    color: 'text-cyan-600',
+  },
+  {
     id: 'gobblet-gobblers',
     title: 'Gobblet Gobblers',
     category: 'Strategy',
@@ -59,15 +68,6 @@ export const GAMES: Game[] = [
     description: 'Piece together beautiful images. Fun for all ages!',
     href: '/puzzles/jigsaw', 
     color: 'text-purple-600',
-  },
-  {
-    id: 'memory-match',
-    title: 'Memory Match',
-    category: 'Puzzles',
-    Icon: Brain,
-    description: 'Test your memory by matching pairs of cards.',
-    href: '/puzzles/memory',
-    color: 'text-pink-600',
   },
   {
     id: 'sudoku',
@@ -121,20 +121,11 @@ export const PUZZLE_TYPES: PuzzleType[] = [
   },
   {
     id: 'memory',
-    name: 'Memory Match',
+    name: 'Memory Matching',
     Icon: Brain,
     description: 'Find matching pairs of cards. Click to reveal!',
     color: 'text-pink-600',
     href: '/puzzles/memory',
-    disabled: false,
-  },
-  {
-    id: 'memory-maze',
-    name: 'Memory Maze',
-    Icon: Route,
-    description: 'Use short-term memory and path planning.',
-    color: 'text-cyan-600',
-    href: '/puzzles/memory-maze',
     disabled: false,
   },
   {
@@ -372,3 +363,6 @@ interface OddOneOutPuzzle extends EnglishPuzzleItemBase {
 }
 
 export type EnglishPuzzleItem = WordMatchPuzzle | MissingLetterPuzzle | SentenceScramblePuzzle | OddOneOutPuzzle;
+
+// Corrected XCircle import, should be here
+export { XCircle } from 'lucide-react';
