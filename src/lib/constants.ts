@@ -44,6 +44,15 @@ export const GAMES: Game[] = [
     color: 'text-red-600',
   },
   {
+    id: 'tower-of-hanoi',
+    title: 'Tower of Hanoi',
+    category: 'Strategy',
+    Icon: ToyBrick, // Using ToyBrick for a playful feel
+    description: 'Solve the ancient puzzle by moving disks between towers.',
+    href: '/tower-of-hanoi',
+    color: 'text-teal-600',
+  },
+  {
     id: 'jigsaw',
     title: 'Jigsaw Puzzles',
     category: 'Puzzles',
