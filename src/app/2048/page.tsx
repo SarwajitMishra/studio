@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
-import { RotateCw, ArrowRight, HelpCircle } from 'lucide-react';
+import { RotateCw, ArrowRight, HelpCircle, ArrowUp, ArrowDown, ArrowLeft, ArrowRight as ArrowRightIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const GRID_SIZE = 4;
@@ -29,62 +29,39 @@ const THEME_BACKGROUNDS: Record<Theme, string> = {
     ocean: 'bg-gradient-to-br from-cyan-200 to-indigo-300',
 };
 
-// A single cell on the board that can be a drop target
-const BoardCell = ({ children, onDrop, onDragOver }: {
-    children: React.ReactNode;
-    onDrop: (e: React.DragEvent<HTMLDivElement>) => void;
-    onDragOver: (e: React.DragEvent<HTMLDivElement>) => void;
-}) => (
-    <div
-        onDrop={onDrop}
-        onDragOver={onDragOver}
-        className="w-20 h-20 sm:w-24 sm:h-24 bg-black/10 rounded-md flex items-center justify-center"
-    >
+const BoardCell = ({ children }: { children: React.ReactNode }) => (
+    <div className="w-20 h-20 sm:w-24 sm:h-24 bg-black/10 rounded-md flex items-center justify-center">
         {children}
     </div>
 );
 
-// A draggable tile with a number
-const Tile = ({ value, onDragStart }: { value: number; onDragStart: (e: React.DragEvent<HTMLDivElement>) => void; }) => {
+const Tile = ({ value }: { value: number }) => {
     if (value === 0) return null;
-
     const colorClass = TILE_COLORS[value] || TILE_COLORS[2048];
-
     return (
-        <div
-            draggable
-            onDragStart={onDragStart}
-            className={cn(
-                "w-full h-full rounded-md flex items-center justify-center font-bold text-3xl sm:text-4xl cursor-grab active:cursor-grabbing",
-                "animate-drop",
-                colorClass
-            )}
-        >
+        <div className={cn("w-full h-full rounded-md flex items-center justify-center font-bold text-3xl sm:text-4xl", "animate-drop", colorClass)}>
             {value}
         </div>
     );
 };
 
-
-// Reusable content for How to Play
 const HowToPlayContent = () => (
     <>
         <CardHeader>
             <CardTitle className="text-2xl font-bold">How to Play 2048</CardTitle>
-            <CardDescription>A game of merging numbers!</CardDescription>
+            <CardDescription>A game of sliding and merging numbers!</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
             <div className="text-left space-y-2">
-                <p>1. <span className="font-bold">Drag and drop</span> a tile onto an adjacent tile (not diagonal).</p>
-                <p>2. If the tiles have the <span className="font-bold text-accent">same number</span>, they will merge into one!</p>
-                <p>3. A new tile (either a 2 or a 4) will appear in an empty spot after each successful merge.</p>
+                <p>1. Use your <span className="font-bold">arrow keys</span> (<ArrowUp className="inline-block h-4 w-4"/> <ArrowDown className="inline-block h-4 w-4"/> <ArrowLeft className="inline-block h-4 w-4"/> <ArrowRightIcon className="inline-block h-4 w-4"/>) to slide all tiles on the board.</p>
+                <p>2. Tiles with the <span className="font-bold text-accent">same number</span> will merge into one when they collide!</p>
+                <p>3. A new tile (either a 2 or a 4) will appear in an empty spot after each move.</p>
                 <p>4. The goal is to create a tile with the number <span className="font-bold text-primary">2048!</span></p>
-                <p>5. The game is over when there are no more possible merges.</p>
+                <p>5. The game is over when the board is full and there are no more possible moves.</p>
             </div>
         </CardContent>
     </>
 );
-
 
 export default function Game2048Page() {
     const [board, setBoard] = useState<Board>([]);
@@ -108,6 +85,87 @@ export default function Game2048Page() {
         newBoard[r][c] = Math.random() < 0.9 ? 2 : 4;
         return newBoard;
     }, []);
+
+    const slideAndMergeRow = useCallback((row: number[]) => {
+        let filteredRow = row.filter(tile => tile !== 0);
+        let newScore = 0;
+        for (let i = 0; i < filteredRow.length - 1; i++) {
+            if (filteredRow[i] === filteredRow[i + 1]) {
+                filteredRow[i] *= 2;
+                newScore += filteredRow[i];
+                filteredRow[i + 1] = 0;
+            }
+        }
+        let newRow = filteredRow.filter(tile => tile !== 0);
+        while (newRow.length < GRID_SIZE) {
+            newRow.push(0);
+        }
+        return { newRow, mergedScore: newScore };
+    }, []);
+
+    const move = useCallback((direction: 'up' | 'down' | 'left' | 'right') => {
+        if (isGameOver) return;
+    
+        let newBoard = board.map(row => [...row]);
+        let moved = false;
+        let totalMergedScore = 0;
+    
+        const a = board;
+        const b = createEmptyBoard();
+
+        const transpose = (matrix: Board) => {
+            for (let r = 0; r < GRID_SIZE; r++) {
+                for (let c = 0; c < GRID_SIZE; c++) {
+                    b[r][c] = a[c][r];
+                }
+            }
+            return b;
+        }
+
+        if (direction === 'left' || direction === 'right') {
+            for (let r = 0; r < GRID_SIZE; r++) {
+                const originalRow = [...newBoard[r]];
+                const rowToProcess = direction === 'right' ? originalRow.slice().reverse() : originalRow;
+                const { newRow: processedRow, mergedScore } = slideAndMergeRow(rowToProcess);
+                totalMergedScore += mergedScore;
+                const finalRow = direction === 'right' ? processedRow.reverse() : processedRow;
+                if (JSON.stringify(originalRow) !== JSON.stringify(finalRow)) moved = true;
+                newBoard[r] = finalRow;
+            }
+        } else { // up or down
+            newBoard = transpose(newBoard);
+             for (let r = 0; r < GRID_SIZE; r++) {
+                const originalRow = [...newBoard[r]];
+                const rowToProcess = direction === 'down' ? originalRow.slice().reverse() : originalRow;
+                const { newRow: processedRow, mergedScore } = slideAndMergeRow(rowToProcess);
+                totalMergedScore += mergedScore;
+                const finalRow = direction === 'down' ? processedRow.reverse() : processedRow;
+                 if (JSON.stringify(originalRow) !== JSON.stringify(finalRow)) moved = true;
+                newBoard[r] = finalRow;
+            }
+            newBoard = transpose(newBoard);
+        }
+    
+        if (moved) {
+            const boardWithNewTile = addRandomTile(newBoard);
+            setBoard(boardWithNewTile);
+            setScore(s => s + totalMergedScore);
+            if (isGameOverCheck(boardWithNewTile)) {
+                setIsGameOver(true);
+            }
+        }
+    }, [board, isGameOver, slideAndMergeRow]);
+
+    const isGameOverCheck = (currentBoard: Board): boolean => {
+        for (let r = 0; r < GRID_SIZE; r++) {
+            for (let c = 0; c < GRID_SIZE; c++) {
+                if (currentBoard[r][c] === 0) return false; // has empty cell
+                if (c < GRID_SIZE - 1 && currentBoard[r][c] === currentBoard[r][c + 1]) return false; // can merge horizontally
+                if (r < GRID_SIZE - 1 && currentBoard[r][c] === currentBoard[r + 1][c]) return false; // can merge vertically
+            }
+        }
+        return true;
+    };
     
     const startGame = useCallback(() => {
         let newBoard = createEmptyBoard();
@@ -119,84 +177,24 @@ export default function Game2048Page() {
         setGameState('playing');
     }, [addRandomTile]);
 
-    const isGameOverCheck = (currentBoard: Board): boolean => {
-        let hasEmptyCell = false;
-        for (let r = 0; r < GRID_SIZE; r++) {
-            for (let c = 0; c < GRID_SIZE; c++) {
-                if (currentBoard[r][c] === 0) {
-                    hasEmptyCell = true;
-                    break;
-                }
-            }
-            if (hasEmptyCell) break;
-        }
-        if (hasEmptyCell) return false;
-
-        for (let r = 0; r < GRID_SIZE; r++) {
-            for (let c = 0; c < GRID_SIZE; c++) {
-                const current = currentBoard[r][c];
-                if (c < GRID_SIZE - 1 && current === currentBoard[r][c + 1]) return false;
-                if (r < GRID_SIZE - 1 && current === currentBoard[r + 1][c]) return false;
-            }
-        }
-        return true;
-    };
-
-
-    const handleDragStart = (e: React.DragEvent<HTMLDivElement>, r: number, c: number, value: number) => {
-        e.dataTransfer.setData('application/json', JSON.stringify({ r, c, value }));
-        e.dataTransfer.effectAllowed = 'move';
-    };
-
-    const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-        e.preventDefault();
-    };
-
-    const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetR: number, targetC: number) => {
-        e.preventDefault();
-        if (isGameOver) return;
-        
-        try {
-            const data = e.dataTransfer.getData('application/json');
-            if (!data) return;
-            const sourceData = JSON.parse(data);
-            const { r: sourceR, c: sourceC, value: sourceValue } = sourceData;
-            
-            if (sourceR === targetR && sourceC === targetC) return;
-            
-            const targetValue = board[targetR][targetC];
-            
-            const isAdjacent = (Math.abs(sourceR - targetR) === 1 && sourceC === targetC) ||
-                               (Math.abs(sourceC - targetC) === 1 && sourceR === targetR);
-            
-            if (!isAdjacent || sourceValue !== targetValue || sourceValue === 0) {
-                return;
-            }
-            
-            let newBoard = board.map(row => [...row]);
-            const mergedValue = sourceValue * 2;
-            newBoard[targetR][targetC] = mergedValue;
-            newBoard[sourceR][sourceC] = 0;
-
-            const boardWithNewTile = addRandomTile(newBoard);
-            setBoard(boardWithNewTile);
-            setScore(s => s + mergedValue);
-
-            if (isGameOverCheck(boardWithNewTile)) {
-                setIsGameOver(true);
-            }
-
-        } catch (error) {
-            console.error("Drag and drop failed", error);
-        }
-    };
-    
     useEffect(() => {
-        if (gameState === 'playing' && board.length > 0 && isGameOverCheck(board)) {
-            setIsGameOver(true);
-        }
-    }, [board, gameState]);
-    
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (gameState !== 'playing') return;
+            e.preventDefault();
+            switch (e.key) {
+                case 'ArrowUp': move('up'); break;
+                case 'ArrowDown': move('down'); break;
+                case 'ArrowLeft': move('left'); break;
+                case 'ArrowRight': move('right'); break;
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [move, gameState]);
+
     if (gameState === 'setup') {
       return (
          <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
@@ -250,10 +248,8 @@ export default function Game2048Page() {
                         )}
                         <div className="grid grid-cols-4 gap-4">
                             {board.map((row, r_idx) => row.map((cellValue, c_idx) => (
-                                <BoardCell key={`${r_idx}-${c_idx}`} onDrop={(e) => handleDrop(e, r_idx, c_idx)} onDragOver={handleDragOver}>
-                                    {cellValue !== 0 && (
-                                    <Tile value={cellValue} onDragStart={(e) => handleDragStart(e, r_idx, c_idx, cellValue)} />
-                                    )}
+                                <BoardCell key={`${r_idx}-${c_idx}`}>
+                                    <Tile value={cellValue} />
                                 </BoardCell>
                             )))}
                         </div>
