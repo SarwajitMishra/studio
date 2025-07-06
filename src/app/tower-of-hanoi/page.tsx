@@ -278,7 +278,7 @@ export default function TowerOfHanoiPage() {
                         ))}
                     </div>
                      <div className="mt-6 flex gap-4">
-                        <Button onClick={startGame} className="w-full"><RotateCw className="mr-2"/> Reset</Button>
+                        <Button onClick={() => difficulty && startGame()} className="w-full"><RotateCw className="mr-2"/> Reset</Button>
                         <Button onClick={() => setGameState('setup')} variant="outline" className="w-full"><ArrowLeft className="mr-2"/> Change Difficulty</Button>
                     </div>
                 </CardContent>
