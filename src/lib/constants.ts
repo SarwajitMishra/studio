@@ -58,7 +58,7 @@ export const GAMES: Game[] = [
     description: "A fun strategy game of nesting cups. Like Tic-Tac-Toe, but with a twist!",
     href: '/gobblet-gobblers',
     color: 'text-orange-500',
-    disabled: true,
+    disabled: false,
   },
   {
     id: 'jigsaw',
@@ -77,7 +77,7 @@ export const GAMES: Game[] = [
     description: 'A classic logic puzzle with numbers. Fill the grid!',
     href: '/puzzles/sudoku',
     color: 'text-lime-600',
-    disabled: true,
+    disabled: false,
   },
   {
     id: 'number-puzzles',
@@ -135,7 +135,7 @@ export const PUZZLE_TYPES: PuzzleType[] = [
     description: 'A classic logic puzzle with numbers.',
     color: 'text-lime-600',
     href: '/puzzles/sudoku',
-    disabled: true,
+    disabled: false,
   },
   {
     id: 'pattern-builder',
@@ -144,7 +144,7 @@ export const PUZZLE_TYPES: PuzzleType[] = [
     description: 'Recreate complex patterns from memory.',
     color: 'text-rose-500',
     href: '/puzzles/pattern-builder',
-    disabled: true,
+    disabled: false,
   },
   {
     id: 'numbers',
@@ -257,14 +257,14 @@ export const MATH_PUZZLE_TYPES: MathPuzzleType[] = [
   {
     id: "codeBreaker",
     name: "Code Breaker",
-    description: "Deduce the secret code using logic and clues. (Coming Soon!)",
+    description: "Deduce the secret code using logic and clues.",
     Icon: KeyRound,
     color: "text-gray-500",
   },
   {
     id: "mathDuel",
-    name: "Math Duel",
-    description: "Challenge a friend or AI in a race to solve math problems. (Coming Soon!)",
+    name: "Fast Math",
+    description: "Find the answer to the problem in a grid of numbers!",
     Icon: Swords,
     color: "text-red-500",
   },
@@ -321,7 +321,7 @@ export const ENGLISH_PUZZLE_TYPES: EnglishPuzzleType[] = [
     {
         id: "wordGrid",
         name: "Word Grid",
-        description: "Find as many words as you can in a grid of letters. (Coming Soon!)",
+        description: "Find as many words as you can in a grid of letters.",
         Icon: LayoutGrid,
         color: "text-purple-500"
     }
