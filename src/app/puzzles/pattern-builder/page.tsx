@@ -2,9 +2,10 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import Link from 'next/link';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Blocks, Eye, Pointer, RotateCw, ArrowLeft, Shield, Star, Gem, Check, X } from 'lucide-react';
+import { Blocks, Eye, Pointer, RotateCw, ArrowLeft, Shield, Star, Gem, Check, X, Award } from 'lucide-react';
 import { cn } from "@/lib/utils";
 
 type Difficulty = 'easy' | 'medium' | 'hard';
@@ -143,6 +144,11 @@ export default function PatternBuilderPage() {
                     </Button>
                 ))}
             </CardContent>
+            <CardFooter>
+                <Button asChild variant="ghost" className="w-full">
+                    <Link href="/puzzles"><ArrowLeft className="mr-2"/> Back to All Puzzles</Link>
+                </Button>
+            </CardFooter>
         </Card>
     );
   }
@@ -206,4 +212,3 @@ export default function PatternBuilderPage() {
     </Card>
   );
 }
-

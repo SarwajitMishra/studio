@@ -2,7 +2,8 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import Link from 'next/link';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { RotateCw, Award, ArrowLeft, ArrowRight, Shield, Star, Gem, Brain } from 'lucide-react';
 import { cn } from "@/lib/utils";
@@ -27,7 +28,7 @@ const HowToPlayDisk = ({ size, color }: { size: number; color: string; }) => (
     />
 );
 
-const HowToPlayHanoi = ({ onStartGame }: { onStartGame: () => void }) => {
+const HowToPlayHanoi = ({ onStartGame, onBack }: { onStartGame: () => void; onBack: () => void; }) => {
     const [step, setStep] = useState(0);
 
     const steps = [
@@ -79,9 +80,14 @@ const HowToPlayHanoi = ({ onStartGame }: { onStartGame: () => void }) => {
                     {getRodContent(2)}
                 </div>
                 <p className="min-h-[40px] font-medium text-foreground/90">{currentStep.text}</p>
-                <Button onClick={onStartGame} className="w-full text-lg bg-accent text-accent-foreground">
-                    Start Game! <ArrowRight className="ml-2" />
-                </Button>
+                <div className="flex flex-col sm:flex-row gap-2">
+                    <Button onClick={onBack} variant="outline" className="w-full">
+                        <ArrowLeft className="mr-2"/> Back
+                    </Button>
+                    <Button onClick={onStartGame} className="w-full text-lg bg-accent text-accent-foreground">
+                        Start Game! <ArrowRight className="ml-2" />
+                    </Button>
+                </div>
             </CardContent>
         </Card>
     );
@@ -234,6 +240,11 @@ export default function TowerOfHanoiPage() {
                         <Button onClick={() => handleDifficultySelect(5)} className="text-lg py-6"><Gem className="mr-2"/> 5 Disks</Button>
                         <Button onClick={() => handleDifficultySelect(6)} className="text-lg py-6"><Award className="mr-2"/> 6 Disks</Button>
                     </CardContent>
+                    <CardFooter>
+                        <Button asChild variant="ghost" className="w-full">
+                            <Link href="/"><ArrowLeft className="mr-2"/> Back to Menu</Link>
+                        </Button>
+                    </CardFooter>
                 </Card>
             </div>
         )
@@ -242,7 +253,7 @@ export default function TowerOfHanoiPage() {
      if (gameState === 'howToPlay') {
         return (
             <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
-               <HowToPlayHanoi onStartGame={startGame} />
+               <HowToPlayHanoi onStartGame={startGame} onBack={() => setGameState('setup')} />
             </div>
         );
     }

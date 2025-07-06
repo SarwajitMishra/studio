@@ -2,7 +2,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import Link from "next/link";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Circle, RotateCw, Users, Cpu, Award, ArrowLeft } from 'lucide-react';
 import { cn } from "@/lib/utils";
@@ -157,6 +158,11 @@ export default function ConnectFourPage() {
                     <Button onClick={() => handleStartGame('player')} className="w-full text-lg"><Users className="mr-2"/> Player vs Player</Button>
                     <Button onClick={() => handleStartGame('ai')} className="w-full text-lg"><Cpu className="mr-2"/> Player vs AI</Button>
                 </CardContent>
+                <CardFooter>
+                    <Button asChild variant="ghost" className="w-full">
+                        <Link href="/"><ArrowLeft className="mr-2"/> Back to Menu</Link>
+                    </Button>
+                </CardFooter>
             </Card>
         </div>
       )

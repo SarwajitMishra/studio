@@ -3,12 +3,13 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { RotateCcw, Users, Cpu, Globe, User as UserIcon } from 'lucide-react';
+import { RotateCcw, Users, Cpu, Globe, User as UserIcon, ArrowLeft } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
@@ -364,8 +365,12 @@ export default function LudoPage() {
                     </div>
                 </div>
               )}
-
-              <Button onClick={handleStartGame} disabled={!selectedMode || (selectedMode === 'offline' && !selectedNumPlayers)} className="w-full text-lg py-3 mt-4 bg-accent hover:bg-accent/90 text-accent-foreground">Start Game</Button>
+              <div className="space-y-2 mt-4">
+                <Button onClick={handleStartGame} disabled={!selectedMode || (selectedMode === 'offline' && !selectedNumPlayers)} className="w-full text-lg py-3 bg-accent hover:bg-accent/90 text-accent-foreground">Start Game</Button>
+                <Button asChild variant="outline" className="w-full">
+                    <Link href="/"><ArrowLeft className="mr-2 h-4 w-4"/> Back to Menu</Link>
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>

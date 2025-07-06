@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -153,7 +154,7 @@ export default function Game2048Page() {
                 setIsGameOver(true);
             }
         }
-    }, [board, isGameOver, slideAndMergeRow]);
+    }, [board, isGameOver, slideAndMergeRow, addRandomTile]);
 
     const isGameOverCheck = (currentBoard: Board): boolean => {
         for (let r = 0; r < GRID_SIZE; r++) {
@@ -251,7 +252,10 @@ export default function Game2048Page() {
          <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
            <Card className="w-full max-w-md text-center shadow-xl">
                 <HowToPlayContent />
-                <CardFooter className="p-6 pt-0">
+                <CardFooter className="flex flex-col sm:flex-row gap-2 p-6 pt-0">
+                    <Button asChild variant="outline" className="w-full">
+                        <Link href="/"><ArrowLeft className="mr-2 h-4 w-4"/> Back to Menu</Link>
+                    </Button>
                     <Button onClick={startGame} className="w-full text-lg bg-accent text-accent-foreground">
                         Let's Go! <ArrowRight className="ml-2" />
                     </Button>

@@ -3,8 +3,9 @@
 
 import type { NextPage } from 'next';
 import { useEffect, useState, useCallback, useRef } from 'react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Card as ShadCNCard, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card as ShadCNCard, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { RefreshCw, Award, Brain, Timer, ArrowLeft, Shield, Star, Gem } from 'lucide-react';
 import { MEMORY_ICONS } from '@/lib/constants';
 import type { LucideIcon } from 'lucide-react';
@@ -195,6 +196,11 @@ const MemoryMatchPage: NextPage = () => {
               )
             })}
           </CardContent>
+          <CardFooter>
+            <Button asChild variant="ghost" className="w-full">
+                <Link href="/puzzles"><ArrowLeft className="mr-2"/> Back to All Puzzles</Link>
+            </Button>
+          </CardFooter>
         </ShadCNCard>
       </div>
     )

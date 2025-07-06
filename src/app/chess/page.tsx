@@ -1,11 +1,12 @@
 
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { useState, useEffect, useCallback, useRef } from "react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { Crown, AlertTriangle, Timer, ListChecks, ArrowRight, Brain, Gamepad2 } from "lucide-react";
+import { Crown, AlertTriangle, Timer, ListChecks, ArrowRight, ArrowLeft, Brain, Gamepad2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -141,7 +142,7 @@ const ChessSquare = ({
   );
 };
 
-const HowToPlayChess = ({ onStartGame }: { onStartGame: () => void }) => {
+const HowToPlayChess = ({ onStartGame, onBack }: { onStartGame: () => void; onBack: () => void; }) => {
     const [step, setStep] = useState(0);
 
     const steps = [
@@ -202,9 +203,14 @@ const HowToPlayChess = ({ onStartGame }: { onStartGame: () => void }) => {
                     </div>
                 </div>
                 <p className="min-h-[40px] font-medium text-foreground/90">{currentStep.text}</p>
-                <Button onClick={onStartGame} className="w-full text-lg bg-accent text-accent-foreground">
-                    Start Game! <ArrowRight className="ml-2" />
-                </Button>
+                 <div className="flex flex-col sm:flex-row gap-2">
+                    <Button onClick={onBack} variant="outline" className="w-full">
+                        <ArrowLeft className="mr-2"/> Back
+                    </Button>
+                    <Button onClick={onStartGame} className="w-full text-lg bg-accent text-accent-foreground">
+                        Start Game! <ArrowRight className="ml-2" />
+                    </Button>
+                </div>
             </CardContent>
         </Card>
     );
@@ -638,6 +644,11 @@ export default function ChessPage() {
                     <Button onClick={() => setGameState('playing')} className="w-full text-lg"><Gamepad2 className="mr-2"/> Play Game</Button>
                     <Button onClick={() => setGameState('howToPlay')} variant="outline" className="w-full text-lg"><Brain className="mr-2"/> How to Play</Button>
                 </CardContent>
+                <CardFooter>
+                    <Button asChild variant="ghost" className="w-full">
+                        <Link href="/"><ArrowLeft className="mr-2"/> Back to Menu</Link>
+                    </Button>
+                </CardFooter>
             </Card>
         </div>
       )
@@ -646,7 +657,7 @@ export default function ChessPage() {
   if (gameState === 'howToPlay') {
       return (
          <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
-            <HowToPlayChess onStartGame={() => setGameState('playing')} />
+            <HowToPlayChess onStartGame={() => setGameState('playing')} onBack={() => setGameState('setup')} />
         </div>
       )
   }
