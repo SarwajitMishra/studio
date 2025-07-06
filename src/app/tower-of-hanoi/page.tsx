@@ -11,7 +11,6 @@ type Towers = number[][];
 type Difficulty = 3 | 4 | 5 | 6;
 type GameState = 'setup' | 'howToPlay' | 'playing';
 
-// New distinct colors
 const DISK_COLORS = [
     "bg-red-500", "bg-orange-500", "bg-yellow-400",
     "bg-lime-500", "bg-cyan-500", "bg-indigo-500", "bg-fuchsia-500"
@@ -21,14 +20,12 @@ const MINIMUM_MOVES: Record<Difficulty, number> = {
     3: 7, 4: 15, 5: 31, 6: 63
 };
 
-const Disk = ({ size, color }: { size: number; color: string; }) => {
-    return (
-        <div
-            className={cn("h-6 rounded-md shadow-md mx-auto transition-all duration-200", color)}
-            style={{ width: `${30 + size * 10}%` }}
-        />
-    );
-};
+const HowToPlayDisk = ({ size, color }: { size: number; color: string; }) => (
+    <div
+        className={cn("h-5 rounded-md shadow-md mx-auto", color)}
+        style={{ width: `${30 + size * 10}%` }}
+    />
+);
 
 const HowToPlayHanoi = ({ onStartGame }: { onStartGame: () => void }) => {
     const [step, setStep] = useState(0);
@@ -48,6 +45,28 @@ const HowToPlayHanoi = ({ onStartGame }: { onStartGame: () => void }) => {
 
     const currentStep = steps[step];
 
+    const getRodContent = (rodIndex: number) => {
+        let disks: JSX.Element[] = [];
+        if (rodIndex === 0) {
+            if (step === 0) disks = [<HowToPlayDisk key={1} size={1} color={DISK_COLORS[0]} />, <HowToPlayDisk key={2} size={2} color={DISK_COLORS[1]} />, <HowToPlayDisk key={3} size={3} color={DISK_COLORS[2]} />];
+            if (step === 1) disks = [<HowToPlayDisk key={2} size={2} color={DISK_COLORS[1]} />, <HowToPlayDisk key={3} size={3} color={DISK_COLORS[2]} />];
+            if (step === 2) disks = [<HowToPlayDisk key={3} size={3} color={DISK_COLORS[2]} />];
+        } else if (rodIndex === 1) {
+            if (step === 2) disks = [<HowToPlayDisk key={1} size={1} color={DISK_COLORS[0]} />];
+        } else if (rodIndex === 2) {
+            if (step === 1) disks = [<HowToPlayDisk key={1} size={1} color={DISK_COLORS[0]} />];
+            if (step === 2) disks = [<div key="anim" className="animate-pulse"><HowToPlayDisk size={2} color={DISK_COLORS[1]} /></div>];
+        }
+        
+        return (
+             <div className="w-1/3 flex flex-col-reverse items-center space-y-1 h-full justify-end">
+                {disks}
+                <div className="w-2 h-24 bg-neutral-600 rounded-t-sm"></div>
+                <div className="w-full h-2 bg-neutral-700 rounded-sm"></div>
+            </div>
+        )
+    }
+
     return (
         <Card className="w-full max-w-md text-center shadow-xl">
             <CardHeader>
@@ -55,24 +74,9 @@ const HowToPlayHanoi = ({ onStartGame }: { onStartGame: () => void }) => {
             </CardHeader>
             <CardContent className="space-y-4">
                 <div className="flex justify-around items-end h-32 bg-muted p-2 rounded-lg">
-                    {/* Rod 1 */}
-                    <div className="w-1/3 flex flex-col-reverse items-center space-y-1">
-                        {step === 0 && <><Disk size={1} color={DISK_COLORS[0]} /><Disk size={2} color={DISK_COLORS[1]} /><Disk size={3} color={DISK_COLORS[2]} /></>}
-                        {step === 1 && <><Disk size={2} color={DISK_COLORS[1]} /><Disk size={3} color={DISK_COLORS[2]} /></>}
-                        {step === 2 && <><Disk size={3} color={DISK_COLORS[2]} /></>}
-                        <div className="w-2 h-24 bg-neutral-600"></div>
-                    </div>
-                     {/* Rod 2 */}
-                    <div className="w-1/3 flex flex-col-reverse items-center space-y-1">
-                        {step === 2 && <Disk size={1} color={DISK_COLORS[0]} />}
-                        <div className="w-2 h-24 bg-neutral-600"></div>
-                    </div>
-                     {/* Rod 3 */}
-                    <div className="w-1/3 flex flex-col-reverse items-center space-y-1">
-                        {step === 1 && <Disk size={1} color={DISK_COLORS[0]} />}
-                         {step === 2 && <div className={cn("animate-pulse")}> <Disk size={2} color={DISK_COLORS[1]} /> </div>}
-                        <div className="w-2 h-24 bg-neutral-600"></div>
-                    </div>
+                    {getRodContent(0)}
+                    {getRodContent(1)}
+                    {getRodContent(2)}
                 </div>
                 <p className="min-h-[40px] font-medium text-foreground/90">{currentStep.text}</p>
                 <Button onClick={onStartGame} className="w-full text-lg bg-accent text-accent-foreground">
@@ -95,35 +99,38 @@ const Rod = ({ disks, rodIndex, onClick, onDragOver, onDrop, onDiskDragStart, is
     isWon: boolean,
 }) => (
     <div 
+        onClick={onClick}
         onDragOver={onDragOver}
         onDrop={onDrop}
-        className="flex flex-col-reverse justify-start h-48 w-full border-2 border-transparent p-2 rounded-lg"
+        className={cn(
+            "flex flex-col justify-end h-56 w-full border-2 p-2 rounded-lg cursor-pointer transition-colors",
+            "bg-muted/30 hover:border-primary/50",
+            isSelected ? "border-primary bg-primary/10" : "border-transparent",
+        )}
     >
-        <div className="relative h-full w-full flex flex-col-reverse justify-start items-center">
-            {/* Base */}
-            <div className="w-full h-2 bg-neutral-700 rounded-t-md"></div>
-            {/* Pole */}
-            <div className="w-2 h-full bg-neutral-600 absolute bottom-0"></div>
-            {/* Disks */}
-            <div className="absolute bottom-2 w-full space-y-1">
-                {disks.map((diskSize, index) => (
-                    <div
-                        key={diskSize} 
-                        draggable={index === disks.length - 1 && !isWon}
-                        onDragStart={(e) => index === disks.length - 1 && !isWon ? onDiskDragStart(e, rodIndex) : undefined}
-                        className={cn((index === disks.length-1 && !isWon) ? "cursor-grab active:cursor-grabbing" : "")}
-                    >
-                        <Disk 
-                            size={diskSize} 
-                            color={DISK_COLORS[diskSize - 1]}
-                        />
-                    </div>
-                ))}
-            </div>
+        <div className="relative flex-grow flex flex-col-reverse items-center justify-start pt-4">
+            <div className="w-2 h-full bg-neutral-600 absolute bottom-0 rounded-t-sm"></div>
+            {disks.map((diskSize, index) => (
+                <div
+                    key={diskSize} 
+                    draggable={index === disks.length - 1 && !isWon}
+                    onDragStart={(e) => {
+                         if (index === disks.length - 1 && !isWon) {
+                            e.stopPropagation();
+                            onDiskDragStart(e, rodIndex);
+                        }
+                    }}
+                    className={cn(
+                        "h-6 rounded-md shadow-md transition-all duration-200", 
+                        DISK_COLORS[diskSize - 1],
+                        (index === disks.length - 1 && !isWon) ? "cursor-grab active:cursor-grabbing" : "",
+                        "mb-1"
+                    )}
+                    style={{ width: `${30 + diskSize * 10}%` }}
+                />
+            ))}
         </div>
-        <Button variant={isSelected ? "default" : "outline"} onClick={onClick} className="mt-2" disabled={isWon}>
-            {isSelected ? "Selected" : "Select"}
-        </Button>
+        <div className="w-full h-2 bg-neutral-700 rounded-sm"></div>
     </div>
 );
 
@@ -164,7 +171,7 @@ export default function TowerOfHanoiPage() {
         const fromRod = newTowers[fromIndex];
         const toRod = newTowers[toIndex];
         
-        if (fromRod.length === 0) return; // Cannot move from an empty rod
+        if (fromRod.length === 0) return;
 
         const diskToMove = fromRod[fromRod.length - 1];
 
@@ -174,7 +181,6 @@ export default function TowerOfHanoiPage() {
             setTowers(newTowers);
             setMoves(m => m + 1);
 
-            // Check for win condition
             if ((newTowers[1].length === difficulty) || (newTowers[2].length === difficulty)) {
                 setIsWon(true);
             }
@@ -185,7 +191,6 @@ export default function TowerOfHanoiPage() {
         if (isWon) return;
 
         if (selectedRod === null) {
-            // Select a disk from a non-empty rod
             if (towers[rodIndex].length > 0) {
                 setSelectedRod(rodIndex);
             }
@@ -195,7 +200,6 @@ export default function TowerOfHanoiPage() {
         }
     };
 
-    // Drag and Drop Handlers
     const handleDragStart = (e: React.DragEvent, fromRodIndex: number) => {
         if (isWon) {
             e.preventDefault();
