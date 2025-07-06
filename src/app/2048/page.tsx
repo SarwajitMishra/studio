@@ -2,10 +2,11 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { RotateCw, ArrowRight } from 'lucide-react';
+import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { RotateCw, ArrowRight, HelpCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const GRID_SIZE = 4;
@@ -65,8 +66,9 @@ const Tile = ({ value, onDragStart }: { value: number; onDragStart: (e: React.Dr
 };
 
 
-const HowToPlay2048 = ({ onStartGame }: { onStartGame: () => void }) => (
-    <Card className="w-full max-w-md text-center shadow-xl">
+// Reusable content for How to Play
+const HowToPlayContent = () => (
+    <>
         <CardHeader>
             <CardTitle className="text-2xl font-bold">How to Play 2048</CardTitle>
             <CardDescription>A game of merging numbers!</CardDescription>
@@ -79,12 +81,10 @@ const HowToPlay2048 = ({ onStartGame }: { onStartGame: () => void }) => (
                 <p>4. The goal is to create a tile with the number <span className="font-bold text-primary">2048!</span></p>
                 <p>5. The game is over when there are no more possible merges.</p>
             </div>
-            <Button onClick={onStartGame} className="w-full text-lg bg-accent text-accent-foreground">
-                Let's Go! <ArrowRight className="ml-2" />
-            </Button>
         </CardContent>
-    </Card>
+    </>
 );
+
 
 export default function Game2048Page() {
     const [board, setBoard] = useState<Board>([]);
@@ -144,7 +144,7 @@ export default function Game2048Page() {
 
 
     const handleDragStart = (e: React.DragEvent<HTMLDivElement>, r: number, c: number, value: number) => {
-        e.dataTransfer.setData('text/plain', JSON.stringify({ r, c, value }));
+        e.dataTransfer.setData('application/json', JSON.stringify({ r, c, value }));
         e.dataTransfer.effectAllowed = 'move';
     };
 
@@ -157,7 +157,7 @@ export default function Game2048Page() {
         if (isGameOver) return;
         
         try {
-            const data = e.dataTransfer.getData('text/plain');
+            const data = e.dataTransfer.getData('application/json');
             if (!data) return;
             const sourceData = JSON.parse(data);
             const { r: sourceR, c: sourceC, value: sourceValue } = sourceData;
@@ -200,7 +200,14 @@ export default function Game2048Page() {
     if (gameState === 'setup') {
       return (
          <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
-           <HowToPlay2048 onStartGame={startGame} />
+           <Card className="w-full max-w-md text-center shadow-xl">
+                <HowToPlayContent />
+                <CardFooter className="p-6 pt-0">
+                    <Button onClick={startGame} className="w-full text-lg bg-accent text-accent-foreground">
+                        Let's Go! <ArrowRight className="ml-2" />
+                    </Button>
+                </CardFooter>
+            </Card>
         </div>
       )
     }
@@ -210,10 +217,10 @@ export default function Game2048Page() {
             <Card className="w-full max-w-2xl text-center shadow-xl">
                 <CardHeader>
                     <CardTitle className="text-3xl font-bold">2048</CardTitle>
-                    <div className="flex justify-between items-center pt-2">
+                    <div className="flex justify-between items-center pt-2 gap-2">
                         <div className="p-2 bg-muted rounded-md">Score: <span className="font-bold">{score}</span></div>
                         <Select value={theme} onValueChange={(v) => setTheme(v as Theme)}>
-                            <SelectTrigger className="w-[180px]">
+                            <SelectTrigger className="w-[140px]">
                                 <SelectValue placeholder="Select a theme" />
                             </SelectTrigger>
                             <SelectContent>
@@ -222,6 +229,14 @@ export default function Game2048Page() {
                                 <SelectItem value="ocean">Ocean</SelectItem>
                             </SelectContent>
                         </Select>
+                        <Dialog>
+                            <DialogTrigger asChild>
+                                <Button variant="outline"><HelpCircle className="mr-2"/> Help</Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                                <HowToPlayContent />
+                            </DialogContent>
+                        </Dialog>
                         <Button onClick={startGame}><RotateCw className="mr-2"/>New Game</Button>
                     </div>
                 </CardHeader>
