@@ -136,7 +136,7 @@ const HowToPlayAnimation = () => {
 
                         return (
                             <div key={index} className={cn("w-16 h-16 rounded-md flex items-center justify-center transition-colors duration-300", 
-                                (cell.isWall && currentStep.wallsVisible) ? 'bg-primary/50' : 'bg-card',
+                                (cell.isWall && currentStep.wallsVisible) ? 'bg-gradient-to-br from-amber-700 to-red-900' : 'bg-card',
                                 (cell.isStart) && 'bg-green-500',
                                 (cell.isEnd) && 'bg-red-500',
                                 isHitWall && 'bg-destructive/70 animate-pulse',
@@ -292,7 +292,7 @@ export default function MemoryMazePage() {
                                     "w-10 h-10 sm:w-12 sm:h-12 rounded-sm transition-colors duration-200 flex items-center justify-center",
                                     gameState !== 'recall' ? 'cursor-not-allowed' : 'cursor-pointer',
                                     // Base color
-                                    isWall && (gameState === 'memorize' || gameState === 'gameOver') ? 'bg-primary/50' : 'bg-card',
+                                    isWall && (gameState === 'memorize' || gameState === 'gameOver') ? 'bg-gradient-to-br from-amber-700 to-red-900' : 'bg-card',
                                     // Player path & special tiles
                                     !isWall && visitedByPlayer && 'bg-yellow-300/30',
                                     isStart && 'bg-green-500',
