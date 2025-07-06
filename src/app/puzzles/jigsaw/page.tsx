@@ -4,12 +4,13 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Puzzle as PuzzleIcon, CheckCircle, Shield, Gem, Star, ArrowLeft, Timer, Eye, RotateCw, Loader2 } from "lucide-react";
+import { Puzzle as PuzzleIcon, CheckCircle, Shield, Gem, Star, ArrowLeft, Timer, Eye, RotateCw, Loader2, Lightbulb } from "lucide-react";
 import Link from "next/link";
 import NextImage from "next/image";
 import { cn } from "@/lib/utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { searchImages } from "@/services/pixabay";
+import { useToast } from "@/hooks/use-toast";
 
 
 type Difficulty = "beginner" | "expert" | "pro";
@@ -33,9 +34,6 @@ interface PuzzlePiece {
   id: string;
   correctRow: number;
   correctCol: number;
-  // The current position in the grid
-  currentRow: number;
-  currentCol: number;
 }
 
 const DIFFICULTY_LEVELS: DifficultyOption[] = [
@@ -62,7 +60,7 @@ const PUZZLE_IMAGES_BY_DIFFICULTY: Record<Difficulty, PuzzleImage[]> = {
   ],
 };
 
-const shufflePieces = (pieces: PuzzlePiece[]): PuzzlePiece[] => {
+const shufflePieces = (pieces: PuzzlePiece[], gridSize: number): PuzzlePiece[] => {
     const shuffled = [...pieces];
     let isSolvable = false;
     // Keep shuffling until the puzzle is not in its solved state initially
@@ -71,14 +69,8 @@ const shufflePieces = (pieces: PuzzlePiece[]): PuzzlePiece[] => {
             const j = Math.floor(Math.random() * (i + 1));
             [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
         }
-        // Update current row and col based on new shuffled index
-        const size = Math.sqrt(shuffled.length);
-        shuffled.forEach((piece, index) => {
-            piece.currentRow = Math.floor(index / size);
-            piece.currentCol = index % size;
-        });
         // Check if it's not already solved
-        if (!shuffled.every(p => p.correctRow === p.currentRow && p.correctCol === p.currentCol)) {
+        if (!shuffled.every((p, index) => p.correctRow === Math.floor(index / gridSize) && p.correctCol === index % gridSize)) {
             isSolvable = true;
         }
     }
@@ -143,6 +135,8 @@ export default function JigsawPuzzlePage() {
     const [moves, setMoves] = useState(0);
     const [time, setTime] = useState(0);
     const [showHint, setShowHint] = useState(false);
+    const [hintsRemaining, setHintsRemaining] = useState(3);
+    const { toast } = useToast();
     
     const boardRef = useRef<HTMLDivElement>(null);
     const [boardSize, setBoardSize] = useState(450); // Default size
@@ -218,6 +212,7 @@ export default function JigsawPuzzlePage() {
         setIsComplete(false);
         setSelectedPieceId(null);
         setSelectedImage(image);
+        setHintsRemaining(3);
 
         const generatedPieces: PuzzlePiece[] = [];
         for (let row = 0; row < gridSize; row++) {
@@ -226,22 +221,24 @@ export default function JigsawPuzzlePage() {
                     id: `${row}-${col}`,
                     correctRow: row,
                     correctCol: col,
-                    currentRow: row, // Will be updated by shuffle
-                    currentCol: col,  // Will be updated by shuffle
                 });
             }
         }
 
-        setPuzzlePieces(shufflePieces(generatedPieces));
+        setPuzzlePieces(shufflePieces(generatedPieces, gridSize));
         setViewMode("playing");
     };
 
     const checkCompletion = useCallback((currentPieces: PuzzlePiece[]) => {
-        const isSolved = currentPieces.every(p => p.correctRow === p.currentRow && p.correctCol === p.currentCol);
+        const isSolved = currentPieces.every((p, index) => {
+            const currentRow = Math.floor(index / gridSize);
+            const currentCol = index % gridSize;
+            return p.correctRow === currentRow && p.correctCol === currentCol;
+        });
         if (isSolved) {
             setIsComplete(true);
         }
-    }, []);
+    }, [gridSize]);
 
     const swapPieces = useCallback((piece1Id: string, piece2Id: string) => {
         const newPieces = [...puzzlePieces];
@@ -249,14 +246,7 @@ export default function JigsawPuzzlePage() {
         const piece2Index = newPieces.findIndex(p => p.id === piece2Id);
 
         if (piece1Index === -1 || piece2Index === -1) return;
-
-        // Swap the currentRow and currentCol properties
-        const tempRow = newPieces[piece1Index].currentRow;
-        const tempCol = newPieces[piece1Index].currentCol;
-        newPieces[piece1Index].currentRow = newPieces[piece2Index].currentRow;
-        newPieces[piece1Index].currentCol = newPieces[piece2Index].currentCol;
         
-        // Actually swap their positions in the array for rendering
         [newPieces[piece1Index], newPieces[piece2Index]] = [newPieces[piece2Index], newPieces[piece1Index]];
 
         setPuzzlePieces(newPieces);
@@ -305,6 +295,34 @@ export default function JigsawPuzzlePage() {
         setIsComplete(false);
         setMoves(0);
         setTime(0);
+        setHintsRemaining(3);
+    };
+
+    const handleHint = () => {
+        if (isComplete || hintsRemaining <= 0) return;
+    
+        const incorrectPieceIndex = puzzlePieces.findIndex((p, index) => {
+            const currentRow = Math.floor(index / gridSize);
+            const currentCol = index % gridSize;
+            return p.correctRow !== currentRow || p.correctCol !== currentCol;
+        });
+    
+        if (incorrectPieceIndex === -1) return;
+    
+        const pieceToMove = puzzlePieces[incorrectPieceIndex];
+        const correctIndex = pieceToMove.correctRow * gridSize + pieceToMove.correctCol;
+        
+        const newPieces = [...puzzlePieces];
+        [newPieces[incorrectPieceIndex], newPieces[correctIndex]] = [newPieces[correctIndex], newPieces[incorrectPieceIndex]];
+    
+        setPuzzlePieces(newPieces);
+        setHintsRemaining(h => h - 1);
+        setMoves(m => m + 1);
+        toast({
+            title: "Hint Used!",
+            description: `A piece has been placed correctly! You have ${hintsRemaining - 1} hints left.`
+        });
+        checkCompletion(newPieces);
     };
 
     const formatTime = (seconds: number) => {
@@ -368,7 +386,7 @@ export default function JigsawPuzzlePage() {
                                     gridTemplateColumns: `repeat(${gridSize}, 1fr)`,
                                 }}
                             >
-                                {puzzlePieces.map(piece => (
+                                {puzzlePieces.map((piece, index) => (
                                     <PuzzlePieceComponent
                                         key={piece.id}
                                         piece={piece}
@@ -387,7 +405,10 @@ export default function JigsawPuzzlePage() {
                         </div>
                         <div className="flex flex-row md:flex-col items-center justify-center gap-3 mt-2 md:mt-0">
                            <Button onClick={() => setShowHint(true)} onMouseLeave={() => setShowHint(false)} onTouchEnd={() => setShowHint(false)}>
-                                <Eye className="mr-2 h-4 w-4" /> Hint
+                                <Eye className="mr-2 h-4 w-4" /> Peek
+                           </Button>
+                           <Button onClick={handleHint} disabled={isComplete || hintsRemaining <= 0}>
+                                <Lightbulb className="mr-2 h-4 w-4" /> Solve Piece ({hintsRemaining})
                            </Button>
                            <Button variant="outline" onClick={() => {
                              setViewMode('selectImage');
