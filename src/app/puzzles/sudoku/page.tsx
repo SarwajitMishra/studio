@@ -47,6 +47,7 @@ export default function SudokuPage() {
     const [initialGrid, setInitialGrid] = useState<SudokuGrid>([]);
     const [solution, setSolution] = useState<SudokuGrid>([]);
     const [isComplete, setIsComplete] = useState(false);
+    const [incorrectCells, setIncorrectCells] = useState<{ r: number, c: number }[]>([]);
     const { toast } = useToast();
 
     const startGame = (diff: Difficulty) => {
@@ -56,6 +57,7 @@ export default function SudokuPage() {
         setInitialGrid(puzzle.map(row => [...row]));
         setSolution(sol);
         setIsComplete(false);
+        setIncorrectCells([]);
     };
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>, row: number, col: number) => {
@@ -80,30 +82,35 @@ export default function SudokuPage() {
         }
     };
     
-    const solveOneCell = () => {
+    const validateEntries = () => {
         if (isComplete) return;
-        const emptyCells: { r: number, c: number }[] = [];
+    
+        const errors: {r: number, c: number}[] = [];
+        let userEntries = 0;
+    
         for (let r = 0; r < 9; r++) {
             for (let c = 0; c < 9; c++) {
-                if (grid[r][c] === null) {
-                    emptyCells.push({ r, c });
+                // Check only user-editable cells that have a value
+                if (initialGrid[r][c] === null && grid[r][c] !== null) {
+                    userEntries++;
+                    if (grid[r][c] !== solution[r][c]) {
+                        errors.push({ r, c });
+                    }
                 }
             }
         }
-        if (emptyCells.length > 0) {
-            const cellToSolve = emptyCells[Math.floor(Math.random() * emptyCells.length)];
-            const newGrid = grid.map(r => [...r]);
-            newGrid[cellToSolve.r][cellToSolve.c] = solution[cellToSolve.r][cellToSolve.c];
-            setGrid(newGrid);
-
-            const isBoardFull = newGrid.every(r => r.every(cell => cell !== null));
-            if (isBoardFull) {
-                const isSolved = newGrid.every((r, r_idx) => r.every((cell, c_idx) => cell === solution[r_idx][c_idx]));
-                if (isSolved) {
-                    setIsComplete(true);
-                    toast({ title: "Congratulations!", description: "You solved the Sudoku puzzle!", className: "bg-green-500 text-white" });
-                }
-            }
+    
+        if (userEntries === 0) {
+            toast({ title: "No entries to validate", description: "Please enter some numbers first." });
+            return;
+        }
+    
+        if (errors.length > 0) {
+            setIncorrectCells(errors);
+            toast({ variant: "destructive", title: "Found Mistakes!", description: `${errors.length} incorrect number(s) marked in red.` });
+            setTimeout(() => setIncorrectCells([]), 2000); // Clear highlighting after 2 seconds
+        } else {
+            toast({ title: "All Good!", description: "All your entries so far are correct. Keep going!", className: "bg-green-500 text-white" });
         }
     };
 
@@ -138,6 +145,7 @@ export default function SudokuPage() {
                             const isInitial = initialGrid[r_idx][c_idx] !== null;
                             const borderRight = (c_idx + 1) % 3 === 0 && c_idx < 8;
                             const borderBottom = (r_idx + 1) % 3 === 0 && r_idx < 8;
+                            const isIncorrect = incorrectCells.some(cell => cell.r === r_idx && cell.c === c_idx);
 
                             return (
                                 <div 
@@ -160,7 +168,8 @@ export default function SudokuPage() {
                                             onChange={(e) => handleInputChange(e, r_idx, c_idx)}
                                             className={cn(
                                                 "w-full h-full bg-transparent text-center text-primary text-lg sm:text-xl font-semibold",
-                                                "focus:outline-none focus:ring-2 focus:ring-primary z-10 rounded-sm"
+                                                "focus:outline-none focus:ring-2 focus:ring-primary z-10 rounded-sm",
+                                                isIncorrect && "bg-red-500/30 text-red-700 animate-pulse"
                                             )}
                                             maxLength={1}
                                             pattern="[1-9]"
@@ -183,7 +192,7 @@ export default function SudokuPage() {
                  <Card>
                     <CardHeader><CardTitle>Actions</CardTitle></CardHeader>
                     <CardContent className="space-y-3">
-                        <Button variant="outline" className="w-full" onClick={solveOneCell} disabled={isComplete}><Lightbulb className="mr-2"/> Hint / Peek</Button>
+                        <Button variant="outline" className="w-full" onClick={validateEntries} disabled={isComplete}><Lightbulb className="mr-2"/> Validate Answers</Button>
                         <Button variant="outline" className="w-full" onClick={() => startGame(difficulty)}><RotateCw className="mr-2"/> New Game</Button>
                         <Button variant="ghost" className="w-full" onClick={() => setDifficulty(null)}><ArrowLeft className="mr-2"/> Change Difficulty</Button>
                     </CardContent>
