@@ -4,73 +4,106 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Route, Brain, Award, ArrowLeft, Shield, Star, Gem, Heart } from 'lucide-react';
+import { Brain, Award, ArrowLeft, Shield, Star, Gem, Heart, Route, User } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
 type Difficulty = 'easy' | 'medium' | 'hard';
 type GameState = 'setup' | 'memorize' | 'recall' | 'levelComplete' | 'gameOver';
 
-interface GridCell {
-  row: number;
-  col: number;
-}
-
 interface LevelConfig {
   gridSize: number;
-  pathLength: number;
   memorizeTime: number; // in ms
 }
 
 const DIFFICULTY_LEVELS: Record<Difficulty, LevelConfig> = {
-  easy: { gridSize: 3, pathLength: 4, memorizeTime: 3000 },
-  medium: { gridSize: 4, pathLength: 6, memorizeTime: 4000 },
-  hard: { gridSize: 5, pathLength: 8, memorizeTime: 5000 },
+  easy: { gridSize: 5, memorizeTime: 4000 },
+  medium: { gridSize: 7, memorizeTime: 5000 },
+  hard: { gridSize: 11, memorizeTime: 7000 },
 };
 
-const generatePath = (gridSize: number, pathLength: number): GridCell[] => {
-    const path: GridCell[] = [];
-    const visited = new Set<string>();
+interface GridCell {
+    row: number;
+    col: number;
+    isWall: boolean;
+    visitedByGenerator: boolean; // For maze generation
+    visitedByPlayer: boolean;   // For player path
+    isStart: boolean;
+    isEnd: boolean;
+    isPlayer: boolean;
+    isIncorrectGuess: boolean; // To flash red on wrong move
+}
 
-    let startRow = Math.floor(Math.random() * gridSize);
-    let startCol = Math.floor(Math.random() * gridSize);
-    let currentCell = { row: startRow, col: startCol };
+const generateMaze = (gridSize: number): { grid: GridCell[][], startPos: {row: number, col: number}, endPos: {row: number, col: number} } => {
+    // Ensure grid size is odd for this algorithm
+    if (gridSize % 2 === 0) gridSize++;
 
-    path.push(currentCell);
-    visited.add(`${currentCell.row}-${currentCell.col}`);
+    const grid: GridCell[][] = Array.from({ length: gridSize }, (_, row) =>
+        Array.from({ length: gridSize }, (_, col) => ({
+            row,
+            col,
+            isWall: true,
+            visitedByGenerator: false,
+            visitedByPlayer: false,
+            isStart: false,
+            isEnd: false,
+            isPlayer: false,
+            isIncorrectGuess: false,
+        }))
+    );
 
-    while (path.length < pathLength) {
-        const { row, col } = path[path.length - 1];
-        const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
-        const shuffledDirections = directions.sort(() => Math.random() - 0.5);
+    const stack: { row: number; col: number }[] = [];
+    const startRow = 1;
+    const startCol = 1;
 
-        let moved = false;
-        for (const [dr, dc] of shuffledDirections) {
-            const nextRow = row + dr;
-            const nextCol = col + dc;
-            const nextKey = `${nextRow}-${nextCol}`;
+    grid[startRow][startCol].isWall = false;
+    grid[startRow][startCol].visitedByGenerator = true;
+    stack.push({ row: startRow, col: startCol });
 
-            if (nextRow >= 0 && nextRow < gridSize && nextCol >= 0 && nextCol < gridSize && !visited.has(nextKey)) {
-                path.push({ row: nextRow, col: nextCol });
-                visited.add(nextKey);
-                moved = true;
-                break;
+    while (stack.length > 0) {
+        const current = stack.pop()!;
+        const neighbors = [];
+        const directions = [[0, 2], [0, -2], [2, 0], [-2, 0]]; // Move 2 cells at a time
+        directions.sort(() => Math.random() - 0.5);
+
+        for (const [dr, dc] of directions) {
+            const newRow = current.row + dr;
+            const newCol = current.col + dc;
+            if (newRow > 0 && newRow < gridSize -1 && newCol > 0 && newCol < gridSize -1 && !grid[newRow][newCol].visitedByGenerator) {
+                neighbors.push({ row: newRow, col: newCol, wallRow: current.row + dr / 2, wallCol: current.col + dc / 2 });
             }
         }
-        if (!moved) {
-            // Path generation stuck, restart
-            return generatePath(gridSize, pathLength);
+
+        if (neighbors.length > 0) {
+            stack.push(current);
+            const chosen = neighbors[0];
+            grid[chosen.wallRow][chosen.wallCol].isWall = false; // Carve path
+            grid[chosen.row][chosen.col].isWall = false;
+            grid[chosen.row][chosen.col].visitedByGenerator = true;
+            stack.push({ row: chosen.row, col: chosen.col });
         }
     }
-    return path;
+    
+    // Set start and end points
+    const startPos = { row: 1, col: 1 };
+    grid[startPos.row][startPos.col].isStart = true;
+    
+    const endPos = { row: gridSize - 2, col: gridSize - 2 };
+    grid[endPos.row][endPos.col].isEnd = true;
+
+    return { grid, startPos, endPos };
 };
+
 
 export default function MemoryMazePage() {
     const [difficulty, setDifficulty] = useState<Difficulty | null>(null);
     const [gameState, setGameState] = useState<GameState>('setup');
     
-    const [path, setPath] = useState<GridCell[]>([]);
-    const [userPath, setUserPath] = useState<GridCell[]>([]);
+    const [grid, setGrid] = useState<GridCell[][]>([]);
+    const [playerPos, setPlayerPos] = useState({ row: 0, col: 0 });
+    const [startPos, setStartPos] = useState({ row: 0, col: 0 });
+    const [endPos, setEndPos] = useState({ row: 0, col: 0 });
+    
     const [level, setLevel] = useState(1);
     const [lives, setLives] = useState(3);
 
@@ -81,9 +114,14 @@ export default function MemoryMazePage() {
     const startNewLevel = useCallback(() => {
         if (!config) return;
         
-        const newPath = generatePath(config.gridSize, config.pathLength);
-        setPath(newPath);
-        setUserPath([]);
+        const { grid: newGrid, startPos: newStartPos, endPos: newEndPos } = generateMaze(config.gridSize);
+        newGrid[newStartPos.row][newStartPos.col].isPlayer = true;
+        newGrid[newStartPos.row][newStartPos.col].visitedByPlayer = true;
+        
+        setGrid(newGrid);
+        setStartPos(newStartPos);
+        setEndPos(newEndPos);
+        setPlayerPos(newStartPos);
         setGameState('memorize');
 
         setTimeout(() => {
@@ -96,9 +134,15 @@ export default function MemoryMazePage() {
         setLevel(1);
         setLives(3);
         const newConfig = DIFFICULTY_LEVELS[diff];
-        const newPath = generatePath(newConfig.gridSize, newConfig.pathLength);
-        setPath(newPath);
-        setUserPath([]);
+        const { grid: newGrid, startPos: newStartPos, endPos: newEndPos } = generateMaze(newConfig.gridSize);
+
+        newGrid[newStartPos.row][newStartPos.col].isPlayer = true;
+        newGrid[newStartPos.row][newStartPos.col].visitedByPlayer = true;
+        
+        setGrid(newGrid);
+        setStartPos(newStartPos);
+        setEndPos(newEndPos);
+        setPlayerPos(newStartPos);
         setGameState('memorize');
 
         setTimeout(() => {
@@ -108,28 +152,37 @@ export default function MemoryMazePage() {
 
     const handleCellClick = (row: number, col: number) => {
         if (gameState !== 'recall' || !config) return;
-
-        const isAlreadyClicked = userPath.some(p => p.row === row && p.col === col);
-        if (isAlreadyClicked) return;
-
-        const newUserPath = [...userPath, { row, col }];
-        setUserPath(newUserPath);
         
-        const currentPathIndex = newUserPath.length - 1;
-        const correctCell = path[currentPathIndex];
+        const isAdjacent = Math.abs(row - playerPos.row) + Math.abs(col - playerPos.col) === 1;
+        if (!isAdjacent) return;
+
+        const newGrid = grid.map(r => r.map(c => ({...c, isIncorrectGuess: false})));
+        const targetCell = newGrid[row][col];
         
-        if (newUserPath.length > path.length || row !== correctCell.row || col !== correctCell.col) {
-            // Incorrect move
-            setLives(l => l - 1);
-            setGameState('gameOver');
-            toast({ variant: 'destructive', title: 'Wrong Path!', description: "That's not the correct path. Try to remember it next time."});
+        if (targetCell.isWall) {
+            const newLives = lives - 1;
+            setLives(newLives);
+            
+            newGrid[row][col].isIncorrectGuess = true;
+            setGrid(newGrid);
+            
+            toast({ variant: 'destructive', title: 'You hit a wall!', description: `You have ${newLives} ${newLives === 1 ? 'life' : 'lives'} left.` });
+            if (newLives <= 0) {
+                setGameState('gameOver');
+            }
             return;
         }
 
-        if (newUserPath.length === path.length) {
-            // Level complete
+        // Move player
+        newGrid[playerPos.row][playerPos.col].isPlayer = false;
+        targetCell.isPlayer = true;
+        targetCell.visitedByPlayer = true;
+        setGrid(newGrid);
+        setPlayerPos({ row, col });
+
+        if (targetCell.isEnd) {
             setGameState('levelComplete');
-            toast({ title: 'Path Correct!', description: 'Great memory! Get ready for the next level.', className: 'bg-green-500 text-white' });
+            toast({ title: 'Maze Complete!', description: 'Great memory! Get ready for the next level.', className: 'bg-green-500 text-white' });
             setTimeout(() => {
                 setLevel(l => l + 1);
                 startNewLevel();
@@ -137,45 +190,22 @@ export default function MemoryMazePage() {
         }
     };
 
-    useEffect(() => {
-        if (lives <= 0) {
-            setGameState('gameOver');
-        }
-    }, [lives]);
-
-    const isCellInPath = (row: number, col: number, pathToCheck: GridCell[]) => pathToCheck.some(p => p.row === row && p.col === col);
-
     const renderGrid = () => {
-        if (!config) return null;
+        if (!config || grid.length === 0) return null;
         
         return (
             <div className="flex justify-center">
                  <div
-                    className="grid gap-2 bg-muted p-2 rounded-lg"
+                    className="grid gap-1 bg-muted p-2 rounded-lg"
                     style={{ gridTemplateColumns: `repeat(${config.gridSize}, minmax(0, 1fr))` }}
                 >
-                    {Array.from({ length: config.gridSize * config.gridSize }).map((_, index) => {
-                        const row = Math.floor(index / config.gridSize);
-                        const col = index % config.gridSize;
+                    {grid.flat().map((cell, index) => {
+                        const { row, col, isWall, isStart, isEnd, isPlayer, visitedByPlayer, isIncorrectGuess } = cell;
                         
-                        const isPathStart = path[0]?.row === row && path[0]?.col === col;
-                        const inCorrectPath = isCellInPath(row, col, path);
-                        const inUserPath = isCellInPath(row, col, userPath);
-                        
-                        let cellState: 'default' | 'path' | 'start' | 'correct' | 'incorrect' = 'default';
-
-                        if (gameState === 'memorize' && inCorrectPath) {
-                            cellState = 'path';
-                            if (isPathStart) cellState = 'start';
-                        } else if (gameState === 'recall' || gameState === 'levelComplete') {
-                            if (isPathStart) cellState = 'start';
-                            if (inUserPath) cellState = 'correct';
-                        } else if (gameState === 'gameOver') {
-                            if (isPathStart) cellState = 'start';
-                            if(inCorrectPath && !inUserPath) cellState = 'path'; // show missed correct path
-                            if(inUserPath && inCorrectPath) cellState = 'correct'; // show correct user path
-                            if(inUserPath && !inCorrectPath) cellState = 'incorrect'; // show wrong user moves
-                        }
+                        let cellContent = null;
+                        if (isStart) cellContent = <User className="w-4/6 h-4/6 text-white"/>;
+                        if (isEnd) cellContent = <Star className="w-4/6 h-4/6 text-white"/>;
+                        if (isPlayer && !isStart && !isEnd) cellContent = <div className="w-1/2 h-1/2 rounded-full bg-yellow-300"></div>;
 
                         return (
                             <button
@@ -183,16 +213,22 @@ export default function MemoryMazePage() {
                                 onClick={() => handleCellClick(row, col)}
                                 disabled={gameState !== 'recall'}
                                 className={cn(
-                                    "w-16 h-16 sm:w-20 sm:h-20 rounded-md transition-colors duration-200 border-2",
-                                    gameState !== 'recall' ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-primary/20',
-                                    cellState === 'default' && 'bg-card border-border',
-                                    cellState === 'path' && 'bg-yellow-400/50 border-yellow-500 animate-pulse',
-                                    cellState === 'start' && 'bg-green-500 border-green-700',
-                                    cellState === 'correct' && 'bg-green-400 border-green-600',
-                                    cellState === 'incorrect' && 'bg-red-400 border-red-600',
+                                    "w-10 h-10 sm:w-12 sm:h-12 rounded-sm transition-colors duration-200 flex items-center justify-center",
+                                    gameState !== 'recall' ? 'cursor-not-allowed' : 'cursor-pointer',
+                                    // Base color
+                                    isWall && (gameState === 'memorize' || gameState === 'gameOver') ? 'bg-primary/50' : 'bg-card',
+                                    // Player path & special tiles
+                                    !isWall && visitedByPlayer && 'bg-yellow-300/30',
+                                    isStart && 'bg-green-500',
+                                    isEnd && 'bg-red-500',
+                                    isPlayer && 'ring-2 ring-yellow-300 z-10',
+                                    isIncorrectGuess && 'bg-destructive/70 animate-pulse',
+                                    // Hover effect only for adjacent cells
+                                    gameState === 'recall' && Math.abs(row - playerPos.row) + Math.abs(col - playerPos.col) === 1 && 'hover:bg-primary/20'
                                 )}
+                                aria-label={`Cell at row ${row}, column ${col}`}
                             >
-                                {cellState === 'start' && <span className="text-white font-bold">Start</span>}
+                                {cellContent}
                             </button>
                         );
                     })}
@@ -206,7 +242,7 @@ export default function MemoryMazePage() {
             <Card className="w-full max-w-md shadow-xl">
                 <CardHeader className="bg-primary/10 text-center">
                     <CardTitle className="text-3xl font-bold text-primary">Memory Maze</CardTitle>
-                    <CardDescription>Select a difficulty to start.</CardDescription>
+                    <CardDescription>Memorize the maze path, then navigate it from memory!</CardDescription>
                 </CardHeader>
                 <CardContent className="grid grid-cols-1 gap-4 p-6">
                     {(['easy', 'medium', 'hard'] as Difficulty[]).map(d => (
@@ -223,7 +259,7 @@ export default function MemoryMazePage() {
     }
 
     return (
-        <Card className="w-full max-w-xl shadow-xl">
+        <Card className="w-full max-w-2xl shadow-xl">
              <CardHeader className="bg-primary/10">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
@@ -254,12 +290,7 @@ export default function MemoryMazePage() {
                 )}
                 {gameState === 'recall' && (
                      <div className="text-center p-3 bg-green-100/70 border border-green-400/50 rounded-lg">
-                        <p className="font-bold text-green-800">Your turn! Trace the path from the start.</p>
-                    </div>
-                )}
-                 {gameState === 'gameOver' && lives > 0 && (
-                     <div className="text-center p-3 bg-red-100/70 border border-red-400/50 rounded-lg">
-                        <p className="font-bold text-red-800">Wrong path! You lost a life.</p>
+                        <p className="font-bold text-green-800">Your turn! Navigate from <User className="inline-block h-4 w-4"/> to <Star className="inline-block h-4 w-4"/>.</p>
                     </div>
                 )}
                 {renderGrid()}
