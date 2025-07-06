@@ -1,6 +1,14 @@
 
 import type { LucideIcon } from 'lucide-react';
-import { Crown, Puzzle, BookOpen, UserCircle, Settings, BarChart3, Zap, Apple, Banana, Cherry, Grape, Carrot, Pizza, CakeSlice, IceCream2, Swords, Bot, Search, Sigma, Brain, ToyBrick, Star as StarIcon, Coins as CoinsIcon, BookMarked, Target, Calculator, ListOrdered, SpellCheck, CaseLower, AlignJustify, Filter, Keyboard, Gamepad2, Languages, Lightbulb, Mail, Calendar, Heart, Hash, CircleDot } from 'lucide-react';
+import { 
+    Crown, Puzzle, BookOpen, UserCircle, Settings, BarChart3, Zap, Apple, Banana, 
+    Cherry, Grape, Carrot, Pizza, CakeSlice, IceCream2, Swords, Bot, Search, 
+    Sigma, Brain, ToyBrick, Star as StarIcon, Coins as CoinsIcon, BookMarked, 
+    Target, Calculator, ListOrdered, SpellCheck, CaseLower, AlignJustify, Filter, 
+    Keyboard, Gamepad2, Languages, Lightbulb, Mail, Calendar, Heart, Hash, CircleDot,
+    // New Icons for new games
+    Shapes, Grid3x3, Route, Blocks, KeyRound, LayoutGrid 
+} from 'lucide-react';
 
 export type GameCategory = 'Strategy' | 'Puzzles' | 'Learning';
 
@@ -11,8 +19,8 @@ export interface Game {
   Icon: LucideIcon;
   description: string;
   href: string;
-  color?: string; // Optional color for the card or icon
-  imageUrl?: string; // Optional image URL for the icon
+  color?: string;
+  disabled?: boolean;
 }
 
 export const GAMES: Game[] = [
@@ -26,28 +34,20 @@ export const GAMES: Game[] = [
     color: 'text-sky-600',
   },
   {
-    id: 'tictactoe',
-    title: 'Tic-Tac-Toe',
+    id: 'gobblet-gobblers',
+    title: 'Gobblet Gobblers',
     category: 'Strategy',
-    Icon: Hash,
-    description: "The classic game of X's and O's. Can you get three in a row?",
-    href: '/tictactoe',
+    Icon: Shapes,
+    description: "A fun strategy game of nesting cups. Like Tic-Tac-Toe, but with a twist!",
+    href: '/gobblet-gobblers',
     color: 'text-orange-500',
-  },
-  {
-    id: 'connect-four',
-    title: 'Connect Four',
-    category: 'Strategy',
-    Icon: CircleDot,
-    description: 'Drop your discs and be the first to get four in a row!',
-    href: '/connect-four',
-    color: 'text-red-600',
+    disabled: true,
   },
   {
     id: 'tower-of-hanoi',
     title: 'Tower of Hanoi',
     category: 'Strategy',
-    Icon: ToyBrick, // Using ToyBrick for a playful feel
+    Icon: ToyBrick,
     description: 'Solve the ancient puzzle by moving disks between towers.',
     href: '/tower-of-hanoi',
     color: 'text-teal-600',
@@ -69,6 +69,16 @@ export const GAMES: Game[] = [
     description: 'Test your memory by matching pairs of cards.',
     href: '/puzzles/memory',
     color: 'text-pink-600',
+  },
+  {
+    id: 'sudoku',
+    title: 'Sudoku Challenge',
+    category: 'Puzzles',
+    Icon: Grid3x3,
+    description: 'A classic logic puzzle with numbers. Fill the grid!',
+    href: '/puzzles/sudoku',
+    color: 'text-lime-600',
+    disabled: true,
   },
   {
     id: 'number-puzzles',
@@ -118,6 +128,33 @@ export const PUZZLE_TYPES: PuzzleType[] = [
     color: 'text-pink-600',
     href: '/puzzles/memory',
     disabled: false,
+  },
+  {
+    id: 'sudoku',
+    name: 'Sudoku Challenge',
+    Icon: Grid3x3,
+    description: 'A classic logic puzzle with numbers.',
+    color: 'text-lime-600',
+    href: '/puzzles/sudoku',
+    disabled: true,
+  },
+  {
+    id: 'memory-maze',
+    name: 'Memory Maze',
+    Icon: Route,
+    description: 'Memorize the path and navigate the maze.',
+    color: 'text-cyan-600',
+    href: '/puzzles/memory-maze',
+    disabled: true,
+  },
+  {
+    id: 'pattern-builder',
+    name: 'Pattern Builder',
+    Icon: Blocks,
+    description: 'Recreate complex patterns from memory.',
+    color: 'text-rose-500',
+    href: '/puzzles/pattern-builder',
+    disabled: true,
   },
   {
     id: 'numbers',
@@ -227,10 +264,24 @@ export const MATH_PUZZLE_TYPES: MathPuzzleType[] = [
     Icon: Sigma,
     color: "text-pink-500",
   },
+  {
+    id: "codeBreaker",
+    name: "Code Breaker",
+    description: "Deduce the secret code using logic and clues. (Coming Soon!)",
+    Icon: KeyRound,
+    color: "text-gray-500",
+  },
+  {
+    id: "mathDuel",
+    name: "Math Duel",
+    description: "Challenge a friend or AI in a race to solve math problems. (Coming Soon!)",
+    Icon: Swords,
+    color: "text-red-500",
+  },
 ];
 
 // Types for English Puzzles
-export type EnglishPuzzleSubtype = 'matchWord' | 'missingLetter' | 'sentenceScramble' | 'oddOneOut' | 'typingRush';
+export type EnglishPuzzleSubtype = 'matchWord' | 'missingLetter' | 'sentenceScramble' | 'oddOneOut' | 'typingRush' | 'wordGrid';
 export type Difficulty = 'easy' | 'medium' | 'hard';
 
 export interface EnglishPuzzleType {
@@ -276,6 +327,13 @@ export const ENGLISH_PUZZLE_TYPES: EnglishPuzzleType[] = [
         description: "How fast can you type? Burst the falling bubbles!",
         Icon: Keyboard,
         color: "text-red-500",
+    },
+    {
+        id: "wordGrid",
+        name: "Word Grid",
+        description: "Find as many words as you can in a grid of letters. (Coming Soon!)",
+        Icon: LayoutGrid,
+        color: "text-purple-500"
     }
 ];
 

@@ -82,6 +82,9 @@ export default function NumberPuzzlesPage() {
         return <MissingNumberGame {...gameProps} />;
       case "countTheObjects":
         return <CountTheObjectsGame {...gameProps} />;
+      case "codeBreaker":
+      case "mathDuel":
+        return <PlaceholderPuzzleGame puzzle={selectedPuzzle} onBack={handleBack} />;
       default:
         // This can be a placeholder for puzzles not yet fully implemented
         return <PlaceholderPuzzleGame puzzle={selectedPuzzle} onBack={handleBack} />;

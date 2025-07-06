@@ -5,10 +5,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { MathPuzzleType } from "@/lib/constants"; // Import the type
+import type { MathPuzzleType, EnglishPuzzleType } from "@/lib/constants";
 
+// Make props more generic to accept either puzzle type
 interface PlaceholderPuzzleGameProps {
-  puzzle: MathPuzzleType;
+  puzzle: MathPuzzleType | EnglishPuzzleType; // Use a union type
   onBack: () => void;
 }
 

@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { ENGLISH_PUZZLE_TYPES, type EnglishPuzzleSubtype, type Difficulty, type EnglishPuzzleType } from "@/lib/constants";
 import EnglishPuzzleGame from "@/components/english-puzzles/EnglishPuzzleGame";
 import TypingRushGame from "@/components/english-puzzles/TypingRushGame";
+import PlaceholderPuzzleGame from "@/components/number-puzzles/PlaceholderPuzzleGame";
 
 // Client component to inject metadata
 const HeadMetadata = ({ puzzleName }: { puzzleName?: string }) => {
@@ -78,6 +79,10 @@ export default function EasyEnglishPuzzlesPage() {
           Icon={selectedPuzzleType.Icon}
           {...commonProps} 
         />;
+        break;
+      
+      case 'wordGrid':
+        gameComponent = <PlaceholderPuzzleGame puzzle={selectedPuzzleType} onBack={handleBack} />;
         break;
 
       default:

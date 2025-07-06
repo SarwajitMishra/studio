@@ -1,3 +1,4 @@
+
 import Link from 'next/link';
 import type { Game } from '@/lib/constants';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
@@ -23,11 +24,20 @@ export default function GameCard({ game }: GameCardProps) {
       </CardHeader>
       <CardContent className="p-4 flex-grow flex flex-col">
         <p className="text-sm text-foreground/80 mb-4 flex-grow">{game.description}</p>
-        <Button asChild variant="default" className="mt-auto bg-accent text-accent-foreground hover:bg-accent/90 w-full">
-          <Link href={game.href}>
-            Play Now <ArrowRight size={16} className="ml-2" />
-          </Link>
-        </Button>
+        {game.disabled ? (
+            <>
+                <Button variant="default" className="mt-auto bg-accent text-accent-foreground hover:bg-accent/90 w-full" disabled>
+                    Play Now <ArrowRight size={16} className="ml-2" />
+                </Button>
+                <p className="text-xs text-muted-foreground mt-2 text-center">(Coming Soon!)</p>
+            </>
+        ) : (
+            <Button asChild variant="default" className="mt-auto bg-accent text-accent-foreground hover:bg-accent/90 w-full">
+            <Link href={game.href}>
+                Play Now <ArrowRight size={16} className="ml-2" />
+            </Link>
+            </Button>
+        )}
       </CardContent>
     </Card>
   );
