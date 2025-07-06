@@ -109,6 +109,11 @@ export default {
           '75%': { transform: 'rotate(540deg) scale(1.2)' },
           '100%': { transform: 'rotate(720deg) scale(1)' },
         },
+        'drop-in': {
+          '0%': { transform: 'translateY(-200%) scale(0.8)', opacity: '0' },
+          '80%': { transform: 'translateY(5%) scale(1.1)', opacity: '1' },
+          '100%': { transform: 'translateY(0) scale(1)', opacity: '1' },
+        }
   		},
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
@@ -116,6 +121,7 @@ export default {
         'gentle-bounce': 'gentle-bounce 0.5s ease-in-out',
         'burst': 'burst-effect 0.3s ease-out forwards',
         'dice-roll': 'dice-roll 0.7s ease-in-out',
+        'drop': 'drop-in 0.4s ease-out',
   		}
   	}
   },
