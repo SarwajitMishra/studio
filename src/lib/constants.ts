@@ -52,10 +52,10 @@ export const GAMES: Game[] = [
   },
    {
     id: '2048',
-    title: '2048 Themed',
+    title: '2048',
     category: 'Strategy',
     Icon: Hash,
-    description: "Slide and merge tiles to reach 2048! With cute themes.",
+    description: "Drag and drop matching numbers to merge them. Can you reach the 2048 tile?",
     href: '/2048',
     color: 'text-rose-500',
   },
