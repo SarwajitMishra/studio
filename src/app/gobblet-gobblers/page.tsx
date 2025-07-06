@@ -62,14 +62,14 @@ const checkWin = (board: BoardState): PlayerId | null => {
   return null;
 };
 
-const GobblerPiece = ({ piece, onSelect, isSelected }: { piece: Piece; onSelect: () => void; isSelected: boolean }) => {
+const GobblerPiece = ({ piece, isSelected }: { piece: Piece; isSelected: boolean }) => {
   const sizeClasses = { 1: 'w-8 h-8', 2: 'w-12 h-12', 3: 'w-16 h-16' };
   const playerClasses = piece.player === 'P1' ? 'bg-blue-500' : 'bg-red-500';
 
   return (
-    <button onClick={onSelect} className={cn("rounded-full flex items-center justify-center transition-all", sizeClasses[piece.size], playerClasses, isSelected ? "ring-4 ring-yellow-400" : "hover:ring-2 ring-white/50")}>
+    <div className={cn("rounded-full flex items-center justify-center transition-all", sizeClasses[piece.size], playerClasses, isSelected ? "ring-4 ring-yellow-400" : "")}>
       <Circle className="w-1/2 h-1/2 text-white/50" />
-    </button>
+    </div>
   );
 };
 
@@ -85,7 +85,7 @@ const BoardSquare = ({ cell, onSelect, canDrop }: { cell: BoardCell; onSelect: (
         canDrop && "bg-green-500/30"
       )}
     >
-      {topPiece && <GobblerPiece piece={topPiece} onSelect={() => {}} isSelected={false} />}
+      {topPiece && <GobblerPiece piece={topPiece} isSelected={false} />}
     </button>
   );
 };
@@ -208,12 +208,20 @@ export default function GobbletGobblersPage() {
                 <CardTitle className="text-lg mb-4 text-center">Player {pId === 'P1' ? '1 (Blue)' : '2 (Red)'}'s Pieces</CardTitle>
                 <div className="flex justify-center items-end gap-2 flex-wrap min-h-[70px]">
                     {playerPieces[pId].sort((a,b) => a.size - b.size).map(p => (
-                        <GobblerPiece 
-                            key={p.id} 
-                            piece={p} 
-                            onSelect={() => handleSelectPiece(p)}
-                            isSelected={selectedPiece?.piece.id === p.id}
-                        />
+                        <button
+                          key={p.id}
+                          onClick={() => handleSelectPiece(p)}
+                          className={cn(
+                            "rounded-full transition-all",
+                            selectedPiece?.piece.id !== p.id && "hover:ring-2 ring-white/50"
+                          )}
+                          disabled={!!winner || p.player !== currentPlayer}
+                        >
+                            <GobblerPiece 
+                                piece={p} 
+                                isSelected={selectedPiece?.piece.id === p.id}
+                            />
+                        </button>
                     ))}
                 </div>
             </Card>
