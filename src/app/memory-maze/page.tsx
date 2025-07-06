@@ -4,12 +4,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Brain, Award, ArrowLeft, Shield, Star, Gem, Heart, Route, User } from 'lucide-react';
+import { Brain, Award, ArrowLeft, Shield, Star, Gem, Heart, Route, User, Eye, Pointer } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
 type Difficulty = 'easy' | 'medium' | 'hard';
-type GameState = 'setup' | 'memorize' | 'recall' | 'levelComplete' | 'gameOver';
+type GameState = 'setup' | 'howToPlay' | 'memorize' | 'recall' | 'levelComplete' | 'gameOver';
 
 interface LevelConfig {
   gridSize: number;
@@ -88,11 +88,82 @@ const generateMaze = (gridSize: number): { grid: GridCell[][], startPos: {row: n
     const startPos = { row: 1, col: 1 };
     grid[startPos.row][startPos.col].isStart = true;
     
-    const endPos = { row: gridSize - 2, col: gridSize - 2 };
+    let endPos = { row: gridSize - 2, col: gridSize - 2 };
+    // Ensure end is not a wall (it shouldn't be with this algo, but as a safeguard)
+    if(grid[endPos.row][endPos.col].isWall) {
+       grid[endPos.row][endPos.col].isWall = false;
+    }
     grid[endPos.row][endPos.col].isEnd = true;
 
     return { grid, startPos, endPos };
 };
+
+const HowToPlayAnimation = () => {
+    const [step, setStep] = useState(0);
+    const steps = [
+        { text: "1. Memorize the path from the player to the star.", wallsVisible: true, playerPos: {r:0, c:0}, pointer: false, hitWall: false },
+        { text: "2. The walls will disappear!", wallsVisible: false, playerPos: {r:0, c:0}, pointer: false, hitWall: false },
+        { text: "3. Click on adjacent squares to move along the path you remember.", wallsVisible: false, playerPos: {r:0, c:1}, pointer: true, hitWall: false },
+        { text: "4. Reach the star to win the level!", wallsVisible: false, playerPos: {r:1, c:1}, pointer: false, hitWall: false },
+        { text: "5. But be careful! Hitting a hidden wall costs a life.", wallsVisible: false, playerPos: {r:0, c:0}, pointer: false, hitWall: true },
+    ];
+    
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setStep(prev => (prev + 1) % steps.length);
+        }, 2500);
+        return () => clearInterval(timer);
+    }, [steps.length]);
+
+    const currentStep = steps[step];
+    
+    const animationGrid = [
+        [{ isStart: true }, { isPath: true, isWall: false }, { isWall: true }],
+        [{ isWall: true }, { isPath: true, isWall: false }, { isEnd: true }],
+        [{ isWall: true }, { isWall: true }, { isWall: true }],
+    ];
+
+    return (
+        <div className="space-y-4">
+            <div className="flex justify-center">
+                <div className="grid grid-cols-3 gap-1 bg-muted p-2 rounded-lg">
+                    {animationGrid.flat().map((cell, index) => {
+                        const r = Math.floor(index / 3);
+                        const c = index % 3;
+                        const isPlayerHere = currentStep.playerPos.r === r && currentStep.playerPos.c === c;
+                        const isPointerHere = currentStep.pointer && r === 0 && c === 1;
+                        const isHitWall = currentStep.hitWall && r === 0 && c === 2;
+
+                        return (
+                            <div key={index} className={cn("w-16 h-16 rounded-md flex items-center justify-center transition-colors duration-300", 
+                                (cell.isWall && currentStep.wallsVisible) ? 'bg-primary/50' : 'bg-card',
+                                (cell.isStart) && 'bg-green-500',
+                                (cell.isEnd) && 'bg-red-500',
+                                isHitWall && 'bg-destructive/70 animate-pulse',
+                            )}>
+                                {cell.isStart && !isPlayerHere && <User className="w-2/3 h-2/3 text-white"/>}
+                                {cell.isEnd && <Star className="w-2/3 h-2/3 text-white"/>}
+                                {isPlayerHere && <div className="w-1/2 h-1/2 rounded-full bg-yellow-300 ring-2 ring-white"></div>}
+                                {isPointerHere && <Pointer className="w-2/3 h-2/3 text-white animate-bounce" />}
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+            <p className="text-center font-medium text-foreground/90 min-h-[40px]">{currentStep.text}</p>
+             <div className="flex justify-center items-center">
+                <span className="font-semibold text-lg flex items-center">
+                    Lives:
+                    <div className="flex ml-2">
+                        {Array.from({ length: 3 }).map((_, i) => (
+                            <Heart key={i} className={cn("h-5 w-5 transition-all", (currentStep.hitWall && i === 2) ? "text-muted-foreground/30 scale-90" : "text-red-500 fill-current")} />
+                        ))}
+                    </div>
+                </span>
+            </div>
+        </div>
+    );
+}
 
 
 export default function MemoryMazePage() {
@@ -129,11 +200,16 @@ export default function MemoryMazePage() {
         }, config.memorizeTime);
     }, [config]);
 
-    const startGame = useCallback((diff: Difficulty) => {
+    const handleDifficultySelect = (diff: Difficulty) => {
         setDifficulty(diff);
+        setGameState('howToPlay');
+    };
+
+    const startGame = useCallback(() => {
+        if (!difficulty) return;
         setLevel(1);
         setLives(3);
-        const newConfig = DIFFICULTY_LEVELS[diff];
+        const newConfig = DIFFICULTY_LEVELS[difficulty];
         const { grid: newGrid, startPos: newStartPos, endPos: newEndPos } = generateMaze(newConfig.gridSize);
 
         newGrid[newStartPos.row][newStartPos.col].isPlayer = true;
@@ -148,7 +224,7 @@ export default function MemoryMazePage() {
         setTimeout(() => {
             setGameState('recall');
         }, newConfig.memorizeTime);
-    }, []);
+    }, [difficulty]);
 
     const handleCellClick = (row: number, col: number) => {
         if (gameState !== 'recall' || !config) return;
@@ -246,13 +322,34 @@ export default function MemoryMazePage() {
                 </CardHeader>
                 <CardContent className="grid grid-cols-1 gap-4 p-6">
                     {(['easy', 'medium', 'hard'] as Difficulty[]).map(d => (
-                        <Button key={d} onClick={() => startGame(d)} className="text-lg py-6 capitalize">
+                        <Button key={d} onClick={() => handleDifficultySelect(d)} className="text-lg py-6 capitalize">
                             {d === 'easy' && <Shield className="mr-2" />}
                             {d === 'medium' && <Star className="mr-2" />}
                             {d === 'hard' && <Gem className="mr-2" />}
                             {d} ({DIFFICULTY_LEVELS[d].gridSize}x{DIFFICULTY_LEVELS[d].gridSize})
                         </Button>
                     ))}
+                </CardContent>
+            </Card>
+        );
+    }
+    
+    if (gameState === 'howToPlay') {
+        return (
+            <Card className="w-full max-w-md shadow-xl">
+                <CardHeader className="bg-primary/10 text-center">
+                    <CardTitle className="text-2xl font-bold text-primary">How to Play</CardTitle>
+                </CardHeader>
+                <CardContent className="p-6 space-y-6">
+                    <HowToPlayAnimation />
+                    <div className="flex flex-col sm:flex-row gap-2">
+                        <Button onClick={() => setGameState('setup')} variant="outline" className="w-full">
+                            <ArrowLeft className="mr-2" /> Back
+                        </Button>
+                        <Button onClick={startGame} className="w-full bg-accent text-accent-foreground">
+                            Start Game!
+                        </Button>
+                    </div>
                 </CardContent>
             </Card>
         );
@@ -285,7 +382,10 @@ export default function MemoryMazePage() {
             <CardContent className="p-6 space-y-4">
                 {gameState === 'memorize' && (
                     <div className="text-center p-3 bg-yellow-100/70 border border-yellow-400/50 rounded-lg">
-                        <p className="font-bold text-yellow-800 animate-pulse">Memorize the path!</p>
+                        <p className="font-bold text-yellow-800 animate-pulse flex items-center justify-center gap-2">
+                            <Eye size={20} />
+                            Memorize the path!
+                        </p>
                     </div>
                 )}
                 {gameState === 'recall' && (
@@ -298,7 +398,7 @@ export default function MemoryMazePage() {
                     <div className="text-center p-4 bg-muted rounded-lg space-y-3">
                         <h3 className="text-2xl font-bold text-destructive">Game Over</h3>
                         <p className="text-lg">You reached level <span className="font-bold text-accent">{level}</span>.</p>
-                        <Button onClick={() => difficulty && startGame(difficulty)} className="bg-accent text-accent-foreground">
+                        <Button onClick={() => difficulty && startGame()} className="bg-accent text-accent-foreground">
                             <Brain className="mr-2" /> Try Again
                         </Button>
                     </div>
