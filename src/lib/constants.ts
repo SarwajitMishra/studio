@@ -6,7 +6,7 @@ import {
     Sigma, Brain, ToyBrick, Star as StarIcon, Coins as CoinsIcon, BookMarked, 
     Target, Calculator, ListOrdered, SpellCheck, CaseLower, AlignJustify, Filter, 
     Keyboard, Gamepad2, Languages, Lightbulb, Mail, Calendar, Heart, Hash, CircleDot,
-    Grid3x3, Route, Blocks, KeyRound, LayoutGrid
+    Grid3x3, Route, Blocks, KeyRound, LayoutGrid, XCircle
 } from 'lucide-react';
 
 export type GameCategory = 'Strategy' | 'Puzzles' | 'Learning';
@@ -50,6 +50,15 @@ export const GAMES: Game[] = [
     href: '/memory-maze',
     color: 'text-cyan-600',
   },
+   {
+    id: '2048',
+    title: '2048 Themed',
+    category: 'Strategy',
+    Icon: Hash,
+    description: "Slide and merge tiles to reach 2048! With cute themes.",
+    href: '/2048',
+    color: 'text-rose-500',
+  },
   {
     id: 'jigsaw',
     title: 'Jigsaw Puzzles',
@@ -58,15 +67,6 @@ export const GAMES: Game[] = [
     description: 'Piece together beautiful images. Fun for all ages!',
     href: '/puzzles/jigsaw', 
     color: 'text-purple-600',
-  },
-   {
-    id: '2048',
-    title: '2048 Themed',
-    category: 'Puzzles',
-    Icon: Hash,
-    description: "Slide and merge tiles to reach 2048! With cute themes.",
-    href: '/2048',
-    color: 'text-rose-500',
   },
   {
     id: 'sudoku',
@@ -362,7 +362,4 @@ interface OddOneOutPuzzle extends EnglishPuzzleItemBase {
 }
 
 export type EnglishPuzzleItem = WordMatchPuzzle | MissingLetterPuzzle | SentenceScramblePuzzle | OddOneOutPuzzle;
-
-// Corrected XCircle import, should be here
-export { XCircle } from 'lucide-react';
 
