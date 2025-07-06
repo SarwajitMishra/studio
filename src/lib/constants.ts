@@ -26,15 +26,6 @@ export const GAMES: Game[] = [
     color: 'text-sky-600',
   },
   {
-    id: 'ludo',
-    title: 'Ludo',
-    category: 'Strategy',
-    Icon: Swords, 
-    description: 'Classic board game for 2-4 players. Roll the dice and race your tokens home!',
-    href: '/ludo',
-    color: 'text-emerald-600',
-  },
-  {
     id: 'jigsaw',
     title: 'Jigsaw Puzzles',
     category: 'Puzzles',
