@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { RotateCw, Award, ArrowLeft, Shield, Star, Gem } from 'lucide-react';
@@ -10,26 +10,46 @@ import { cn } from "@/lib/utils";
 type Towers = number[][];
 type Difficulty = 3 | 4 | 5 | 6;
 
+// New distinct colors
 const DISK_COLORS = [
     "bg-red-500", "bg-orange-500", "bg-yellow-400",
-    "bg-green-500", "bg-blue-500", "bg-purple-500", "bg-pink-500"
+    "bg-lime-500", "bg-cyan-500", "bg-indigo-500", "bg-fuchsia-500"
 ];
 
 const MINIMUM_MOVES: Record<Difficulty, number> = {
     3: 7, 4: 15, 5: 31, 6: 63
 };
 
-const Disk = ({ size, color }: { size: number, color: string }) => {
+const Disk = ({ size, color, draggable, onDragStart, isWon }: { size: number; color: string; draggable: boolean; onDragStart: (e: React.DragEvent) => void; isWon: boolean; }) => {
     return (
         <div
-            className={cn("h-6 rounded-md shadow-md mx-auto transition-all duration-200", color)}
+            draggable={draggable && !isWon}
+            onDragStart={draggable && !isWon ? onDragStart : undefined}
+            className={cn(
+                "h-6 rounded-md shadow-md mx-auto transition-all duration-200",
+                color,
+                (draggable && !isWon) ? "cursor-grab active:cursor-grabbing" : ""
+            )}
             style={{ width: `${30 + size * 10}%` }}
         />
     );
 };
 
-const Rod = ({ disks, onClick, isSelected }: { disks: number[], onClick: () => void, isSelected: boolean }) => (
-    <div className="flex flex-col-reverse justify-start h-48 w-full">
+const Rod = ({ disks, rodIndex, onClick, onDragOver, onDrop, onDiskDragStart, isSelected, isWon }: { 
+    disks: number[], 
+    rodIndex: number,
+    onClick: () => void, 
+    onDragOver: (e: React.DragEvent) => void,
+    onDrop: (e: React.DragEvent) => void,
+    onDiskDragStart: (e: React.DragEvent, fromRodIndex: number) => void,
+    isSelected: boolean,
+    isWon: boolean,
+}) => (
+    <div 
+        onDragOver={onDragOver}
+        onDrop={onDrop}
+        className="flex flex-col-reverse justify-start h-48 w-full border-2 border-transparent p-2 rounded-lg"
+    >
         <div className="relative h-full w-full flex flex-col-reverse justify-start items-center">
             {/* Base */}
             <div className="w-full h-2 bg-neutral-700 rounded-t-md"></div>
@@ -37,10 +57,19 @@ const Rod = ({ disks, onClick, isSelected }: { disks: number[], onClick: () => v
             <div className="w-2 h-full bg-neutral-600 absolute bottom-0"></div>
             {/* Disks */}
             <div className="absolute bottom-2 w-full space-y-1">
-                {disks.map(diskSize => <Disk key={diskSize} size={diskSize} color={DISK_COLORS[diskSize - 1]} />)}
+                {disks.map((diskSize, index) => (
+                    <Disk 
+                        key={diskSize} 
+                        size={diskSize} 
+                        color={DISK_COLORS[diskSize - 1]}
+                        draggable={index === disks.length - 1} // Only top disk is draggable
+                        onDragStart={(e) => onDiskDragStart(e, rodIndex)}
+                        isWon={isWon}
+                    />
+                ))}
             </div>
         </div>
-        <Button variant={isSelected ? "default" : "outline"} onClick={onClick} className="mt-2">
+        <Button variant={isSelected ? "default" : "outline"} onClick={onClick} className="mt-2" disabled={isWon}>
             {isSelected ? "Selected" : "Select"}
         </Button>
     </div>
@@ -68,6 +97,30 @@ export default function TowerOfHanoiPage() {
         setDifficulty(numDisks);
     };
 
+    const moveDisk = useCallback((fromIndex: number, toIndex: number) => {
+        if (isWon || fromIndex === toIndex) return;
+
+        const newTowers = towers.map(t => [...t]);
+        const fromRod = newTowers[fromIndex];
+        const toRod = newTowers[toIndex];
+        
+        if (fromRod.length === 0) return; // Cannot move from an empty rod
+
+        const diskToMove = fromRod[fromRod.length - 1];
+
+        if (toRod.length === 0 || diskToMove < toRod[toRod.length - 1]) {
+            fromRod.pop();
+            toRod.push(diskToMove);
+            setTowers(newTowers);
+            setMoves(m => m + 1);
+
+            // Check for win condition
+            if ((newTowers[1].length === difficulty) || (newTowers[2].length === difficulty)) {
+                setIsWon(true);
+            }
+        }
+    }, [towers, isWon, difficulty]);
+
     const handleRodClick = (rodIndex: number) => {
         if (isWon) return;
 
@@ -77,24 +130,29 @@ export default function TowerOfHanoiPage() {
                 setSelectedRod(rodIndex);
             }
         } else {
-            // Move the disk
-            const newTowers = towers.map(t => [...t]);
-            const fromRod = newTowers[selectedRod];
-            const toRod = newTowers[rodIndex];
-            const diskToMove = fromRod[fromRod.length - 1];
-
-            if (toRod.length === 0 || diskToMove < toRod[toRod.length - 1]) {
-                fromRod.pop();
-                toRod.push(diskToMove);
-                setTowers(newTowers);
-                setMoves(m => m + 1);
-
-                // Check for win condition
-                if ((newTowers[1].length === difficulty) || (newTowers[2].length === difficulty)) {
-                    setIsWon(true);
-                }
-            }
+            moveDisk(selectedRod, rodIndex);
             setSelectedRod(null);
+        }
+    };
+
+    // Drag and Drop Handlers
+    const handleDragStart = (e: React.DragEvent, fromRodIndex: number) => {
+        if (isWon) {
+            e.preventDefault();
+            return;
+        }
+        e.dataTransfer.setData("fromRodIndex", fromRodIndex.toString());
+    };
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+    };
+
+    const handleDrop = (e: React.DragEvent, toRodIndex: number) => {
+        e.preventDefault();
+        const fromRodIndex = parseInt(e.dataTransfer.getData("fromRodIndex"), 10);
+        if (!isNaN(fromRodIndex)) {
+            moveDisk(fromRodIndex, toRodIndex);
         }
     };
     
@@ -138,7 +196,17 @@ export default function TowerOfHanoiPage() {
                     )}
                     <div className="grid grid-cols-3 gap-4">
                         {towers.map((disks, index) => (
-                            <Rod key={index} disks={disks} onClick={() => handleRodClick(index)} isSelected={selectedRod === index} />
+                            <Rod 
+                                key={index}
+                                rodIndex={index}
+                                disks={disks} 
+                                onClick={() => handleRodClick(index)} 
+                                onDragOver={handleDragOver}
+                                onDrop={(e) => handleDrop(e, index)}
+                                onDiskDragStart={handleDragStart}
+                                isSelected={selectedRod === index} 
+                                isWon={isWon}
+                            />
                         ))}
                     </div>
                      <div className="mt-6 flex gap-4">
