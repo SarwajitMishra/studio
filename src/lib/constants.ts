@@ -1,6 +1,6 @@
 
 import type { LucideIcon } from 'lucide-react';
-import { Crown, Puzzle, BookOpen, UserCircle, Settings, BarChart3, Zap, Apple, Banana, Cherry, Grape, Carrot, Pizza, CakeSlice, IceCream2, Swords, Bot, Search, Sigma, Brain, ToyBrick, Star as StarIcon, Coins as CoinsIcon, BookMarked, Target, Calculator, ListOrdered, SpellCheck, CaseLower, AlignJustify, Filter, Keyboard, Gamepad2, Languages, Lightbulb, Mail, Calendar, Heart } from 'lucide-react';
+import { Crown, Puzzle, BookOpen, UserCircle, Settings, BarChart3, Zap, Apple, Banana, Cherry, Grape, Carrot, Pizza, CakeSlice, IceCream2, Swords, Bot, Search, Sigma, Brain, ToyBrick, Star as StarIcon, Coins as CoinsIcon, BookMarked, Target, Calculator, ListOrdered, SpellCheck, CaseLower, AlignJustify, Filter, Keyboard, Gamepad2, Languages, Lightbulb, Mail, Calendar, Heart, Hash, CircleDot } from 'lucide-react';
 
 export type GameCategory = 'Strategy' | 'Puzzles' | 'Learning';
 
@@ -24,6 +24,24 @@ export const GAMES: Game[] = [
     description: 'Classic strategy board game. Sharpen your mind!',
     href: '/chess',
     color: 'text-sky-600',
+  },
+  {
+    id: 'tictactoe',
+    title: 'Tic-Tac-Toe',
+    category: 'Strategy',
+    Icon: Hash,
+    description: "The classic game of X's and O's. Can you get three in a row?",
+    href: '/tictactoe',
+    color: 'text-orange-500',
+  },
+  {
+    id: 'connect-four',
+    title: 'Connect Four',
+    category: 'Strategy',
+    Icon: CircleDot,
+    description: 'Drop your discs and be the first to get four in a row!',
+    href: '/connect-four',
+    color: 'text-red-600',
   },
   {
     id: 'jigsaw',
