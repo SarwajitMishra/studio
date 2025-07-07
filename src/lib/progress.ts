@@ -1,6 +1,8 @@
+
 'use client';
 
 import { GAMES } from './constants';
+import { applyRewards } from './rewards';
 
 export const LOCAL_STORAGE_GAME_STATS_KEY = 'shravyaPlayhouse_gameStats';
 
@@ -57,6 +59,10 @@ interface UpdateStatsPayload {
 export const updateGameStats = (payload: UpdateStatsPayload) => {
     if (typeof window === 'undefined') return;
     const stats = getGameStats();
+    
+    // Check for the "First Game Completed" milestone before updating stats.
+    const totalGamesPlayedBefore = stats.reduce((total, s) => total + s.gamesPlayed, 0);
+
     const statIndex = stats.findIndex(s => s.gameId === payload.gameId);
 
     if (statIndex !== -1) {
@@ -80,4 +86,10 @@ export const updateGameStats = (payload: UpdateStatsPayload) => {
     }
 
     setGameStats(stats);
+    
+    // If this was the very first game played, apply the milestone reward.
+    if (totalGamesPlayedBefore === 0) {
+        console.log("First game milestone reached! Applying special reward.");
+        applyRewards(100, 10, "First Game Completed!");
+    }
 }
