@@ -11,6 +11,7 @@ import EnglishPuzzleGame from "@/components/english-puzzles/EnglishPuzzleGame";
 import TypingRushGame from "@/components/english-puzzles/TypingRushGame";
 import PlaceholderPuzzleGame from "@/components/number-puzzles/PlaceholderPuzzleGame";
 import WordGridGame from "@/components/english-puzzles/WordGridGame";
+import CrosswordGame from "@/components/english-puzzles/CrosswordGame";
 
 // Client component to inject metadata
 const HeadMetadata = ({ puzzleName }: { puzzleName?: string }) => {
@@ -84,6 +85,10 @@ export default function EasyEnglishPuzzlesPage() {
       
       case 'wordGrid':
         gameComponent = <WordGridGame {...commonProps} />;
+        break;
+
+      case 'crossword':
+        gameComponent = <CrosswordGame {...commonProps} />;
         break;
 
       default:

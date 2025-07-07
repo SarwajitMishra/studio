@@ -90,15 +90,6 @@ export const GAMES: Game[] = [
     disabled: false,
   },
   {
-    id: 'crossword',
-    title: 'Crossword Challenge',
-    category: 'Puzzles',
-    Icon: FileText,
-    description: 'Solve clues to fill in words in a grid. A classic test of vocabulary!',
-    href: '/puzzles/crossword',
-    color: 'text-gray-500',
-  },
-  {
     id: 'number-puzzles',
     title: 'Number Puzzles',
     category: 'Learning',
@@ -215,7 +206,7 @@ export const MATH_PUZZLE_TYPES: MathPuzzleType[] = [
 ];
 
 // Types for English Puzzles
-export type EnglishPuzzleSubtype = 'matchWord' | 'missingLetter' | 'sentenceScramble' | 'oddOneOut' | 'typingRush' | 'wordGrid';
+export type EnglishPuzzleSubtype = 'matchWord' | 'missingLetter' | 'sentenceScramble' | 'oddOneOut' | 'typingRush' | 'wordGrid' | 'crossword';
 export type Difficulty = 'easy' | 'medium' | 'hard';
 
 export interface EnglishPuzzleType {
@@ -268,6 +259,13 @@ export const ENGLISH_PUZZLE_TYPES: EnglishPuzzleType[] = [
         description: "Find as many words as you can in a grid of letters.",
         Icon: LayoutGrid,
         color: "text-purple-500"
+    },
+    {
+        id: "crossword",
+        name: "Crossword Challenge",
+        description: "Solve clues to fill in words. A classic test of vocabulary!",
+        Icon: FileText,
+        color: "text-gray-500"
     }
 ];
 
