@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Puzzle as PuzzleIcon, CheckCircle, Shield, Gem, Star, ArrowLeft, Timer, Eye, RotateCw, Loader2, Lightbulb } from "lucide-react";
+import { Puzzle as PuzzleIcon, CheckCircle, Shield, Gem, Star as StarIcon, ArrowLeft, Timer, Eye, RotateCw, Loader2, Lightbulb } from "lucide-react";
 import Link from "next/link";
 import NextImage from "next/image";
 import { cn } from "@/lib/utils";
@@ -40,7 +40,7 @@ interface PuzzlePiece {
 
 const DIFFICULTY_LEVELS: DifficultyOption[] = [
   { level: "beginner", label: "Beginner", Icon: Shield, piecesText: "9 pieces (3x3)", color: "text-green-500", gridSize: 3 },
-  { level: "expert", label: "Expert", Icon: Star, piecesText: "16 pieces (4x4)", color: "text-yellow-500", gridSize: 4 },
+  { level: "expert", label: "Expert", Icon: StarIcon, piecesText: "16 pieces (4x4)", color: "text-yellow-500", gridSize: 4 },
   { level: "pro", label: "Pro", Icon: Gem, piecesText: "25 pieces (5x5)", color: "text-red-500", gridSize: 5 },
 ];
 
@@ -144,6 +144,29 @@ export default function JigsawPuzzlePage() {
     const boardRef = useRef<HTMLDivElement>(null);
     const [boardSize, setBoardSize] = useState(450); // Default size
 
+    const [lastReward, setLastReward] = useState<{points: number, coins: number, stars: number} | null>(null);
+
+    const StarRating = ({ rating }: { rating: number }) => (
+        <div className="flex justify-center">
+            {[...Array(3)].map((_, i) => (
+                <StarIcon key={i} className={cn("h-10 w-10", i < rating ? "text-yellow-400 fill-yellow-400" : "text-gray-300")} />
+            ))}
+        </div>
+    );
+    
+    const calculateStars = useCallback((timeInSeconds: number, difficulty: Difficulty): number => {
+        const thresholds = {
+            beginner: { best: 60, good: 120 },
+            expert: { best: 180, good: 300 },
+            pro: { best: 300, good: 600 },
+        };
+        const diffThresholds = thresholds[difficulty];
+    
+        if (timeInSeconds <= diffThresholds.best) return 3;
+        if (timeInSeconds <= diffThresholds.good) return 2;
+        return 1;
+    }, []);
+
     // Effect to update board size for calculations
     useEffect(() => {
         const updateBoardSize = () => {
@@ -180,10 +203,29 @@ export default function JigsawPuzzlePage() {
                 performanceMetrics: { timeInSeconds: time, moves },
             });
             const earned = applyRewards(rewards.sPoints, rewards.sCoins, `Solved Jigsaw (${selectedDifficulty})`);
+            const stars = calculateStars(time, selectedDifficulty);
+            setLastReward({ points: earned.points, coins: earned.coins, stars });
             
             toast({
-                title: "Puzzle Complete!",
-                description: `You earned ${earned.points} S-Points and ${earned.coins} S-Coins!`,
+                title: "Puzzle Complete! 🧩",
+                description: (
+                    <div className="flex flex-col gap-1">
+                        <div className="flex items-center">
+                            {Array.from({ length: 3 }).map((_, i) => (
+                                <StarIcon key={i} size={16} className={cn(i < stars ? "text-yellow-300 fill-yellow-300" : "text-white/50")} />
+                            ))}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                        <span>You earned:</span>
+                        <span className="flex items-center font-bold">
+                            {earned.points} <SPointsIcon className="ml-1.5 h-5 w-5 text-yellow-300" />
+                        </span>
+                        <span className="flex items-center font-bold">
+                            {earned.coins} <SCoinsIcon className="ml-1.5 h-5 w-5 text-amber-400" />
+                        </span>
+                        </div>
+                    </div>
+                ),
                 className: "bg-green-600 border-green-700 text-white",
                 duration: 5000,
             });
@@ -193,7 +235,7 @@ export default function JigsawPuzzlePage() {
         } finally {
             setIsCalculatingReward(false);
         }
-    }, [selectedDifficulty, time, moves, toast]);
+    }, [selectedDifficulty, time, moves, toast, calculateStars]);
 
     const checkCompletion = useCallback((currentPieces: PuzzlePiece[]) => {
         const isSolved = currentPieces.every((p, index) => {
@@ -326,6 +368,7 @@ export default function JigsawPuzzlePage() {
         setMoves(0);
         setTime(0);
         setHintsRemaining(3);
+        setLastReward(null);
     };
 
     const handleHint = () => {
@@ -371,23 +414,36 @@ export default function JigsawPuzzlePage() {
                         <AlertDialogTitle className="text-2xl text-green-600 flex items-center justify-center gap-2">
                            <CheckCircle size={28} /> Puzzle Complete!
                         </AlertDialogTitle>
-                         {isCalculatingReward ? (
-                             <div className="flex flex-col items-center justify-center gap-2 pt-4">
-                                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                                <p className="text-sm text-muted-foreground">Calculating your awesome rewards...</p>
-                            </div>
-                         ) : (
-                            <AlertDialogDescription className="text-center text-base pt-2">
-                                Congratulations! You solved the puzzle.
-                                <br />
-                                <strong className="text-lg">Moves: {moves}</strong> | <strong className="text-lg">Time: {formatTime(time)}</strong>
-                            </AlertDialogDescription>
-                         )}
                         </AlertDialogHeader>
+                         <div className="py-4 text-center">
+                            {isCalculatingReward ? (
+                                <div className="flex flex-col items-center justify-center gap-2 pt-4">
+                                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                                    <p className="text-sm text-muted-foreground">Calculating your awesome rewards...</p>
+                                </div>
+                            ) : lastReward ? (
+                                <div className="flex flex-col items-center gap-3 text-center text-green-700">
+                                    <StarRating rating={lastReward.stars} />
+                                    <AlertDialogDescription className="text-center text-base pt-2">
+                                        Congratulations! You solved the puzzle.
+                                        <br />
+                                        <strong className="text-lg">Moves: {moves}</strong> | <strong className="text-lg">Time: {formatTime(time)}</strong>
+                                    </AlertDialogDescription>
+                                    <div className="flex items-center gap-6 mt-2">
+                                        <span className="flex items-center font-bold text-2xl">
+                                            +{lastReward.points} <SPointsIcon className="ml-2 h-7 w-7 text-yellow-400" />
+                                        </span>
+                                        <span className="flex items-center font-bold text-2xl">
+                                            +{lastReward.coins} <SCoinsIcon className="ml-2 h-7 w-7 text-amber-500" />
+                                        </span>
+                                    </div>
+                                </div>
+                            ) : null}
+                        </div>
                         <AlertDialogFooter>
                         <AlertDialogAction onClick={() => {
-                          setViewMode('selectImage');
-                          handleDifficultySelect(selectedDifficulty);
+                          setLastReward(null);
+                          if(selectedDifficulty) handleDifficultySelect(selectedDifficulty);
                         }} disabled={isCalculatingReward}>Choose New Puzzle</AlertDialogAction>
                         <AlertDialogCancel onClick={handleReset} disabled={isCalculatingReward}>Back to Menu</AlertDialogCancel>
                         </AlertDialogFooter>
@@ -447,8 +503,7 @@ export default function JigsawPuzzlePage() {
                                 <Lightbulb className="mr-2 h-4 w-4" /> Solve Piece ({hintsRemaining})
                            </Button>
                            <Button variant="outline" onClick={() => {
-                             setViewMode('selectImage');
-                             handleDifficultySelect(selectedDifficulty);
+                             if(selectedDifficulty) handleDifficultySelect(selectedDifficulty);
                             }}>
                                <ArrowLeft className="mr-2 h-4 w-4" /> Change Image
                            </Button>
