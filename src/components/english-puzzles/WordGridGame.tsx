@@ -24,8 +24,8 @@ interface WordGridGameProps {
 
 const DICTIONARY_BY_DIFFICULTY: Record<Difficulty, string[]> = {
   easy: LARGE_DICTIONARY.filter(w => w.length >= 3 && w.length <= 4),
-  medium: LARGE_DICTIONARY.filter(w => w.length >= 4 && w.length <= 6),
-  hard: LARGE_DICTIONARY.filter(w => w.length >= 5 && w.length <= 8),
+  medium: LARGE_DICTIONARY.filter(w => w.length >= 5 && w.length <= 6),
+  hard: LARGE_DICTIONARY.filter(w => w.length >= 7 && w.length <= 8),
 };
 
 const GRID_SIZE = 4;
@@ -186,10 +186,8 @@ export default function WordGridGame({ onBack, difficulty }: WordGridGameProps) 
   }, []);
 
   useEffect(() => {
-    if (gameState === "loading" && usedWords.current.size === 0) {
-        loadNextWord();
-    }
-  }, [gameState, loadNextWord]);
+    resetGame();
+  }, [difficulty, resetGame]);
 
 
   useEffect(() => {
@@ -204,11 +202,6 @@ export default function WordGridGame({ onBack, difficulty }: WordGridGameProps) 
         return () => clearTimeout(timer);
     }
   }, [timeLeft, gameState, score, handleGameOver]);
-
-  useEffect(() => {
-    resetGame();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [difficulty]);
 
   const handleCellClick = (r: number, c: number) => {
     if (gameState !== 'playing') return;
