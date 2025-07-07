@@ -22,7 +22,7 @@ const LARGE_DICTIONARY = ['ace', 'act', 'add', 'ado', 'aft', 'age', 'ago', 'aid'
 const DICE_4x4 = [ "AACIOT", "ABILTY", "ABJMOQ", "ACDEMP", "ACELRS", "ADENVZ", "AHMORS", "BIFORX", "DENOSW", "DKNOTU", "EEFHIY", "EGKLUY", "EGINTV", "EHINPS", "ELPSTU", "GILRUW",];
 
 const GRID_SIZE = 4;
-const GAME_DURATION_S = 120; // 2 minutes
+const GAME_DURATION_S = 60; // 1 minute
 
 const generateGrid = (): string[][] => {
   const diceSet = DICE_4x4;
