@@ -55,25 +55,56 @@ export const GAMES: Game[] = [
     title: '2048',
     category: 'Strategy',
     Icon: Hash,
-    description: "Drag and drop matching numbers to merge them. Can you reach the 2048 tile?",
+    description: "Slide and merge matching numbers to form the 2048 tile.",
     href: '/2048',
     color: 'text-rose-500',
   },
   {
-    id: 'puzzles',
-    title: 'Kid Puzzles',
+    id: 'jigsaw',
+    title: 'Jigsaw Puzzles',
     category: 'Puzzles',
     Icon: Puzzle,
-    description: 'Engaging puzzles like Jigsaw, Sudoku, and Memory Matching.',
-    href: '/puzzles',
+    description: 'Assemble pieces to form a picture. Drag and drop to solve!',
     color: 'text-purple-600',
+    href: '/puzzles/jigsaw',
+    disabled: false,
+  },
+  {
+    id: 'memory',
+    title: 'Memory Matching',
+    category: 'Puzzles',
+    Icon: Brain,
+    description: 'Find matching pairs of cards. Click to reveal!',
+    color: 'text-pink-600',
+    href: '/puzzles/memory',
+    disabled: false,
+  },
+  {
+    id: 'sudoku',
+    title: 'Sudoku Challenge',
+    category: 'Puzzles',
+    Icon: Grid3x3,
+    description: 'A classic logic puzzle with numbers.',
+    color: 'text-lime-600',
+    href: '/puzzles/sudoku',
+    disabled: false,
+  },
+  {
+    id: 'pattern-builder',
+    title: 'Pattern Builder',
+    category: 'Puzzles',
+    Icon: Blocks,
+    description: 'Recreate complex patterns from memory.',
+    color: 'text-rose-500',
+    href: '/puzzles/pattern-builder',
+    disabled: false,
   },
   {
     id: 'number-puzzles',
     title: 'Number Puzzles',
     category: 'Learning',
     Icon: Calculator,
-    description: 'Fun with numbers! Solve engaging math puzzles.',
+    description: 'Solve math and logic puzzles. Learn while you play!',
     href: '/puzzles/numbers', 
     color: 'text-green-600',
   },
@@ -86,83 +117,6 @@ export const GAMES: Game[] = [
     href: '/puzzles/easy-english',
     color: 'text-indigo-500',
   },
-];
-
-export interface PuzzleType {
-  id: string;
-  name: string;
-  Icon: LucideIcon;
-  description: string;
-  color?: string;
-  href?: string;
-  disabled?: boolean;
-}
-
-export const PUZZLE_TYPES: PuzzleType[] = [
-  {
-    id: 'jigsaw',
-    name: 'Jigsaw Puzzles',
-    Icon: Puzzle,
-    description: 'Assemble pieces to form a picture. Drag and drop to solve!',
-    color: 'text-purple-600',
-    href: '/puzzles/jigsaw',
-    disabled: false, 
-  },
-  {
-    id: 'memory',
-    name: 'Memory Matching',
-    Icon: Brain,
-    description: 'Find matching pairs of cards. Click to reveal!',
-    color: 'text-pink-600',
-    href: '/puzzles/memory',
-    disabled: false,
-  },
-  {
-    id: 'sudoku',
-    name: 'Sudoku Challenge',
-    Icon: Grid3x3,
-    description: 'A classic logic puzzle with numbers.',
-    color: 'text-lime-600',
-    href: '/puzzles/sudoku',
-    disabled: false,
-  },
-  {
-    id: 'pattern-builder',
-    name: 'Pattern Builder',
-    Icon: Blocks,
-    description: 'Recreate complex patterns from memory.',
-    color: 'text-rose-500',
-    href: '/puzzles/pattern-builder',
-    disabled: false,
-  },
-  {
-    id: 'numbers',
-    name: 'Number Puzzles',
-    Icon: Calculator,
-    description: 'Solve math and logic puzzles. Learn while you play!',
-    color: 'text-green-600',
-    href: '/puzzles/numbers',
-    disabled: false,
-  },
-  {
-    id: 'easy-english',
-    name: 'Easy English Fun',
-    Icon: Languages,
-    description: 'Learn basic English words and improve typing skills.',
-    color: 'text-indigo-500',
-    href: '/puzzles/easy-english',
-    disabled: false,
-  },
-];
-
-// Define your avatar image paths here, relative to the /public directory
-export const AVATARS: { src: string; alt: string; hint: string }[] = [
-  { src: '/images/avatars/african_girl.png', alt: 'African girl avatar', hint: 'african girl' },
-  { src: '/images/avatars/african_women.png', alt: 'African women avatar', hint: 'african women' },
-  { src: '/images/avatars/indian_boy.png', alt: 'Indian boy avatar', hint: 'indian boy' },
-  { src: '/images/avatars/indian_girl.png', alt: 'Indian girl avatar', hint: 'indian girl' },
-  { src: '/images/avatars/indian_man.png', alt: 'Indian man avatar', hint: 'indian man' },
-  { src: '/images/avatars/modern_girl.png', alt: 'Modern girl avatar', hint: 'modern girl' },
 ];
 
 export interface SettingsMenuItem {
@@ -353,3 +307,12 @@ interface OddOneOutPuzzle extends EnglishPuzzleItemBase {
 
 export type EnglishPuzzleItem = WordMatchPuzzle | MissingLetterPuzzle | SentenceScramblePuzzle | OddOneOutPuzzle;
 
+// Define your avatar image paths here, relative to the /public directory
+export const AVATARS: { src: string; alt: string; hint: string }[] = [
+  { src: '/images/avatars/african_girl.png', alt: 'African girl avatar', hint: 'african girl' },
+  { src: '/images/avatars/african_women.png', alt: 'African women avatar', hint: 'african women' },
+  { src: '/images/avatars/indian_boy.png', alt: 'Indian boy avatar', hint: 'indian boy' },
+  { src: '/images/avatars/indian_girl.png', alt: 'Indian girl avatar', hint: 'indian girl' },
+  { src: '/images/avatars/indian_man.png', alt: 'Indian man avatar', hint: 'indian man' },
+  { src: '/images/avatars/modern_girl.png', alt: 'Modern girl avatar', hint: 'modern girl' },
+];
