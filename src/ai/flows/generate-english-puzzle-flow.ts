@@ -14,6 +14,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import type { EnglishPuzzleItem } from '@/lib/constants';
+import { searchImages } from '@/services/pixabay';
 
 // Define Zod schemas that match the existing types for validation and structured output.
 const GenerateEnglishPuzzleInputSchema = z.object({
@@ -60,12 +61,21 @@ const EnglishPuzzleOutputSchema = z.union([WordMatchPuzzleSchema, MissingLetterP
 // This is the main function that the client will call.
 export async function generateEnglishPuzzle(input: GenerateEnglishPuzzleInput): Promise<EnglishPuzzleItem> {
   const llmResponse = await generateEnglishPuzzleFlow(input);
+  const apiKey = process.env.NEXT_PUBLIC_PIXABAY_API_KEY;
 
   if (llmResponse.type === 'matchWord') {
+    let imageUrl = `https://placehold.co/400x300.png`; // Fallback
+    if (apiKey) {
+      // Add 'cartoon' to get more kid-friendly images
+      const images = await searchImages(`cartoon ${llmResponse.correctWord}`, apiKey, { perPage: 1 });
+      if (images.length > 0 && images[0].webformatURL) {
+        imageUrl = images[0].webformatURL;
+      }
+    }
     return {
       id: `ai-${Date.now()}`,
       difficulty: input.difficulty,
-      imageSrc: `https://placehold.co/400x300.png`,
+      imageSrc: imageUrl,
       imageAlt: llmResponse.correctWord,
       type: 'matchWord',
       correctWord: llmResponse.correctWord,

@@ -120,29 +120,10 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
     }
   }, [puzzleType, difficulty, sessionKey, toast]);
 
-
-  const startNewRound = useCallback(() => {
-    if (questionsAnswered > 0 && !isRoundOver) {
-        updateGameStats({ gameId: 'easy-english', didWin: false, score: score * 100 });
-    }
-    resetSessionHistory(); // Clear history for a completely new round
-    setScore(0);
-    setQuestionsAnswered(0);
-    setIsRoundOver(false);
-    setFeedback(null);
-    loadNextPuzzle();
-  }, [loadNextPuzzle, questionsAnswered, isRoundOver, score]);
-
-  useEffect(() => {
-    startNewRound();
-  }, [startNewRound]);
-
   const processAnswerResult = useCallback((isCorrect: boolean) => {
     setIsAnswered(true);
-    let newScore = score;
     if (isCorrect) {
-      newScore = score + 1;
-      setScore(newScore);
+      setScore(prev => prev + 1);
       setFeedback({ message: "Correct! Well done!", type: "correct" });
       toast({
         title: "Great Job!",
@@ -169,22 +150,45 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
     }
 
     setTimeout(() => {
-      const newQuestionsAnswered = questionsAnswered + 1;
-      setQuestionsAnswered(newQuestionsAnswered);
-
-      if (newQuestionsAnswered >= MAX_QUESTIONS) {
-        setIsRoundOver(true);
-        const finalScore = newScore;
-        const didWin = finalScore === MAX_QUESTIONS;
-        updateGameStats({ gameId: 'easy-english', didWin, score: finalScore * 100 });
-        setFeedback({ message: `Round Over! Your final score: ${finalScore}/${MAX_QUESTIONS}`, type: "info" });
-        setCurrentPuzzle(null);
-      } else {
-        loadNextPuzzle();
-      }
+      setQuestionsAnswered(prevQuestionsAnswered => {
+        const newQuestionsAnswered = prevQuestionsAnswered + 1;
+        
+        if (newQuestionsAnswered >= MAX_QUESTIONS) {
+          setIsRoundOver(true);
+          setScore(currentScore => {
+            const finalScore = currentScore;
+            const didWin = finalScore === MAX_QUESTIONS;
+            updateGameStats({ gameId: 'easy-english', didWin, score: finalScore * 100 });
+            setFeedback({ message: `Round Over! Your final score: ${finalScore}/${MAX_QUESTIONS}`, type: "info" });
+            setCurrentPuzzle(null);
+            return finalScore;
+          });
+        } else {
+          loadNextPuzzle();
+        }
+        return newQuestionsAnswered;
+      });
     }, isCorrect ? 1500 : 3000);
-  }, [score, questionsAnswered, currentPuzzle, toast, loadNextPuzzle]);
-  
+  }, [currentPuzzle, loadNextPuzzle, toast]);
+
+  const startNewRound = useCallback(() => {
+    if (questionsAnswered > 0 && !isRoundOver) {
+        updateGameStats({ gameId: 'easy-english', didWin: false, score: score * 100 });
+    }
+    resetSessionHistory(); // Clear history for a completely new round
+    setScore(0);
+    setQuestionsAnswered(0);
+    setIsRoundOver(false);
+    setFeedback(null);
+    loadNextPuzzle();
+  }, [loadNextPuzzle, questionsAnswered, isRoundOver, score]);
+
+  useEffect(() => {
+    startNewRound();
+    // This effect should only run once when the component mounts or difficulty changes.
+    // The dependency array is empty because startNewRound has its own dependencies.
+    // Let's add startNewRound to the dependency array to satisfy the linter.
+  }, [startNewRound]);
 
   const handleOptionSelect = (selectedOption: string) => {
     if (!currentPuzzle || isAnswered || currentPuzzle.type === 'sentenceScramble') return;
