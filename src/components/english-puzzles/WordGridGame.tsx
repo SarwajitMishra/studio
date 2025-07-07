@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -28,7 +28,7 @@ const DICTIONARY_BY_DIFFICULTY: Record<Difficulty, string[]> = {
   hard: LARGE_DICTIONARY.filter(w => w.length >= 5 && w.length <= 8),
 };
 
-const GRID_SIZE = 5;
+const GRID_SIZE = 4;
 const GAME_DURATION_S = 120; // 2 minutes
 
 // This function tries to place a word on the grid.
@@ -134,7 +134,7 @@ export default function WordGridGame({ onBack, difficulty }: WordGridGameProps) 
     setGameState("loading");
     setCurrentPath([]);
     setCurrentWord('');
-    if (isSkip) {
+    if (isSkip && secretWord) {
         toast({ title: "Skipped!", description: `The word was "${secretWord}".`});
     }
 
@@ -169,10 +169,10 @@ export default function WordGridGame({ onBack, difficulty }: WordGridGameProps) 
 
     try {
       const definition = await getWordDefinition({ word });
-      setHint(definition.definition);
+      setHint(`A ${word.length}-letter word: ${definition.definition}`);
     } catch (e) {
       console.error("Failed to get hint:", e);
-      setHint("Could not load hint for this word.");
+      setHint(`Could not load hint for this ${word.length}-letter word.`);
     }
     
     setGameState("playing");
@@ -183,8 +183,14 @@ export default function WordGridGame({ onBack, difficulty }: WordGridGameProps) 
     setScore(0);
     setTimeLeft(GAME_DURATION_S);
     setGameState("loading");
-    loadNextWord();
-  }, [loadNextWord]);
+  }, []);
+
+  useEffect(() => {
+    if (gameState === "loading" && usedWords.current.size === 0) {
+        loadNextWord();
+    }
+  }, [gameState, loadNextWord]);
+
 
   useEffect(() => {
     if (gameState === "playing") {
@@ -235,7 +241,7 @@ export default function WordGridGame({ onBack, difficulty }: WordGridGameProps) 
   };
 
   return (
-    <Card className="w-full max-w-md shadow-xl">
+    <Card className="w-full max-w-lg shadow-xl">
         <AlertDialog open={gameState === 'gameOver'}>
             <AlertDialogContent>
                 <AlertDialogHeader>
@@ -291,7 +297,7 @@ export default function WordGridGame({ onBack, difficulty }: WordGridGameProps) 
         </CardHeader>
         <CardContent className="p-4 sm:p-6 space-y-4">
             {gameState === 'loading' ? (
-                <div className='flex flex-col items-center justify-center h-[420px]'>
+                <div className='flex flex-col items-center justify-center h-[350px]'>
                     <Loader2 className="h-12 w-12 animate-spin text-primary" />
                     <p className="mt-4 text-muted-foreground">Loading next word...</p>
                 </div>
@@ -301,36 +307,39 @@ export default function WordGridGame({ onBack, difficulty }: WordGridGameProps) 
                         <strong>Hint:</strong> {hint}
                     </div>
 
-                    <div className="grid grid-cols-5 gap-2">
-                        {grid.flat().map((letter, index) => {
-                            const r = Math.floor(index / GRID_SIZE);
-                            const c = index % GRID_SIZE;
-                            const inPath = currentPath.some(pos => pos.r === r && pos.c === c);
-                            return (
-                                <button
-                                    key={index}
-                                    onClick={() => handleCellClick(r, c)}
-                                    className={cn("w-12 h-12 sm:w-14 sm:h-14 text-2xl font-bold border-2 rounded-lg flex items-center justify-center transition-colors",
-                                    inPath ? "bg-yellow-400 border-yellow-600 text-white" : "bg-card hover:bg-muted"
-                                    )}
-                                >
-                                    {letter}
-                                </button>
-                            );
-                        })}
-                    </div>
+                    <div className="flex flex-col md:flex-row items-center md:items-start gap-4">
+                        <div className="flex-shrink-0 space-y-4">
+                            <div className="grid grid-cols-4 gap-2">
+                                {grid.flat().map((letter, index) => {
+                                    const r = Math.floor(index / GRID_SIZE);
+                                    const c = index % GRID_SIZE;
+                                    const inPath = currentPath.some(pos => pos.r === r && pos.c === c);
+                                    return (
+                                        <button
+                                            key={index}
+                                            onClick={() => handleCellClick(r, c)}
+                                            className={cn("w-14 h-14 sm:w-16 sm:h-16 text-2xl font-bold border-2 rounded-lg flex items-center justify-center transition-colors",
+                                            inPath ? "bg-yellow-400 border-yellow-600 text-white" : "bg-card hover:bg-muted"
+                                            )}
+                                        >
+                                            {letter}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                             <div className='text-center h-12 border rounded-lg flex items-center justify-center text-2xl font-mono tracking-widest bg-muted'>
+                                {currentWord || "..."}
+                            </div>
+                        </div>
 
-                    <div className='text-center h-12 border rounded-lg flex items-center justify-center text-2xl font-mono tracking-widest bg-muted'>
-                        {currentWord || "..."}
+                        <div className="flex md:flex-col gap-2 w-full md:w-auto md:flex-grow">
+                             <Button className="w-full bg-accent text-accent-foreground" onClick={submitWord} disabled={currentWord.length === 0}>Submit</Button>
+                            <Button variant="destructive" className="w-full" onClick={() => { setCurrentPath([]); setCurrentWord(''); }}>Clear</Button>
+                            <Button variant="outline" className="w-full" onClick={() => loadNextWord(true)}>
+                                <SkipForward className="mr-2"/> Skip
+                            </Button>
+                        </div>
                     </div>
-                    
-                    <div className="grid grid-cols-2 gap-2">
-                        <Button variant="destructive" className="w-full" onClick={() => { setCurrentPath([]); setCurrentWord(''); }}>Clear</Button>
-                        <Button className="w-full bg-accent text-accent-foreground" onClick={submitWord} disabled={currentWord.length < secretWord.length}>Submit Word</Button>
-                    </div>
-                    <Button variant="outline" className="w-full" onClick={() => loadNextWord(true)}>
-                        <SkipForward className="mr-2"/> Skip Word (New Grid)
-                    </Button>
                 </>
             )}
         </CardContent>
