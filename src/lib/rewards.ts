@@ -5,6 +5,8 @@ import { LOCAL_STORAGE_S_POINTS_KEY, LOCAL_STORAGE_S_COINS_KEY, LOCAL_STORAGE_RE
 import { calculateRewards as calculateRewardsFlow, type RewardCalculationInput } from '@/ai/flows/calculate-rewards-flow';
 
 const S_POINTS_TO_S_COIN_CONVERSION_THRESHOLD = 500;
+const DAILY_S_COIN_CAP = 100;
+const LOCAL_STORAGE_S_COIN_TALLY_KEY = 'shravyaPlayhouse_sCoinTally';
 
 export interface RewardEvent {
   id: string;
@@ -12,6 +14,11 @@ export interface RewardEvent {
   points: number;
   coins: number;
   timestamp: string; // ISO string
+}
+
+interface DailyTally {
+  date: string; // YYYY-MM-DD
+  total: number;
 }
 
 const getStoredGameCurrency = (key: string): number => {
@@ -67,50 +74,83 @@ const addRewardToHistory = (event: Omit<RewardEvent, 'id' | 'timestamp'>) => {
  * Applies the given S-Points and S-Coins to the user's balance, handles S-Point to S-Coin conversion,
  * and notifies the app of the update. This function should only be called on the client.
  * @param pointsToAdd The number of S-Points to add.
- * @param coinsToAdd The number of S-Coins to add.
+ * @param coinsFromGame The number of S-Coins earned directly from the game.
  * @param description A description of how the reward was earned for the history log.
- * @returns The total number of points and coins earned in this transaction (including conversions).
+ * @returns The total number of points and coins earned in this transaction (including conversions and caps).
  */
-export function applyRewards(pointsToAdd: number, coinsToAdd: number, description: string = "Reward Earned"): { points: number; coins: number } {
-  if (typeof window === 'undefined') return { points: pointsToAdd, coins: coinsToAdd };
+export function applyRewards(pointsToAdd: number, coinsFromGame: number, description: string = "Reward Earned"): { points: number; coins: number } {
+  if (typeof window === 'undefined') return { points: pointsToAdd, coins: coinsFromGame };
 
   // Get current values
   const currentPoints = getStoredGameCurrency(LOCAL_STORAGE_S_POINTS_KEY);
   const currentCoins = getStoredGameCurrency(LOCAL_STORAGE_S_COINS_KEY);
 
   let newPoints = currentPoints + pointsToAdd;
-  let newCoins = currentCoins + coinsToAdd;
-  let convertedCoins = 0;
+  let coinsAfterConversion = 0;
 
   // Handle S-Point to S-Coin conversion
   if (newPoints >= S_POINTS_TO_S_COIN_CONVERSION_THRESHOLD) {
       const conversions = Math.floor(newPoints / S_POINTS_TO_S_COIN_CONVERSION_THRESHOLD);
-      convertedCoins = conversions;
-      newCoins += conversions;
+      coinsAfterConversion = conversions;
       newPoints %= S_POINTS_TO_S_COIN_CONVERSION_THRESHOLD;
   }
+
+  const totalPotentialCoins = coinsFromGame + coinsAfterConversion;
+  let finalCoinsToAdd = totalPotentialCoins;
+
+  // --- Daily S-Coin Cap Logic ---
+  const today = new Date().toISOString().split('T')[0]; // Get 'YYYY-MM-DD'
+  let coinTally: DailyTally = { date: today, total: 0 };
+  
+  try {
+    const storedTally = localStorage.getItem(LOCAL_STORAGE_S_COIN_TALLY_KEY);
+    if (storedTally) {
+      const parsedTally = JSON.parse(storedTally);
+      if (parsedTally.date === today) {
+        coinTally = parsedTally;
+      }
+    }
+  } catch (e) {
+    console.error("Error reading S-Coin tally from localStorage", e);
+  }
+
+  if (coinTally.total >= DAILY_S_COIN_CAP) {
+    console.log("Daily S-Coin cap reached. No more S-Coins will be awarded today.");
+    finalCoinsToAdd = 0;
+  } else if (coinTally.total + totalPotentialCoins > DAILY_S_COIN_CAP) {
+    finalCoinsToAdd = DAILY_S_COIN_CAP - coinTally.total;
+    console.log(`Daily S-Coin cap will be reached. Awarding ${finalCoinsToAdd} instead of ${totalPotentialCoins}.`);
+  }
+  // --- End Daily Cap Logic ---
   
   // Save new values
+  const newCoins = currentCoins + finalCoinsToAdd;
   setStoredGameCurrency(LOCAL_STORAGE_S_POINTS_KEY, newPoints);
   setStoredGameCurrency(LOCAL_STORAGE_S_COINS_KEY, newCoins);
 
-  const totalCoinsEarned = coinsToAdd + convertedCoins;
+  // Update and save the daily tally
+  coinTally.total += finalCoinsToAdd;
+  try {
+      localStorage.setItem(LOCAL_STORAGE_S_COIN_TALLY_KEY, JSON.stringify(coinTally));
+  } catch (e) {
+      console.error("Error writing S-Coin tally to localStorage", e);
+  }
 
   // Log the event to history
-  if(pointsToAdd > 0 || totalCoinsEarned > 0) {
+  if(pointsToAdd > 0 || finalCoinsToAdd > 0) {
       addRewardToHistory({
           description,
           points: pointsToAdd,
-          coins: totalCoinsEarned
+          coins: finalCoinsToAdd
       });
   }
 
   // Dispatch a custom event to notify other parts of the app (like the profile page)
   window.dispatchEvent(new CustomEvent('storageUpdated'));
   
-  console.log(`Rewards applied. Points: +${pointsToAdd}, Coins: +${coinsToAdd}. Converted Coins: ${convertedCoins}. New Total Points: ${newPoints}, New Total Coins: ${newCoins}`);
+  console.log(`Rewards applied. Points: +${pointsToAdd}, Coins: +${finalCoinsToAdd}. Daily tally: ${coinTally.total}/${DAILY_S_COIN_CAP}.`);
 
-  return { points: pointsToAdd, coins: totalCoinsEarned };
+  return { points: pointsToAdd, coins: finalCoinsToAdd };
 }
 
 

@@ -50,6 +50,8 @@ Reward Logic Table (in JSON format):
 {{{json rewardLogic}}}
 \`\`\`
 
+**IMPORTANT RULE:** If the player lost the game, or their score/performance is zero or very poor (e.g., \`result\` is 'loss', \`score\` is 0, \`accuracy\` is very low, or they found 0 words), you MUST award 0 S-Coins. S-Coins are for good performance only. You can still award a small number of S-Points for participation if appropriate.
+
 **Player's Performance Data:**
 - Game ID: {{gameId}}
 - Difficulty: {{difficulty}}
@@ -57,7 +59,7 @@ Reward Logic Table (in JSON format):
 
 **Your Task:**
 1.  Find the rules for the specified \`gameId\` in the Reward Logic table.
-2.  Calculate the base S-Points and S-Coins based on the \`difficulty\` and the rules.
+2.  Calculate the base S-Points and S-Coins based on the \`difficulty\` and the rules, strictly following the **IMPORTANT RULE** about S-Coins for poor performance.
 3.  If any \`performanceMetrics\` are provided (like low attempts, fast time, perfect score), apply the bonus rewards as specified in the rules.
 4.  Return the final calculated \`sPoints\` and \`sCoins\` in the specified JSON format. If a game is not in the table, award 0 points and 0 coins.
 
