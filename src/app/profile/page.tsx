@@ -27,7 +27,6 @@ import { useToast } from "@/hooks/use-toast";
 import {
   auth,
   storage,
-  db,
   googleProvider,
   signInWithPopup,
   signOut as firebaseSignOut,
@@ -36,7 +35,6 @@ import {
   type User
 } from '@/lib/firebase';
 import { ref as storageRef, uploadString, getDownloadURL } from 'firebase/storage';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { applyColorTheme } from '@/components/theme-provider';
 
 const THEME_OPTIONS = [
@@ -166,39 +164,8 @@ export default function ProfilePage() {
                 highScore: Math.floor(Math.random() * 1000),
             }));
             setGameStats(onlineStats);
-
-            // Fetch and apply user preferences from Firestore
-            const loadUserPreferences = async (firebaseUser: User) => {
-              const userPrefRef = doc(db, 'users', firebaseUser.uid);
-              try {
-                const docSnap = await getDoc(userPrefRef);
-                if (docSnap.exists()) {
-                  const prefs = docSnap.data();
-                  
-                  // Apply theme from Firestore
-                  if (prefs.theme && typeof prefs.theme === 'string') {
-                    setTheme(prefs.theme);
-                    localStorage.setItem('theme', prefs.theme);
-                    if (prefs.theme === 'dark') {
-                      document.documentElement.classList.add('dark');
-                    } else {
-                      document.documentElement.classList.remove('dark');
-                    }
-                  }
-
-                  // Apply favorite color from Firestore
-                  if (prefs.favoriteColor && typeof prefs.favoriteColor === 'string') {
-                    setFavoriteColor(prefs.favoriteColor);
-                    localStorage.setItem('favoriteColor', prefs.favoriteColor);
-                    applyColorTheme(prefs.favoriteColor);
-                  }
-                }
-              } catch (error) {
-                console.error("Error loading user preferences:", error);
-              }
-            };
             
-            loadUserPreferences(user);
+            // Preferences are already loaded from localStorage on mount, so no need to fetch from Firestore here.
 
         } else { 
             // User is logged out, load state from local storage or use defaults
@@ -352,20 +319,6 @@ export default function ProfilePage() {
       document.documentElement.classList.remove('dark');
     }
     toast({ title: "Theme Changed", description: `Switched to ${newTheme === 'dark' ? 'Dark' : 'Light'} Mode.` });
-    
-    // Save to Firestore if user is logged in
-    if (currentUser) {
-      try {
-        await setDoc(doc(db, 'users', currentUser.uid), { theme: newTheme }, { merge: true });
-      } catch (error) {
-        console.error("Error saving theme preference to Firestore:", error);
-        toast({
-          variant: "destructive",
-          title: "Preference Sync Failed",
-          description: "Could not save your theme preference to your online profile.",
-        });
-      }
-    }
   };
 
   const handleFavoriteColorChange = async (newColor: string) => {
@@ -373,20 +326,6 @@ export default function ProfilePage() {
     localStorage.setItem('favoriteColor', newColor);
     applyColorTheme(newColor);
     toast({ title: "Favorite Color Set", description: `Your favorite color is now ${FAVORITE_COLOR_OPTIONS.find(c => c.value === newColor)?.label || newColor}.` });
-
-    // Save to Firestore if user is logged in
-    if (currentUser) {
-      try {
-        await setDoc(doc(db, 'users', currentUser.uid), { favoriteColor: newColor }, { merge: true });
-      } catch (error) {
-        console.error("Error saving color preference to Firestore:", error);
-        toast({
-          variant: "destructive",
-          title: "Preference Sync Failed",
-          description: "Could not save your color preference to your online profile.",
-        });
-      }
-    }
   };
 
 
@@ -700,6 +639,7 @@ export default function ProfilePage() {
     
 
     
+
 
 
 
