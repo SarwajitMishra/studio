@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Target, RotateCcw, Lightbulb, Award, ArrowLeft, Loader2 } from "lucide-react";
+import { Target, RotateCcw, Lightbulb, Award, ArrowLeft, Loader2, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import type { Difficulty } from "@/lib/constants";
@@ -35,6 +35,28 @@ export default function GuessTheNumberGame({ onBack, difficulty }: GuessTheNumbe
   const { toast } = useToast();
 
   const maxNumber = DIFFICULTY_CONFIG[difficulty].max;
+
+  const StarRating = ({ rating }: { rating: number }) => (
+    <div className="flex justify-center">
+        {[...Array(3)].map((_, i) => (
+            <Star key={i} className={cn("h-8 w-8", i < rating ? "text-yellow-400 fill-yellow-400" : "text-gray-300")} />
+        ))}
+    </div>
+  );
+
+  const calculateStars = (attempts: number): number => {
+    const thresholds = {
+        easy: { best: 3, good: 6 },
+        medium: { best: 5, good: 10 },
+        hard: { best: 8, good: 15 },
+    };
+    const diffThresholds = thresholds[difficulty];
+
+    if (attempts <= diffThresholds.best) return 3;
+    if (attempts <= diffThresholds.good) return 2;
+    return 1;
+  };
+
 
   const resetGame = useCallback(() => {
     const newSecret = Math.floor(Math.random() * maxNumber) + 1;
@@ -82,18 +104,26 @@ export default function GuessTheNumberGame({ onBack, difficulty }: GuessTheNumbe
         });
 
         const earned = applyRewards(rewards.sPoints, rewards.sCoins);
+        const stars = calculateStars(newAttemptCount);
         
         toast({
           title: "You Win! 🏆",
           description: (
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-              <span>You earned:</span>
-              <span className="flex items-center font-bold">
-                {earned.points} <SPointsIcon className="ml-1.5 h-5 w-5 text-yellow-300" />
-              </span>
-              <span className="flex items-center font-bold">
-                {earned.coins} <SCoinsIcon className="ml-1.5 h-5 w-5 text-amber-400" />
-              </span>
+             <div className="flex flex-col gap-1">
+                <div className="flex items-center">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                        <Star key={i} size={16} className={cn(i < stars ? "text-yellow-300 fill-yellow-300" : "text-white/50")} />
+                    ))}
+                </div>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                <span>You earned:</span>
+                <span className="flex items-center font-bold">
+                    {earned.points} <SPointsIcon className="ml-1.5 h-5 w-5 text-yellow-300" />
+                </span>
+                <span className="flex items-center font-bold">
+                    {earned.coins} <SCoinsIcon className="ml-1.5 h-5 w-5 text-amber-400" />
+                </span>
+                </div>
             </div>
           ),
           className: "bg-green-600 border-green-700 text-white",
@@ -101,14 +131,15 @@ export default function GuessTheNumberGame({ onBack, difficulty }: GuessTheNumbe
         });
 
         setFeedback(
-            <div className="flex flex-col items-center gap-1 text-center text-green-700">
-                <span>You guessed it in {newAttemptCount} attempts! You earned:</span>
-                <div className="flex items-center gap-4 mt-1">
-                    <span className="flex items-center font-bold text-lg">
-                        +{earned.points} <SPointsIcon className="ml-1 h-5 w-5 text-yellow-400" />
+            <div className="flex flex-col items-center gap-2 text-center text-green-700">
+                <StarRating rating={stars} />
+                <span className="mt-2">You guessed it in {newAttemptCount} attempts! You earned:</span>
+                <div className="flex items-center gap-6 mt-1">
+                    <span className="flex items-center font-bold text-xl">
+                        +{earned.points} <SPointsIcon className="ml-1.5 h-6 w-6 text-yellow-400" />
                     </span>
-                    <span className="flex items-center font-bold text-lg">
-                        +{earned.coins} <SCoinsIcon className="ml-1 h-5 w-5 text-amber-500" />
+                    <span className="flex items-center font-bold text-xl">
+                        +{earned.coins} <SCoinsIcon className="ml-1.5 h-6 w-6 text-amber-500" />
                     </span>
                 </div>
             </div>
@@ -161,7 +192,7 @@ export default function GuessTheNumberGame({ onBack, difficulty }: GuessTheNumbe
           <div className="text-center p-6 bg-green-100 rounded-lg shadow-inner">
             <Award className="mx-auto h-16 w-16 text-yellow-500 mb-3" />
             <h2 className="text-2xl font-bold text-green-700">You Guessed It!</h2>
-            <div className="text-lg mt-1 min-h-[3em] flex items-center justify-center">{feedback}</div>
+            <div className="text-lg mt-1 min-h-[5em] flex items-center justify-center">{feedback}</div>
             {isCalculatingReward && <Loader2 className="animate-spin mx-auto my-2" />}
             <Button onClick={resetGame} className="mt-6 w-full sm:w-auto bg-accent text-accent-foreground hover:bg-accent/90" disabled={isCalculatingReward}>
               <RotateCcw className="mr-2 h-5 w-5" /> Play Again
