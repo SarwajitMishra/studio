@@ -5,13 +5,15 @@ import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Sparkles, XCircle, CheckCircle, RotateCcw, Lightbulb, Loader2, Eraser } from "lucide-react";
+import { ArrowLeft, Sparkles, XCircle, CheckCircle, RotateCcw, Lightbulb, Loader2, Eraser, Star } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import type { EnglishPuzzleItem, EnglishPuzzleSubtype, Difficulty } from "@/lib/constants";
 import { generateEnglishPuzzle, type GenerateEnglishPuzzleInput } from "@/ai/flows/generate-english-puzzle-flow";
 import { updateGameStats } from "@/lib/progress";
+import { S_POINTS_ICON as SPointsIcon, S_COINS_ICON as SCoinsIcon } from "@/lib/constants";
+import { applyRewards, calculateRewards } from "@/lib/rewards";
 
 const shuffleArray = <T,>(array: T[]): T[] => {
   const newArray = [...array];
@@ -42,6 +44,8 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [isRoundOver, setIsRoundOver] = useState(false);
   const [isGenerating, setIsGenerating] = useState(true);
+  const [isCalculatingReward, setIsCalculatingReward] = useState(false);
+  const [lastReward, setLastReward] = useState<{points: number, coins: number, stars: number} | null>(null);
 
   // State for Sentence Scramble
   const [builtSentence, setBuiltSentence] = useState<string[]>([]);
@@ -64,7 +68,7 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
   };
   
   const resetSessionHistory = () => {
-    if (typeof window === 'undefined') {
+    if (typeof window !== 'undefined') {
       sessionStorage.removeItem(sessionKey);
     }
   };
@@ -120,18 +124,67 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
     }
   }, [puzzleType, difficulty, sessionKey, toast]);
 
-  const handleGameOver = useCallback((finalScore: number) => {
+  const StarRating = ({ rating }: { rating: number }) => (
+    <div className="flex justify-center">
+        {[...Array(3)].map((_, i) => (
+            <Star key={i} className={cn("h-10 w-10", i < rating ? "text-yellow-400 fill-yellow-400" : "text-gray-300")} />
+        ))}
+    </div>
+  );
+
+  const calculateStars = (score: number, maxScore: number): number => {
+      const percentage = (score / maxScore) * 100;
+      if (percentage === 100) return 3; // Perfect score
+      if (percentage >= 75) return 2; // Good score
+      if (percentage > 0) return 1; // At least one correct
+      return 0; // No correct answers
+  };
+
+  const handleGameOver = useCallback(async (finalScore: number) => {
     setIsRoundOver(true);
+    setIsCalculatingReward(true);
     const didWin = finalScore === MAX_QUESTIONS;
     updateGameStats({ gameId: 'easy-english', didWin, score: finalScore * 100 });
-    setFeedback({ message: `Round Over! Your final score: ${finalScore}/${MAX_QUESTIONS}`, type: "info" });
+    
+    // Clear the current puzzle to show the game over screen immediately
     setCurrentPuzzle(null);
-  }, []);
+
+    try {
+        const rewards = await calculateRewards({
+            gameId: puzzleType,
+            difficulty,
+            performanceMetrics: { score: finalScore, maxScore: MAX_QUESTIONS }
+        });
+        const earned = applyRewards(rewards.sPoints, rewards.sCoins, `Completed ${puzzleName} (${difficulty})`);
+        const stars = calculateStars(finalScore, MAX_QUESTIONS);
+        setLastReward({ points: earned.points, coins: earned.coins, stars });
+
+        toast({
+            title: "Round Complete!",
+            description: `You scored ${finalScore}/${MAX_QUESTIONS}.`,
+            className: "bg-primary/20",
+        });
+
+    } catch(error) {
+        console.error(`Error calculating rewards for ${puzzleType}:`, error);
+        toast({ variant: 'destructive', title: 'Reward Error', description: 'Could not calculate rewards.' });
+        // Set a simple feedback message in case of error
+        setFeedback({ message: `Round Over! Your final score: ${finalScore}/${MAX_QUESTIONS}`, type: "info" });
+    } finally {
+        setIsCalculatingReward(false);
+    }
+  }, [puzzleType, difficulty, puzzleName, toast]);
 
   const processAnswerResult = useCallback((isCorrect: boolean) => {
     setIsAnswered(true);
+    
+    // Use a functional update to get the latest score
+    let finalScore = score;
     if (isCorrect) {
-      setScore(prev => prev + 1);
+      setScore(prev => {
+        finalScore = prev + 1;
+        return finalScore;
+      });
       setFeedback({ message: "Correct! Well done!", type: "correct" });
       toast({
         title: "Great Job!",
@@ -162,9 +215,7 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
       setQuestionsAnswered(newQuestionsAnswered);
       
       if (newQuestionsAnswered >= MAX_QUESTIONS) {
-        // Use the current score state, adding one if the answer was correct, to get the final score.
-        // This avoids issues with stale state inside the setTimeout closure.
-        handleGameOver(isCorrect ? score + 1 : score);
+        handleGameOver(finalScore);
       } else {
         loadNextPuzzle();
       }
@@ -177,14 +228,15 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
     setQuestionsAnswered(0);
     setIsRoundOver(false);
     setFeedback(null);
+    setLastReward(null);
     loadNextPuzzle();
   }, [loadNextPuzzle]);
 
   useEffect(() => {
-    // This effect now correctly depends on `startNewRound` and `difficulty`.
-    // The `startNewRound` function has been stabilized to not cause loops.
     startNewRound();
-  }, [startNewRound, difficulty]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [difficulty]); // This effect should only re-run when difficulty changes. startNewRound is stable.
+
 
   const handleOptionSelect = (selectedOption: string) => {
     if (!currentPuzzle || isAnswered || currentPuzzle.type === 'sentenceScramble') return;
@@ -233,14 +285,38 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
 
   const renderGameOverView = () => (
     <div className="space-y-4 text-center">
-      <Sparkles size={64} className="mx-auto text-yellow-500" />
-      <p className="text-2xl font-semibold text-accent">
-        {feedback?.message || "Round complete!"}
-      </p>
-      <Button onClick={startNewRound} className="bg-accent text-accent-foreground hover:bg-accent/90">
-        <RotateCcw className="mr-2" /> 
-        Play Again
-      </Button>
+        {isCalculatingReward ? (
+            <div className="flex flex-col items-center justify-center gap-2 pt-4">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="text-sm text-muted-foreground">Calculating your rewards...</p>
+            </div>
+        ) : lastReward ? (
+            <div className="flex flex-col items-center gap-3 text-center">
+                <StarRating rating={lastReward.stars} />
+                <p className="text-2xl font-semibold text-accent mt-2">
+                    Final Score: {score}/{MAX_QUESTIONS}
+                </p>
+                <div className="flex items-center gap-6 mt-2">
+                    <span className="flex items-center font-bold text-2xl">
+                        +{lastReward.points} <SPointsIcon className="ml-2 h-7 w-7 text-yellow-400" />
+                    </span>
+                    <span className="flex items-center font-bold text-2xl">
+                        +{lastReward.coins} <SCoinsIcon className="ml-2 h-7 w-7 text-amber-500" />
+                    </span>
+                </div>
+            </div>
+        ) : (
+             <div className="space-y-4 text-center">
+                <Sparkles size={64} className="mx-auto text-yellow-500" />
+                <p className="text-2xl font-semibold text-accent">
+                    {feedback?.message || "Round complete!"}
+                </p>
+             </div>
+        )}
+        <Button onClick={startNewRound} className="bg-accent text-accent-foreground hover:bg-accent/90" disabled={isCalculatingReward}>
+            <RotateCcw className="mr-2" />
+            Play Again
+        </Button>
     </div>
   );
   
@@ -381,7 +457,9 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
         <CardContent className="p-6 text-center space-y-6 min-h-[400px] flex flex-col justify-center">
           {isGenerating && !isRoundOver ? (
             renderLoadingView()
-          ) : currentPuzzle && !isRoundOver ? (
+          ) : isRoundOver ? (
+            renderGameOverView()
+          ) : currentPuzzle ? (
             <>
               { (currentPuzzle.type === 'matchWord' || currentPuzzle.type === 'missingLetter' || currentPuzzle.type === 'oddOneOut') && renderOptionsBasedPuzzle() }
               { currentPuzzle.type === 'sentenceScramble' && renderSentenceScramblePuzzle() }
@@ -401,7 +479,7 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
               )}
             </>
           ) : (
-             renderGameOverView()
+             renderLoadingView() // Fallback loading view
           )}
         </CardContent>
       </Card>
