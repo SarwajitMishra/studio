@@ -30,6 +30,6 @@ export const REWARD_LOGIC = {
   missingLetter: { base: { sPoints: "10 per correct" }, bonus: { description: "Getting all answers correct", sCoins: 5 } },
   sentenceScramble: { base: { sPoints: "50–100", sCoins: "0–10" } },
   oddOneOut: { base: { sPoints: "10 per correct" }, bonus: { description: "Getting all answers correct", sCoins:5 } },
-  typingRush: { base: { sPoints: "Speed score" }, bonus: { description: "Fast typing", sCoins: 10 } },
+  typingRush: { base: { sPoints: "Award 1 S-Point for every 2 points scored.", sCoins: "Award 1 S-Coin for every 15 points scored." }, bonus: { description: "Scoring over 150 points", sCoins: 10 } },
   wordGrid: { base: { sPoints: "Words found" }, bonus: { description: "Max words", sCoins: 5 } },
 };
