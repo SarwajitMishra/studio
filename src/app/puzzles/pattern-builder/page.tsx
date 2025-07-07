@@ -129,6 +129,7 @@ export default function PatternBuilderPage() {
 
   if (gameState === 'setup' || !config) {
      return (
+      <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
         <Card className="w-full max-w-md shadow-xl">
             <CardHeader className="bg-primary/10 text-center">
                 <CardTitle className="text-3xl font-bold text-primary">Pattern Builder</CardTitle>
@@ -150,65 +151,68 @@ export default function PatternBuilderPage() {
                 </Button>
             </CardFooter>
         </Card>
+      </div>
     );
   }
 
   return (
-    <Card className="w-full max-w-xl shadow-xl">
-        <CardHeader className="bg-primary/10">
-            <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                    <Blocks size={28} className="text-primary" />
-                    <CardTitle className="text-2xl font-bold text-primary">Pattern Builder</CardTitle>
-                </div>
-                <Button variant="outline" size="sm" onClick={() => setGameState('setup')}>
-                    <ArrowLeft size={16} className="mr-1" /> Change Difficulty
-                </Button>
-            </div>
-        </CardHeader>
-        <CardContent className="p-6 space-y-4">
-            {gameState === 'memorize' && (
-                <div className="text-center space-y-4">
-                    <p className="font-bold text-yellow-800 animate-pulse flex items-center justify-center gap-2 text-lg">
-                        <Eye size={22} /> Memorize the pattern!
-                    </p>
-                    {renderGrid(pattern, false)}
-                </div>
-            )}
-            {gameState === 'build' && (
-                <div className="text-center space-y-4">
-                    <p className="font-bold text-green-800 flex items-center justify-center gap-2 text-lg">
-                        <Pointer size={22} /> Your turn! Recreate the pattern.
-                    </p>
-                    {renderGrid(userPattern, true)}
-                    <div className="flex justify-center gap-2 flex-wrap pt-4">
-                        {Object.keys(COLORS).slice(0, config.colors).map(c => (
-                            <button
-                                key={c}
-                                onClick={() => setSelectedColor(c as Color)}
-                                className={cn("w-10 h-10 rounded-full border-2", COLORS[c as Color], selectedColor === c ? 'ring-4 ring-primary' : 'border-transparent')}
-                            />
-                        ))}
-                    </div>
-                    <Button onClick={checkPattern} className="mt-4 w-full bg-accent text-accent-foreground">Check My Pattern</Button>
-                </div>
-            )}
-            {gameState === 'result' && (
-                 <div className="text-center p-4 bg-muted rounded-lg space-y-3">
-                    <getResultContent().Icon size={48} className="mx-auto text-primary" />
-                    <h3 className="text-2xl font-bold">{getResultContent().title}</h3>
-                    <p className="text-lg">Accuracy: <span className="font-bold text-accent">{score.toFixed(0)}%</span></p>
-                    <p>{getResultContent().description}</p>
-                    <div className="flex justify-center items-center gap-4 pt-4">
-                      <div><h4 className='font-semibold'>Original</h4>{renderGrid(pattern, false)}</div>
-                      <div><h4 className='font-semibold'>Your Build</h4>{renderGrid(userPattern, false)}</div>
-                    </div>
-                    <Button onClick={startNewLevel} className="mt-4 bg-accent text-accent-foreground">
-                        <RotateCw className="mr-2" /> Play Next Level
-                    </Button>
-                </div>
-            )}
-        </CardContent>
-    </Card>
+    <div className="flex flex-col items-center justify-center p-4">
+      <Card className="w-full max-w-xl shadow-xl">
+          <CardHeader className="bg-primary/10">
+              <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                      <Blocks size={28} className="text-primary" />
+                      <CardTitle className="text-2xl font-bold text-primary">Pattern Builder</CardTitle>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => setGameState('setup')}>
+                      <ArrowLeft size={16} className="mr-1" /> Change Difficulty
+                  </Button>
+              </div>
+          </CardHeader>
+          <CardContent className="p-6 space-y-4">
+              {gameState === 'memorize' && (
+                  <div className="text-center space-y-4">
+                      <p className="font-bold text-yellow-800 animate-pulse flex items-center justify-center gap-2 text-lg">
+                          <Eye size={22} /> Memorize the pattern!
+                      </p>
+                      {renderGrid(pattern, false)}
+                  </div>
+              )}
+              {gameState === 'build' && (
+                  <div className="text-center space-y-4">
+                      <p className="font-bold text-green-800 flex items-center justify-center gap-2 text-lg">
+                          <Pointer size={22} /> Your turn! Recreate the pattern.
+                      </p>
+                      {renderGrid(userPattern, true)}
+                      <div className="flex justify-center gap-2 flex-wrap pt-4">
+                          {Object.keys(COLORS).slice(0, config.colors).map(c => (
+                              <button
+                                  key={c}
+                                  onClick={() => setSelectedColor(c as Color)}
+                                  className={cn("w-10 h-10 rounded-full border-2", COLORS[c as Color], selectedColor === c ? 'ring-4 ring-primary' : 'border-transparent')}
+                              />
+                          ))}
+                      </div>
+                      <Button onClick={checkPattern} className="mt-4 w-full bg-accent text-accent-foreground">Check My Pattern</Button>
+                  </div>
+              )}
+              {gameState === 'result' && (
+                  <div className="text-center p-4 bg-muted rounded-lg space-y-3">
+                      <getResultContent().Icon size={48} className="mx-auto text-primary" />
+                      <h3 className="text-2xl font-bold">{getResultContent().title}</h3>
+                      <p className="text-lg">Accuracy: <span className="font-bold text-accent">{score.toFixed(0)}%</span></p>
+                      <p>{getResultContent().description}</p>
+                      <div className="flex justify-center items-center gap-4 pt-4">
+                        <div><h4 className='font-semibold'>Original</h4>{renderGrid(pattern, false)}</div>
+                        <div><h4 className='font-semibold'>Your Build</h4>{renderGrid(userPattern, false)}</div>
+                      </div>
+                      <Button onClick={startNewLevel} className="mt-4 bg-accent text-accent-foreground">
+                          <RotateCw className="mr-2" /> Play Next Level
+                      </Button>
+                  </div>
+              )}
+          </CardContent>
+      </Card>
+    </div>
   );
 }
