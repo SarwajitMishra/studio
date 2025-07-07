@@ -5,34 +5,43 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Blocks, Eye, Pointer, RotateCw, ArrowLeft, Shield, Star, Gem, Check, X, Award } from 'lucide-react';
+import { 
+  Blocks, Eye, Pointer, RotateCw, ArrowLeft, Shield, Star, Gem, Check, X, Award,
+  Apple, Heart, Sun, Cloud, Gift
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { cn } from "@/lib/utils";
 
 type Difficulty = 'easy' | 'medium' | 'hard';
 type GameState = 'setup' | 'memorize' | 'build' | 'result';
-type Color = 'red' | 'blue' | 'green' | 'yellow' | 'purple' | 'orange';
 
-const COLORS: Record<Color, string> = {
-  red: 'bg-red-500',
-  blue: 'bg-blue-500',
-  green: 'bg-green-500',
-  yellow: 'bg-yellow-500',
-  purple: 'bg-purple-500',
-  orange: 'bg-orange-500',
+interface IconData {
+  name: string;
+  Icon: LucideIcon;
+  color: string;
+}
+
+const ICONS: IconData[] = [
+  { name: 'Apple', Icon: Apple, color: 'text-red-500' },
+  { name: 'Star', Icon: Star, color: 'text-yellow-400' },
+  { name: 'Heart', Icon: Heart, color: 'text-pink-500' },
+  { name: 'Sun', Icon: Sun, color: 'text-orange-400' },
+  { name: 'Cloud', Icon: Cloud, color: 'text-sky-500' },
+  { name: 'Gift', Icon: Gift, color: 'text-green-500' },
+];
+
+const DIFFICULTY_CONFIG: Record<Difficulty, { gridSize: number, memorizeTime: number, icons: number }> = {
+  easy: { gridSize: 3, memorizeTime: 3000, icons: 4 },
+  medium: { gridSize: 4, memorizeTime: 5000, icons: 5 },
+  hard: { gridSize: 5, memorizeTime: 7000, icons: 6 },
 };
 
-const DIFFICULTY_CONFIG: Record<Difficulty, { gridSize: number, memorizeTime: number, colors: number }> = {
-  easy: { gridSize: 3, memorizeTime: 3000, colors: 3 },
-  medium: { gridSize: 4, memorizeTime: 5000, colors: 4 },
-  hard: { gridSize: 5, memorizeTime: 7000, colors: 6 },
-};
-
-const generatePattern = (gridSize: number, numColors: number): (Color | null)[] => {
-  const availableColors = Object.keys(COLORS).slice(0, numColors) as Color[];
-  const pattern: (Color | null)[] = [];
+const generatePattern = (gridSize: number, numIcons: number): (IconData | null)[] => {
+  const availableIcons = ICONS.slice(0, numIcons);
+  const pattern: (IconData | null)[] = [];
   for (let i = 0; i < gridSize * gridSize; i++) {
-    if (Math.random() > 0.4) { // 60% chance of being colored
-      pattern.push(availableColors[Math.floor(Math.random() * availableColors.length)]);
+    if (Math.random() > 0.4) { // 60% chance of being an icon
+      pattern.push(availableIcons[Math.floor(Math.random() * availableIcons.length)]);
     } else {
       pattern.push(null);
     }
@@ -44,16 +53,16 @@ export default function PatternBuilderPage() {
   const [difficulty, setDifficulty] = useState<Difficulty | null>(null);
   const [gameState, setGameState] = useState<GameState>('setup');
   
-  const [pattern, setPattern] = useState<(Color | null)[]>([]);
-  const [userPattern, setUserPattern] = useState<(Color | null)[]>([]);
-  const [selectedColor, setSelectedColor] = useState<Color>('red');
+  const [pattern, setPattern] = useState<(IconData | null)[]>([]);
+  const [userPattern, setUserPattern] = useState<(IconData | null)[]>([]);
+  const [selectedIcon, setSelectedIcon] = useState<IconData>(ICONS[0]);
   const [score, setScore] = useState(0);
 
   const config = difficulty ? DIFFICULTY_CONFIG[difficulty] : null;
 
   const startNewLevel = useCallback(() => {
     if (!config) return;
-    const newPattern = generatePattern(config.gridSize, config.colors);
+    const newPattern = generatePattern(config.gridSize, config.icons);
     setPattern(newPattern);
     setUserPattern(Array(config.gridSize * config.gridSize).fill(null));
     setGameState('memorize');
@@ -67,7 +76,8 @@ export default function PatternBuilderPage() {
     setDifficulty(diff);
     setScore(0);
     const newConfig = DIFFICULTY_CONFIG[diff];
-    const newPattern = generatePattern(newConfig.gridSize, newConfig.colors);
+    setSelectedIcon(ICONS[0]); // Reset selected icon
+    const newPattern = generatePattern(newConfig.gridSize, newConfig.icons);
     setPattern(newPattern);
     setUserPattern(Array(newConfig.gridSize * newConfig.gridSize).fill(null));
     setGameState('memorize');
@@ -80,7 +90,7 @@ export default function PatternBuilderPage() {
   const handleCellClick = (index: number) => {
     if (gameState !== 'build') return;
     const newUserPattern = [...userPattern];
-    newUserPattern[index] = selectedColor;
+    newUserPattern[index] = selectedIcon;
     setUserPattern(newUserPattern);
   };
 
@@ -88,11 +98,11 @@ export default function PatternBuilderPage() {
     if (!config) return;
     let correctCells = 0;
     for(let i = 0; i < pattern.length; i++) {
-      if(pattern[i] === userPattern[i]) {
+      if(pattern[i]?.name === userPattern[i]?.name) {
         correctCells++;
       }
     }
-    const accuracy = (correctCells / pattern.length) * 100;
+    const accuracy = (correctCells / (config.gridSize * config.gridSize)) * 100;
     setScore(accuracy);
     setGameState('result');
   };
@@ -104,25 +114,29 @@ export default function PatternBuilderPage() {
     return { title: "Keep Going!", description: "Practice makes perfect!", Icon: X };
   };
   
-  const renderGrid = (gridData: (Color | null)[], isInteractive: boolean) => {
+  const renderGrid = (gridData: (IconData | null)[], isInteractive: boolean) => {
     if (!config) return null;
     return (
        <div
             className="grid gap-1 bg-muted p-2 rounded-lg"
             style={{ gridTemplateColumns: 'repeat(' + config.gridSize + ', minmax(0, 1fr))' }}
         >
-            {gridData.map((color, index) => (
+            {gridData.map((iconData, index) => {
+              const IconComponent = iconData?.Icon;
+              return (
                 <button
                     key={index}
                     onClick={() => isInteractive && handleCellClick(index)}
                     disabled={!isInteractive}
                     className={cn(
-                        "w-12 h-12 sm:w-16 sm:h-16 rounded-md transition-colors duration-200",
-                        color ? COLORS[color] : "bg-card",
+                        "w-12 h-12 sm:w-16 sm:h-16 rounded-md transition-colors duration-200 flex items-center justify-center bg-card",
                         isInteractive && "hover:ring-2 ring-primary"
                     )}
-                />
-            ))}
+                >
+                  {IconComponent && <IconComponent className={cn("w-2/3 h-2/3", iconData.color)} />}
+                </button>
+              );
+            })}
         </div>
     );
   };
@@ -185,12 +199,15 @@ export default function PatternBuilderPage() {
                       </p>
                       {renderGrid(userPattern, true)}
                       <div className="flex justify-center gap-2 flex-wrap pt-4">
-                          {Object.keys(COLORS).slice(0, config.colors).map(c => (
+                          {ICONS.slice(0, config.icons).map(iconData => (
                               <button
-                                  key={c}
-                                  onClick={() => setSelectedColor(c as Color)}
-                                  className={cn("w-10 h-10 rounded-full border-2", COLORS[c as Color], selectedColor === c ? 'ring-4 ring-primary' : 'border-transparent')}
-                              />
+                                  key={iconData.name}
+                                  onClick={() => setSelectedIcon(iconData)}
+                                  className={cn("w-12 h-12 rounded-lg border-2 flex items-center justify-center bg-card", selectedIcon.name === iconData.name ? 'ring-4 ring-primary' : 'border-transparent')}
+                                  aria-label={`Select ${iconData.name}`}
+                              >
+                                <iconData.Icon className={cn("w-8 h-8", iconData.color)} />
+                              </button>
                           ))}
                       </div>
                       <Button onClick={checkPattern} className="mt-4 w-full bg-accent text-accent-foreground">Check My Pattern</Button>
@@ -198,7 +215,10 @@ export default function PatternBuilderPage() {
               )}
               {gameState === 'result' && (
                   <div className="text-center p-4 bg-muted rounded-lg space-y-3">
-                      <getResultContent().Icon size={48} className="mx-auto text-primary" />
+                    {(() => {
+                    const ResultIcon = getResultContent().Icon;
+                    return <ResultIcon size={48} className="mx-auto text-primary" />;
+                    })()}
                       <h3 className="text-2xl font-bold">{getResultContent().title}</h3>
                       <p className="text-lg">Accuracy: <span className="font-bold text-accent">{score.toFixed(0)}%</span></p>
                       <p>{getResultContent().description}</p>
