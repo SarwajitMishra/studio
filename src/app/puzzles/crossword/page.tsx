@@ -15,6 +15,7 @@ import { S_COINS_ICON as SCoinsIcon, S_POINTS_ICON as SPointsIcon } from '@/lib/
 import type { Difficulty } from '@/lib/constants';
 import { CROSSWORD_PUZZLES, type CrosswordPuzzle, type CrosswordWord } from '@/lib/crossword-puzzles';
 import { updateGameStats } from '@/lib/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface Cell {
   char: string | null;
@@ -64,8 +65,10 @@ export default function CrosswordPage() {
             for (let i = 0; i < word.answer.length; i++) {
                 const r = word.row + (word.direction === 'down' ? i : 0);
                 const c = word.col + (word.direction === 'across' ? i : 0);
-                newGrid[r][c].isBlock = false;
-                newGrid[r][c].words[word.direction] = index;
+                if (newGrid[r] && newGrid[r][c]) {
+                    newGrid[r][c].isBlock = false;
+                    newGrid[r][c].words[word.direction] = index;
+                }
             }
         });
         return newGrid;
@@ -101,7 +104,7 @@ export default function CrosswordPage() {
             }
         } else if (currentWords.across === undefined) {
              newDirection = 'down';
-        } else {
+        } else if (currentWords.down === undefined) {
             newDirection = 'across';
         }
 
@@ -325,18 +328,18 @@ export default function CrosswordPage() {
                             const isActiveCell = activeCell?.row === r && activeCell?.col === c;
 
                             if (cell.isBlock) {
-                                return <div key={`${r}-${c}`} className="w-8 h-8 sm:w-10 sm:h-10 bg-primary/80" />;
+                                return <div key={`${r}-${c}`} className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 lg:w-10 lg:h-10 bg-primary/80" />;
                             }
                             
                             return (
-                                <div key={`${r}-${c}`} className="relative w-8 h-8 sm:w-10 sm:h-10">
-                                    {cell.number && <span className="absolute top-0 left-0.5 text-xs text-muted-foreground">{cell.number}</span>}
+                                <div key={`${r}-${c}`} className="relative w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 lg:w-10 lg:h-10">
+                                    {cell.number && <span className="absolute top-0 left-0.5 text-[0.5rem] sm:text-xs text-muted-foreground">{cell.number}</span>}
                                     <input
                                         ref={el => { if (el) inputRefs.current[r][c] = el; }}
                                         type="text"
                                         maxLength={1}
                                         className={cn(
-                                            "w-full h-full border border-primary/30 text-center uppercase font-bold text-lg text-primary bg-background focus:z-10 focus:ring-2 focus:ring-accent focus:outline-none",
+                                            "w-full h-full border border-primary/30 text-center uppercase font-bold text-sm sm:text-base md:text-lg text-primary bg-background focus:z-10 focus:ring-2 focus:ring-accent focus:outline-none",
                                             isActiveWord && "bg-accent/20",
                                             isActiveCell && "ring-2 ring-accent"
                                         )}
@@ -367,31 +370,37 @@ export default function CrosswordPage() {
                 </Card>
             </div>
             
-            {/* Right Column: Clue Lists */}
+            {/* Right Column: Clue Lists with Tabs */}
             <div className="w-full lg:max-w-md">
-                <Card className="shadow-lg">
-                    <CardHeader><CardTitle>Clues List</CardTitle></CardHeader>
-                    <CardContent className="grid grid-cols-2 gap-x-4 gap-y-2">
-                        <div>
-                            <h3 className="font-bold border-b mb-2">Across</h3>
-                            <ScrollArea className="h-96 pr-2">
-                                <ul className="space-y-1 text-sm">
-                                {puzzle.words.filter(w => w.direction === 'across').map((w, i) => <li key={`across-${i}`}><strong>{puzzle.words.indexOf(w)+1}.</strong> {w.clue}</li>)}
-                                </ul>
-                            </ScrollArea>
-                        </div>
-                        <div>
-                            <h3 className="font-bold border-b mb-2">Down</h3>
-                            <ScrollArea className="h-96 pr-2">
-                                <ul className="space-y-1 text-sm">
-                                {puzzle.words.filter(w => w.direction === 'down').map((w, i) => <li key={`down-${i}`}><strong>{puzzle.words.indexOf(w)+1}.</strong> {w.clue}</li>)}
-                                </ul>
-                            </ScrollArea>
-                        </div>
-                    </CardContent>
+                 <Card className="shadow-lg">
+                    <Tabs defaultValue="across" className="w-full">
+                        <CardHeader>
+                            <CardTitle>Clues List</CardTitle>
+                             <TabsList className="grid w-full grid-cols-2 mt-2">
+                                <TabsTrigger value="across">Across</TabsTrigger>
+                                <TabsTrigger value="down">Down</TabsTrigger>
+                            </TabsList>
+                        </CardHeader>
+                        <CardContent className="p-2 sm:p-4">
+                            <TabsContent value="across">
+                                <ScrollArea className="h-[300px] md:h-[450px] pr-3">
+                                    <ul className="space-y-2 text-sm">
+                                    {puzzle.words.filter(w => w.direction === 'across').sort((a,b) => (puzzle.words.indexOf(a)) - (puzzle.words.indexOf(b))).map((w) => <li key={`across-${puzzle.words.indexOf(w)}`} className="p-1"><strong>{puzzle.words.indexOf(w)+1}.</strong> {w.clue}</li>)}
+                                    </ul>
+                                </ScrollArea>
+                            </TabsContent>
+                            <TabsContent value="down">
+                                 <ScrollArea className="h-[300px] md:h-[450px] pr-3">
+                                    <ul className="space-y-2 text-sm">
+                                    {puzzle.words.filter(w => w.direction === 'down').sort((a,b) => (puzzle.words.indexOf(a)) - (puzzle.words.indexOf(b))).map((w) => <li key={`down-${puzzle.words.indexOf(w)}`} className="p-1"><strong>{puzzle.words.indexOf(w)+1}.</strong> {w.clue}</li>)}
+                                    </ul>
+                                </ScrollArea>
+                            </TabsContent>
+                        </CardContent>
+                    </Tabs>
                 </Card>
             </div>
-
         </div>
     );
 }
+
