@@ -4,7 +4,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Keyboard, Heart, Trophy, Play, Pause, RotateCw, ArrowLeft, Loader2, Star as StarIcon, Award } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Difficulty } from "@/lib/constants";
@@ -54,7 +53,7 @@ export default function TypingRushGame({ onBack, difficulty }: TypingRushGamePro
     const [lives, setLives] = useState(INITIAL_LIVES);
     const [timeLeft, setTimeLeft] = useState(GAME_DURATION_S);
     const [fallingObjects, setFallingObjects] = useState<FallingObject[]>([]);
-    const [inputValue, setInputValue] = useState("");
+    const [keyBuffer, setKeyBuffer] = useState("");
     const [gameAreaHeight, setGameAreaHeight] = useState(500);
 
     const [isCalculatingReward, setIsCalculatingReward] = useState(false);
@@ -63,7 +62,6 @@ export default function TypingRushGame({ onBack, difficulty }: TypingRushGamePro
     const gameLoopRef = useRef<number | null>(null);
     const spawnIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
-    const inputRef = useRef<HTMLInputElement>(null);
     const gameAreaRef = useRef<HTMLDivElement>(null);
     const { toast } = useToast();
     
@@ -142,24 +140,6 @@ export default function TypingRushGame({ onBack, difficulty }: TypingRushGamePro
         gameLoopRef.current = requestAnimationFrame(gameLoop);
     }, [toast, gameAreaHeight]);
 
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const typedValue = e.target.value.toLowerCase();
-        setInputValue(typedValue);
-
-        const matchedObject = fallingObjects.find(
-            (obj) => obj.status === 'falling' && obj.text.toLowerCase() === typedValue
-        );
-
-        if (matchedObject) {
-            setScore(prev => prev + matchedObject.text.length);
-            setInputValue("");
-            setFallingObjects(prev => prev.map(obj => obj.id === matchedObject.id ? { ...obj, status: 'bursting' } : obj));
-            setTimeout(() => {
-                setFallingObjects(prev => prev.filter(obj => obj.id !== matchedObject.id));
-            }, 300);
-        }
-    };
-    
     const pauseGame = () => {
         if (gameState === "playing") setGameState("paused");
     };
@@ -167,7 +147,6 @@ export default function TypingRushGame({ onBack, difficulty }: TypingRushGamePro
     const resumeGame = () => {
         if (gameState === "paused") {
             setGameState("playing");
-            inputRef.current?.focus();
         }
     };
     
@@ -178,6 +157,7 @@ export default function TypingRushGame({ onBack, difficulty }: TypingRushGamePro
         setGameState("playing");
         setTimeLeft(GAME_DURATION_S);
         setLastReward(null);
+        setKeyBuffer("");
     }, []);
 
     useEffect(() => {
@@ -194,11 +174,49 @@ export default function TypingRushGame({ onBack, difficulty }: TypingRushGamePro
     }, [timeLeft, gameState, handleWin]);
 
     useEffect(() => {
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (gameState !== 'playing' || !event.key.match(/^[a-zA-Z]$/)) return;
+
+            const newBuffer = (keyBuffer + event.key).toLowerCase();
+            setKeyBuffer(newBuffer);
+
+            setFallingObjects(currentObjects => {
+                const matchedObject = currentObjects.find(
+                    (obj) => obj.status === 'falling' && newBuffer.endsWith(obj.text.toLowerCase())
+                );
+                
+                if (matchedObject) {
+                    setScore(prev => prev + matchedObject.text.length);
+                    setKeyBuffer("");
+                    return currentObjects.map(obj => 
+                        obj.id === matchedObject.id ? { ...obj, status: 'bursting' } : obj
+                    );
+                }
+                return currentObjects;
+            });
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+
+    }, [gameState, keyBuffer]);
+    
+     useEffect(() => {
+        const burstingObjects = fallingObjects.filter(obj => obj.status === 'bursting');
+        if (burstingObjects.length > 0) {
+            const timer = setTimeout(() => {
+                setFallingObjects(prev => prev.filter(obj => obj.status !== 'bursting'));
+            }, 300);
+            return () => clearTimeout(timer);
+        }
+    }, [fallingObjects]);
+
+
+    useEffect(() => {
         if (gameState === "playing") {
             gameLoopRef.current = requestAnimationFrame(gameLoop);
             spawnIntervalRef.current = setInterval(spawnObject, DIFFICULTY_SETTINGS[difficulty].spawnRate);
             timerIntervalRef.current = setInterval(() => setTimeLeft(t => t > 0 ? t - 1 : 0), 1000);
-            inputRef.current?.focus();
         } else {
             if (gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
             if (spawnIntervalRef.current) clearInterval(spawnIntervalRef.current);
@@ -311,8 +329,7 @@ export default function TypingRushGame({ onBack, difficulty }: TypingRushGamePro
             <CardContent className="p-4 flex flex-col flex-grow">
                 <div 
                     ref={gameAreaRef} 
-                    className="relative bg-primary/5 rounded-lg overflow-hidden border shadow-inner w-full flex-grow min-h-[400px] cursor-text"
-                    onClick={() => inputRef.current?.focus()}
+                    className="relative bg-primary/5 rounded-lg overflow-hidden border shadow-inner w-full flex-grow min-h-[400px]"
                 >
                     {renderOverlay()}
                     {fallingObjects.map(obj => (
@@ -334,23 +351,15 @@ export default function TypingRushGame({ onBack, difficulty }: TypingRushGamePro
                             {obj.status === 'falling' && obj.text}
                         </div>
                     ))}
+                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/20 text-white font-mono p-2 rounded-lg text-lg tracking-widest min-w-[150px] text-center">
+                        {keyBuffer || '...'}
+                    </div>
                 </div>
-                <Input
-                    ref={inputRef}
-                    type="text"
-                    value={inputValue}
-                    onChange={handleInputChange}
-                    disabled={gameState !== 'playing'}
-                    className="sr-only"
-                    autoComplete="off"
-                    autoFocus
-                />
                  <p className="text-center text-sm text-muted-foreground mt-2">
-                    {gameState === 'playing' ? 'Click the area above and start typing!' : 'Game is paused.'}
+                    {gameState === 'playing' ? 'Start typing the falling words!' : 'Game is paused.'}
                 </p>
             </CardContent>
         </Card>
         </>
     );
 }
-
