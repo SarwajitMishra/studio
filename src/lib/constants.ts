@@ -151,6 +151,7 @@ export const S_POINTS_ICON = StarIcon;
 export const S_COINS_ICON = CoinsIcon;
 export const LOCAL_STORAGE_S_POINTS_KEY = 'shravyaPlayhouse_sPoints';
 export const LOCAL_STORAGE_S_COINS_KEY = 'shravyaPlayhouse_sCoins';
+export const LOCAL_STORAGE_REWARD_HISTORY_KEY = 'shravyaPlayhouse_rewardHistory';
 
 // Type for Number Puzzles
 export interface MathPuzzleType {

@@ -118,7 +118,7 @@ export default function GuessTheNumberGame({ onBack, difficulty }: GuessTheNumbe
             performanceMetrics: { attempts: newAttemptCount }
         });
 
-        const earned = applyRewards(rewards.sPoints, rewards.sCoins);
+        const earned = applyRewards(rewards.sPoints, rewards.sCoins, `Won 'Guess the Number' (${difficulty})`);
         const stars = calculateStars(newAttemptCount);
         
         toast({

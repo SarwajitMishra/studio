@@ -12,6 +12,8 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { formatDistanceToNow } from 'date-fns';
 import { 
   AVATARS, 
   GAMES, 
@@ -37,6 +39,7 @@ import {
 import { ref as storageRef, uploadString, getDownloadURL } from 'firebase/storage';
 import { applyColorTheme } from '@/components/theme-provider';
 import { getGameStats, type GameStat } from '@/lib/progress';
+import { getRewardHistory, type RewardEvent } from '@/lib/rewards';
 
 const THEME_OPTIONS = [
   { value: 'light', label: 'Light Mode', Icon: Sun },
@@ -81,54 +84,35 @@ export default function ProfilePage() {
   
   const [theme, setTheme] = useState<string>('light');
   const [favoriteColor, setFavoriteColor] = useState<string>('default');
-  const [gameStats, setGameStats] = useState<GameStat[]>([]);
   const [showLoginWarningDialog, setShowLoginWarningDialog] = useState(false);
 
   const [sPoints, setSPoints] = useState<number>(0);
   const [sCoins, setSCoins] = useState<number>(0);
+  const [rewardHistory, setRewardHistory] = useState<RewardEvent[]>([]);
 
   const [isConfigMissing, setIsConfigMissing] = useState(false);
   
-  const updateCurrencyDisplay = useCallback(() => {
+  const updateDisplays = useCallback(() => {
     setSPoints(getStoredGameCurrency(LOCAL_STORAGE_S_POINTS_KEY));
     setSCoins(getStoredGameCurrency(LOCAL_STORAGE_S_COINS_KEY));
-  }, []);
-
-  const updateStatsDisplay = useCallback(() => {
-    // Only update from local storage if user is offline
-    if (!auth.currentUser) {
-        setGameStats(getGameStats());
-    }
+    setRewardHistory(getRewardHistory());
   }, []);
 
   // Effect to listen for currency and stats updates from other components
   useEffect(() => {
-    window.addEventListener('storageUpdated', updateCurrencyDisplay);
-    window.addEventListener('statsUpdated', updateStatsDisplay);
+    window.addEventListener('storageUpdated', updateDisplays);
     return () => {
-      window.removeEventListener('storageUpdated', updateCurrencyDisplay);
-      window.removeEventListener('statsUpdated', updateStatsDisplay);
+      window.removeEventListener('storageUpdated', updateDisplays);
     };
-  }, [updateCurrencyDisplay, updateStatsDisplay]);
+  }, [updateDisplays]);
 
 
   // Effect for loading local data on initial mount (theme is handled by ThemeProvider)
   useEffect(() => {
     setTheme(localStorage.getItem('theme') || 'light');
     setFavoriteColor(localStorage.getItem('favoriteColor') || 'default');
-    
-    // Load local currency values initially. These will be overwritten by the auth listener if logged in.
-    setSPoints(getStoredGameCurrency(LOCAL_STORAGE_S_POINTS_KEY));
-    setSCoins(getStoredGameCurrency(LOCAL_STORAGE_S_COINS_KEY));
-
-    const initialStats = GAMES.map(game => ({
-        gameId: game.id,
-        gamesPlayed: 'N/A',
-        wins: 'N/A',
-        highScore: 'N/A',
-    }));
-    updateStatsDisplay();
-  }, [updateStatsDisplay]);
+    updateDisplays(); // Load currency and history on mount
+  }, [updateDisplays]);
 
   // Simplified, single effect for handling Firebase Auth state changes
   useEffect(() => {
@@ -162,30 +146,18 @@ export default function ProfilePage() {
 
             setSPoints(100); 
             setSCoins(10);  
-
-            const onlineStats = GAMES.map(game => ({
-                gameId: game.id,
-                gamesPlayed: Math.floor(Math.random() * 10),
-                wins: Math.floor(Math.random() * 5),
-                highScore: Math.floor(Math.random() * 1000),
-            }));
-            setGameStats(onlineStats);
+            setRewardHistory([]); // Placeholder for online history
             
-            // Preferences are already loaded from localStorage on mount, so no need to fetch from Firestore here.
-
         } else { 
-            // User is logged out, load state from local storage or use defaults
+            // User is logged out, load all data from local storage
             setEditingUserName(localStorage.getItem(LOCAL_STORAGE_USER_NAME_KEY) || DEFAULT_USER_NAME);
             setSelectedAvatar(localStorage.getItem(LOCAL_STORAGE_AVATAR_KEY) || DEFAULT_AVATAR_SRC);
-            setSPoints(getStoredGameCurrency(LOCAL_STORAGE_S_POINTS_KEY));
-            setSCoins(getStoredGameCurrency(LOCAL_STORAGE_S_COINS_KEY));
-            
-            updateStatsDisplay();
+            updateDisplays();
         }
     });
 
     return () => unsubscribe();
-  }, [toast, updateStatsDisplay]);
+  }, [toast, updateDisplays]);
 
   const handleAutoSaveAvatar = useCallback(async (avatarToSave: string) => {
       if (!currentUser) return;
@@ -421,7 +393,7 @@ export default function ProfilePage() {
             <UserCircle className="mr-2 h-5 w-5" /> Avatar
           </TabsTrigger>
           <TabsTrigger value="progress" className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
-            <BarChart3 className="mr-2 h-5 w-5" /> Progress
+            <BarChart3 className="mr-2 h-5 w-5" /> Reward History
           </TabsTrigger>
           <TabsTrigger value="settings" className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
             <Settings className="mr-2 h-5 w-5" /> Preferences
@@ -495,53 +467,46 @@ export default function ProfilePage() {
           <Card className="shadow-lg">
             <CardHeader>
               <div className="flex items-center space-x-3">
-                <Trophy size={28} className="text-primary" />
-                <CardTitle className="text-2xl">Your Game Journey</CardTitle>
+                <BarChart3 size={28} className="text-primary" />
+                <CardTitle className="text-2xl">Reward History</CardTitle>
               </div>
               <CardDescription>
-                {currentUser ? "Your activity across Shravya Playhouse games (illustrative data shown)." : "Your game progress is saved in this browser. Log in to sync across devices."}
+                A list of your most recent S-Point and S-Coin earnings.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6 pt-4">
-              {gameStats.length > 0 ? GAMES.map((game) => {
-                const stat = gameStats.find(s => s.gameId === game.id);
-                const IconComponent = game.Icon || Gamepad2; 
-                if (!stat) return null; // Should not happen with getGameStats
-                
-                return (
-                  <Card key={game.id} className="p-4 bg-muted/30">
-                    <div className="flex items-center mb-3">
-                      <IconComponent size={24} className={cn("mr-3", game.color || "text-primary")} />
-                      <h3 className="text-lg font-semibold text-foreground">{game.title}</h3>
+            <CardContent>
+                {rewardHistory.length > 0 ? (
+                    <ScrollArea className="h-96 w-full pr-2">
+                        <div className="space-y-4">
+                            {rewardHistory.map(event => (
+                                <div key={event.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                                    <div>
+                                        <p className="font-semibold text-foreground">{event.description}</p>
+                                        <p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(event.timestamp), { addSuffix: true })}</p>
+                                    </div>
+                                    <div className="flex flex-col items-end text-sm">
+                                        {event.points > 0 && (
+                                            <span className="font-semibold flex items-center text-yellow-600 dark:text-yellow-400">
+                                                +{event.points} <SPointsIcon className="ml-1.5 h-4 w-4" />
+                                            </span>
+                                        )}
+                                        {event.coins > 0 && (
+                                             <span className="font-semibold flex items-center text-amber-600 dark:text-amber-500">
+                                                +{event.coins} <SCoinsIcon className="ml-1.5 h-4 w-4" />
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </ScrollArea>
+                ) : (
+                    <div className="text-center py-10">
+                        <BarChart3 size={48} className="mx-auto text-primary/30 mb-3" />
+                        <p className="text-md text-foreground/90">No rewards earned yet.</p>
+                        <p className="text-sm text-muted-foreground mt-1">Play some games to earn S-Points and S-Coins!</p>
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2 text-sm">
-                      <div>
-                        <p className="text-muted-foreground">Played:</p>
-                        <p className="font-medium">{stat.gamesPlayed}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Wins:</p>
-                        <p className="font-medium">{stat.wins}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">High Score:</p>
-                        <p className="font-medium">{stat.highScore}</p>
-                      </div>
-                    </div>
-                  </Card>
-                );
-              }) : (
-                 <div className="text-center py-6">
-                    <Gamepad2 size={48} className="mx-auto text-primary/30 mb-3" />
-                    <p className="text-md text-foreground/90">No game activity yet.</p>
-                    <p className="text-sm text-muted-foreground mt-1">Play some games to see your stats here!</p>
-                </div>
-              )}
-               {currentUser && gameStats.length > 0 && (
-                 <p className="text-xs text-muted-foreground text-center pt-4">
-                    (Note: Current stats are illustrative. Real-time detailed tracking coming soon!)
-                 </p>
-               )}
+                )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -631,6 +596,7 @@ export default function ProfilePage() {
     
 
     
+
 
 
 
