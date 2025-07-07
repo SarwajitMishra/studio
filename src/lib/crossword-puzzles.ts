@@ -73,7 +73,7 @@ export const CROSSWORD_PUZZLES: CrosswordPuzzle[] = [
       { clue: "To cook in an oven", answer: "BAKE", direction: 'down', row: 5, col: 3 },
       { clue: "A baby cat", answer: "KITTEN", direction: 'down', row: 7, col: 9 },
       { clue: "A bright, hot star", answer: "SUN", direction: 'down', row: 10, col: 0 },
-      { clue: "To make a choice", answer: "DECIDE", direction: 'down', row: 11, col: 5 },
+      { clue: "To make a choice", answer: "DECIDE", direction: 'down', row: 9, col: 14 },
     ]
   },
 ];
