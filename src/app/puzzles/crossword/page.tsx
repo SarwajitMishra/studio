@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { FileText, RotateCw, Lightbulb, CheckCircle, Award, Loader2, Star as StarIcon, Gem, Shield, ArrowLeft, List } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -288,25 +288,25 @@ export default function CrosswordPage() {
 
     const ClueList = ({ puzzle, inDialog = false }: { puzzle: CrosswordPuzzle, inDialog?: boolean }) => {
         return (
-            <Card className={cn("shadow-lg", inDialog && "shadow-none border-none")}>
+            <Card className={cn("shadow-lg", inDialog && "shadow-none border-none h-full")}>
                 <Tabs defaultValue="across" className={cn("w-full", inDialog && "flex flex-col h-full")}>
-                    <CardHeader className={cn(inDialog && "flex-shrink-0")}>
-                        <CardTitle>Clues List</CardTitle>
+                    <CardHeader className={cn(inDialog && "p-4 flex-shrink-0")}>
+                        {!inDialog && <CardTitle>Clues List</CardTitle>}
                          <TabsList className="grid w-full grid-cols-2 mt-2">
                             <TabsTrigger value="across">Across</TabsTrigger>
                             <TabsTrigger value="down">Down</TabsTrigger>
                         </TabsList>
                     </CardHeader>
-                    <CardContent className={cn("p-2 sm:p-4", inDialog && "flex-grow overflow-hidden")}>
-                        <TabsContent value="across" className={cn(inDialog && "h-full")}>
-                            <ScrollArea className={cn("pr-3", inDialog ? "h-full" : "h-[300px] md:h-[450px]")}>
+                    <CardContent className={cn("p-2 sm:p-4", inDialog && "flex-grow overflow-hidden p-0")}>
+                        <TabsContent value="across" className={cn(inDialog && "h-full m-0")}>
+                            <ScrollArea className={cn("pr-3", inDialog ? "h-full p-4" : "h-[300px] md:h-[450px]")}>
                                 <ul className="space-y-2 text-sm">
                                 {puzzle.words.filter(w => w.direction === 'across').sort((a,b) => (puzzle.words.indexOf(a)) - (puzzle.words.indexOf(b))).map((w) => <li key={`across-${puzzle.words.indexOf(w)}`} className="p-1"><strong>{puzzle.words.indexOf(w)+1}.</strong> {w.clue}</li>)}
                                 </ul>
                             </ScrollArea>
                         </TabsContent>
-                        <TabsContent value="down" className={cn(inDialog && "h-full")}>
-                             <ScrollArea className={cn("pr-3", inDialog ? "h-full" : "h-[300px] md:h-[450px]")}>
+                        <TabsContent value="down" className={cn(inDialog && "h-full m-0")}>
+                             <ScrollArea className={cn("pr-3", inDialog ? "h-full p-4" : "h-[300px] md:h-[450px]")}>
                                 <ul className="space-y-2 text-sm">
                                 {puzzle.words.filter(w => w.direction === 'down').sort((a,b) => (puzzle.words.indexOf(a)) - (puzzle.words.indexOf(b))).map((w) => <li key={`down-${puzzle.words.indexOf(w)}`} className="p-1"><strong>{puzzle.words.indexOf(w)+1}.</strong> {w.clue}</li>)}
                                 </ul>
@@ -407,8 +407,16 @@ export default function CrosswordPage() {
                         <DialogTrigger asChild>
                             <Button variant="outline" className="w-full"><List className="mr-2"/> View All Clues</Button>
                         </DialogTrigger>
-                        <DialogContent className="h-[80vh] flex flex-col p-2">
-                             <ClueList puzzle={puzzle} inDialog />
+                        <DialogContent className="h-[80vh] flex flex-col p-0 sm:p-0">
+                             <DialogHeader className="p-4 border-b">
+                                <DialogTitle>All Clues</DialogTitle>
+                                <DialogDescription>
+                                    Use the tabs to switch between Across and Down clues.
+                                </DialogDescription>
+                             </DialogHeader>
+                             <div className="flex-grow overflow-hidden">
+                                <ClueList puzzle={puzzle} inDialog />
+                             </div>
                         </DialogContent>
                     </Dialog>
                 </div>
