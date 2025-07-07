@@ -5,9 +5,10 @@ import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { KeyRound, ArrowLeft, RotateCw, Lightbulb, Check, Award, Shield, Star, Gem } from 'lucide-react';
+import { KeyRound, ArrowLeft, RotateCw, Check, Award, XCircle } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import type { Difficulty } from "@/lib/constants";
+import { useToast } from "@/hooks/use-toast";
 
 type Color = 'red' | 'blue' | 'green' | 'yellow' | 'purple' | 'orange';
 const COLORS: Color[] = ['red', 'blue', 'green', 'yellow', 'purple', 'orange'];
@@ -21,9 +22,9 @@ const COLOR_MAP: Record<Color, string> = {
 };
 
 const DIFFICULTY_CONFIG = {
-  easy: { codeLength: 4, numColors: 4, maxGuesses: 10 },
-  medium: { codeLength: 4, numColors: 5, maxGuesses: 8 },
-  hard: { codeLength: 5, numColors: 6, maxGuesses: 8 },
+  easy: { codeLength: 4, numColors: 4, maxGuesses: 10, allowDuplicates: false },
+  medium: { codeLength: 4, numColors: 6, maxGuesses: 8, allowDuplicates: true },
+  hard: { codeLength: 5, numColors: 6, maxGuesses: 8, allowDuplicates: true },
 };
 
 interface Guess {
@@ -43,15 +44,21 @@ export default function CodeBreakerGame({ onBack, difficulty }: CodeBreakerGameP
   const [guesses, setGuesses] = useState<Guess[]>([]);
   const [isGameOver, setIsGameOver] = useState(false);
   const [isWin, setIsWin] = useState(false);
+  const { toast } = useToast();
 
   const generateSecretCode = useCallback(() => {
-    const availableColors = COLORS.slice(0, config.numColors);
-    const newSecret: Color[] = [];
-    for (let i = 0; i < config.codeLength; i++) {
-      newSecret.push(availableColors[Math.floor(Math.random() * availableColors.length)]);
+    const localConfig = DIFFICULTY_CONFIG[difficulty]; // Use fresh config
+    const availableColors = COLORS.slice(0, localConfig.numColors);
+    let newSecret: Color[] = [];
+    if (localConfig.allowDuplicates) {
+        for (let i = 0; i < localConfig.codeLength; i++) {
+            newSecret.push(availableColors[Math.floor(Math.random() * availableColors.length)]);
+        }
+    } else {
+        newSecret = [...availableColors].sort(() => 0.5 - Math.random()).slice(0, localConfig.codeLength);
     }
     setSecretCode(newSecret);
-  }, [config]);
+  }, [difficulty]);
 
   const resetGame = useCallback(() => {
     const newConfig = DIFFICULTY_CONFIG[difficulty];
@@ -78,35 +85,40 @@ export default function CodeBreakerGame({ onBack, difficulty }: CodeBreakerGameP
   };
 
   const handleGuessPegClick = (index: number) => {
+    if (isGameOver || currentGuess[index] === null) return;
     const newGuess = [...currentGuess];
     newGuess[index] = null;
     setCurrentGuess(newGuess);
   };
   
   const submitGuess = () => {
-    if (currentGuess.some(c => c === null)) return;
+    if (currentGuess.some(c => c === null)) {
+        toast({ variant: 'destructive', title: "Incomplete Guess", description: "Please fill all slots before submitting."});
+        return;
+    }
 
     let tempSecret = [...secretCode];
     let tempGuess = [...(currentGuess as Color[])];
     let correctPosition = 0;
     let correctColor = 0;
 
-    // First pass: check for correct color and position
+    // First pass: check for correct color and position (black pegs)
     for (let i = 0; i < tempGuess.length; i++) {
       if (tempGuess[i] === tempSecret[i]) {
         correctPosition++;
-        tempSecret[i] = 'used-secret';
-        tempGuess[i] = 'used-guess';
+        // Mark as used so they are not checked again
+        tempSecret[i] = 'used-secret' as any;
+        tempGuess[i] = 'used-guess' as any;
       }
     }
 
-    // Second pass: check for correct color in wrong position
+    // Second pass: check for correct color in wrong position (white pegs)
     for (let i = 0; i < tempGuess.length; i++) {
       if (tempGuess[i] !== 'used-guess') {
         const colorIndexInSecret = tempSecret.indexOf(tempGuess[i]);
         if (colorIndexInSecret !== -1) {
           correctColor++;
-          tempSecret[colorIndexInSecret] = 'used-secret';
+          tempSecret[colorIndexInSecret] = 'used-secret' as any; // Mark as used
         }
       }
     }
@@ -118,9 +130,11 @@ export default function CodeBreakerGame({ onBack, difficulty }: CodeBreakerGameP
     if (correctPosition === config.codeLength) {
       setIsGameOver(true);
       setIsWin(true);
+      toast({ title: "You Won!", description: `You cracked the code in ${newGuesses.length} guesses!`, className: "bg-green-500 text-white" });
     } else if (newGuesses.length >= config.maxGuesses) {
       setIsGameOver(true);
       setIsWin(false);
+      toast({ variant: 'destructive', title: "Game Over", description: "You've run out of guesses." });
     }
   };
 
@@ -138,44 +152,53 @@ export default function CodeBreakerGame({ onBack, difficulty }: CodeBreakerGameP
                 </Button>
             </div>
             <CardDescription className="text-center text-md text-foreground/80 pt-2">
-                Guess the secret code! Guesses: {guesses.length}/{config.maxGuesses} | Difficulty: <span className="capitalize">{difficulty}</span>
+               {isGameOver ? (isWin ? "You cracked it!" : "Better luck next time!") : `Guess ${guesses.length + 1} of ${config.maxGuesses}`} | Difficulty: <span className="capitalize">{difficulty}</span>
             </CardDescription>
         </CardHeader>
         <CardContent className="p-6 space-y-4">
-            <ScrollArea className="h-64 w-full border rounded-md p-2 bg-muted/50">
-                <div className="space-y-2">
-                    {guesses.map((guess, index) => (
-                        <div key={index} className="flex items-center justify-between p-1 bg-background rounded">
-                            <div className="flex gap-2">
-                                {guess.code.map((color, i) => <div key={i} className={cn("w-6 h-6 rounded-full border", color ? COLOR_MAP[color] : 'bg-muted')} />)}
-                            </div>
-                             <div className="flex gap-1">
-                                {Array(guess.feedback.correctPosition).fill(0).map((_, i) => <div key={`cp-${i}`} className="w-4 h-4 rounded-full bg-black border border-white" />)}
-                                {Array(guess.feedback.correctColor).fill(0).map((_, i) => <div key={`cc-${i}`} className="w-4 h-4 rounded-full bg-white border border-black" />)}
-                            </div>
-                        </div>
-                    ))}
-                    {guesses.length === 0 && <p className="text-center text-muted-foreground pt-24">Guess history will appear here.</p>}
+            {/* Guess History Board */}
+            <div className="p-2 border rounded-lg bg-muted/50 space-y-1 h-72">
+                 <div className="flex justify-between items-center text-xs font-semibold text-muted-foreground px-1 border-b pb-1">
+                    <span>Guess</span>
+                    <span>Feedback</span>
                 </div>
-            </ScrollArea>
+                 <ScrollArea className="h-64 pr-2">
+                    <div className="space-y-2 py-1">
+                        {guesses.map((guess, index) => (
+                            <div key={index} className="flex items-center justify-between p-1 bg-background rounded shadow-sm">
+                                <div className="flex items-center gap-1.5">
+                                    <span className="text-xs font-mono text-muted-foreground w-4">{index + 1}.</span>
+                                    {guess.code.map((color, i) => <div key={i} className={cn("w-5 h-5 rounded-full border", color ? COLOR_MAP[color] : 'bg-muted')} />)}
+                                </div>
+                                <div className="grid grid-cols-3 gap-0.5 w-10">
+                                    {Array(guess.feedback.correctPosition).fill(0).map((_, i) => <div key={`cp-${i}`} title="Correct Color & Position" className="w-2.5 h-2.5 rounded-full bg-black border border-white/50" />)}
+                                    {Array(guess.feedback.correctColor).fill(0).map((_, i) => <div key={`cc-${i}`} title="Correct Color, Wrong Position" className="w-2.5 h-2.5 rounded-full bg-white border border-black/50" />)}
+                                </div>
+                            </div>
+                        ))}
+                        {guesses.length === 0 && <p className="text-center text-muted-foreground pt-24">Guess history appears here.</p>}
+                    </div>
+                </ScrollArea>
+            </div>
             
             {isGameOver ? (
                  <div className="text-center p-4 bg-muted rounded-lg space-y-3">
-                    <Award size={48} className={cn("mx-auto", isWin ? "text-yellow-500" : "text-gray-500")} />
-                    <h3 className={cn("text-2xl font-bold", isWin ? "text-green-700" : "text-red-700")}>{isWin ? "You cracked the code!" : "Game Over"}</h3>
+                    {isWin ? <Award size={48} className="mx-auto text-yellow-500" /> : <XCircle size={48} className="mx-auto text-destructive" />}
+                    <h3 className={cn("text-2xl font-bold", isWin ? "text-green-700" : "text-destructive")}>{isWin ? "You cracked the code!" : "Game Over"}</h3>
                     <div className="flex items-center justify-center gap-2">
                       <p>The code was:</p>
-                      <div className="flex gap-2">{secretCode.map((c, i) => <div key={i} className={cn("w-6 h-6 rounded-full", COLOR_MAP[c])} />)}</div>
+                      <div className="flex gap-2">{secretCode.map((c, i) => <div key={i} className={cn("w-6 h-6 rounded-full shadow-inner", COLOR_MAP[c])} />)}</div>
                     </div>
                     <Button onClick={resetGame} className="mt-4"><RotateCw className="mr-2" /> Play Again</Button>
                 </div>
             ): (
                  <>
-                {/* Current Guess */}
-                <div className="p-2 border-2 border-dashed rounded-lg">
+                {/* Current Guess Input */}
+                <div className="p-2 border-2 border-primary/20 border-dashed rounded-lg space-y-2">
+                     <p className="text-xs text-center text-muted-foreground">Your Guess (Click a slot to remove a color)</p>
                     <div className="flex items-center justify-center gap-2">
                         {currentGuess.map((color, index) => (
-                            <button key={index} onClick={() => handleGuessPegClick(index)} className={cn("w-8 h-8 rounded-full border-2", color ? COLOR_MAP[color] : 'bg-background')}>
+                            <button key={index} onClick={() => handleGuessPegClick(index)} className={cn("w-8 h-8 rounded-full border-2 transition-transform hover:scale-105", color ? COLOR_MAP[color] : 'bg-background')}>
                                 {!color && <span className="text-xs text-muted-foreground">{index + 1}</span>}
                             </button>
                         ))}
@@ -183,10 +206,15 @@ export default function CodeBreakerGame({ onBack, difficulty }: CodeBreakerGameP
                 </div>
 
                  {/* Color Palette */}
-                <div className="flex justify-center flex-wrap gap-2 pt-2">
-                    {COLORS.slice(0, config.numColors).map(color => (
-                        <button key={color} onClick={() => handleColorSelect(color)} className={cn("w-10 h-10 rounded-full border-2 hover:border-foreground transition", COLOR_MAP[color])} />
-                    ))}
+                <div className="p-2 bg-muted rounded-lg">
+                    <p className="text-xs text-center text-muted-foreground mb-2">
+                        Click to add a color to your guess. {config.allowDuplicates && "(Duplicates allowed)"}
+                    </p>
+                    <div className="flex justify-center flex-wrap gap-2">
+                        {COLORS.slice(0, config.numColors).map(color => (
+                            <button key={color} onClick={() => handleColorSelect(color)} className={cn("w-10 h-10 rounded-full border-2 hover:border-foreground transition-transform hover:scale-105", COLOR_MAP[color])} />
+                        ))}
+                    </div>
                 </div>
 
                 <Button onClick={submitGuess} disabled={currentGuess.some(c => c === null)} className="w-full bg-accent text-accent-foreground"><Check className="mr-2"/>Submit Guess</Button>
@@ -196,4 +224,3 @@ export default function CodeBreakerGame({ onBack, difficulty }: CodeBreakerGameP
     </Card>
   );
 }
-
