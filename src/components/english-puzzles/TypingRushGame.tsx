@@ -46,7 +46,7 @@ const BUBBLE_COLORS = [
 ];
 
 const INITIAL_LIVES = 5;
-const GAME_DURATION_S = 90;
+const GAME_DURATION_S = 60;
 
 export default function TypingRushGame({ onBack, difficulty }: TypingRushGameProps) {
     const [gameState, setGameState] = useState<"playing" | "paused" | "gameOver" | "win">("playing");
@@ -309,7 +309,11 @@ export default function TypingRushGame({ onBack, difficulty }: TypingRushGamePro
                 <Progress value={(timeLeft / GAME_DURATION_S) * 100} className="w-full mt-2" />
             </CardHeader>
             <CardContent className="p-4 flex flex-col flex-grow">
-                <div ref={gameAreaRef} className="relative bg-primary/5 rounded-lg overflow-hidden border shadow-inner w-full flex-grow min-h-[400px]">
+                <div 
+                    ref={gameAreaRef} 
+                    className="relative bg-primary/5 rounded-lg overflow-hidden border shadow-inner w-full flex-grow min-h-[400px] cursor-text"
+                    onClick={() => inputRef.current?.focus()}
+                >
                     {renderOverlay()}
                     {fallingObjects.map(obj => (
                         <div
@@ -331,19 +335,19 @@ export default function TypingRushGame({ onBack, difficulty }: TypingRushGamePro
                         </div>
                     ))}
                 </div>
-                <div className="mt-4 flex-shrink-0">
-                    <Input
-                        ref={inputRef}
-                        type="text"
-                        placeholder={gameState === 'playing' ? "Type here!" : "Paused"}
-                        value={inputValue}
-                        onChange={handleInputChange}
-                        disabled={gameState !== 'playing'}
-                        className="w-full text-center text-lg h-12"
-                        autoComplete="off"
-                        autoFocus
-                    />
-                </div>
+                <Input
+                    ref={inputRef}
+                    type="text"
+                    value={inputValue}
+                    onChange={handleInputChange}
+                    disabled={gameState !== 'playing'}
+                    className="sr-only"
+                    autoComplete="off"
+                    autoFocus
+                />
+                 <p className="text-center text-sm text-muted-foreground mt-2">
+                    {gameState === 'playing' ? 'Click the area above and start typing!' : 'Game is paused.'}
+                </p>
             </CardContent>
         </Card>
         </>
