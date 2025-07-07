@@ -15,6 +15,7 @@ import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import type { EnglishPuzzleItem } from '@/lib/constants';
 import { searchImages } from '@/services/pixabay';
+import { generatePuzzleImage } from './generate-puzzle-image-flow';
 
 // Define Zod schemas that match the existing types for validation and structured output.
 const GenerateEnglishPuzzleInputSchema = z.object({
@@ -64,14 +65,26 @@ export async function generateEnglishPuzzle(input: GenerateEnglishPuzzleInput): 
   const apiKey = process.env.NEXT_PUBLIC_PIXABAY_API_KEY;
 
   if (llmResponse.type === 'matchWord') {
-    let imageUrl = `https://placehold.co/400x300.png`; // Fallback
-    if (apiKey) {
-      // Add 'cartoon' to get more kid-friendly images
-      const images = await searchImages(`cartoon ${llmResponse.correctWord}`, apiKey, { perPage: 1 });
-      if (images.length > 0 && images[0].webformatURL) {
-        imageUrl = images[0].webformatURL;
+    let imageUrl = `https://placehold.co/400x300.png`; // Fallback placeholder
+
+    // 1. Try Pixabay first
+    const images = await searchImages(`cartoon ${llmResponse.correctWord}`, apiKey || '', { perPage: 1 });
+    if (images.length > 0 && images[0].webformatURL) {
+      imageUrl = images[0].webformatURL;
+      console.log(`[Image] Found on Pixabay for "${llmResponse.correctWord}"`);
+    } else {
+      // 2. If Pixabay fails, try AI Image Generation
+      console.log(`[Image] Pixabay failed for "${llmResponse.correctWord}", trying AI generation.`);
+      try {
+        const aiImageUri = await generatePuzzleImage(llmResponse.correctWord);
+        imageUrl = aiImageUri;
+        console.log(`[Image] Successfully generated AI image for "${llmResponse.correctWord}"`);
+      } catch (e) {
+        console.error(`[Image] AI generation also failed for "${llmResponse.correctWord}". Falling back to placeholder.`, e);
+        // imageUrl remains the placeholder
       }
     }
+    
     return {
       id: `ai-${Date.now()}`,
       difficulty: input.difficulty,

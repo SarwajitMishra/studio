@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { applyRewards, calculateRewards } from "@/lib/rewards";
 import { updateGameStats } from "@/lib/progress";
 import { S_COINS_ICON as SCoinsIcon, S_POINTS_ICON as SPointsIcon } from '@/lib/constants';
+import { generatePuzzleImage } from "@/ai/flows/generate-puzzle-image-flow";
 
 type Difficulty = "beginner" | "expert" | "pro";
 
@@ -262,20 +263,25 @@ export default function JigsawPuzzlePage() {
             const imagesForDifficulty = PUZZLE_IMAGES_BY_DIFFICULTY[difficulty];
             const apiKey = process.env.NEXT_PUBLIC_PIXABAY_API_KEY;
 
-            if (!apiKey) {
-                console.warn("Pixabay API key missing, using placeholders for Jigsaw.");
-                const placeholderImages = imagesForDifficulty.map(img => ({ ...img, src: `https://placehold.co/400x400.png?text=${img.hint.replace(/\s/g,'+')}`}));
-                setFetchedImages(placeholderImages);
-                setAreImagesLoading(false);
-                return;
-            }
-
             const imagePromises = imagesForDifficulty.map(async (img) => {
-                const results = await searchImages(img.hint, apiKey, { perPage: 3 });
-                if (results.length > 0 && results[0].webformatURL) {
-                    return { ...img, src: results[0].webformatURL };
+                // 1. Try Pixabay first
+                const pixabayResults = await searchImages(img.hint, apiKey || '', { perPage: 1 });
+                if (pixabayResults.length > 0 && pixabayResults[0].webformatURL) {
+                    console.log(`[Jigsaw Image] Found on Pixabay for "${img.hint}"`);
+                    return { ...img, src: pixabayResults[0].webformatURL };
                 }
-                return { ...img, src: `https://placehold.co/400x400.png?text=Not+Found` }; 
+
+                // 2. If Pixabay fails, try AI Image Generation
+                console.log(`[Jigsaw Image] Pixabay failed for "${img.hint}", trying AI generation.`);
+                try {
+                    const aiImageUri = await generatePuzzleImage(img.hint);
+                    console.log(`[Jigsaw Image] Successfully generated AI image for "${img.hint}"`);
+                    return { ...img, src: aiImageUri };
+                } catch (e) {
+                    console.error(`[Jigsaw Image] AI generation also failed for "${img.hint}". Falling back to placeholder.`, e);
+                    // 3. Fallback to placeholder
+                    return { ...img, src: `https://placehold.co/400x400.png?text=Image+Error` };
+                }
             });
 
             const newImages = await Promise.all(imagePromises);
