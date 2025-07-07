@@ -6,13 +6,14 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card as ShadCNCard, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { RefreshCw, Award, Brain, Timer, ArrowLeft, Shield, Star, Gem, Loader2 } from 'lucide-react';
+import { RefreshCw, Award, Brain, Timer, ArrowLeft, Shield, Star as StarIcon, Gem, Loader2 } from 'lucide-react';
 import { MEMORY_ICONS, S_COINS_ICON as SCoinsIcon, S_POINTS_ICON as SPointsIcon } from '@/lib/constants';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
 import { applyRewards, calculateRewards } from "@/lib/rewards";
 import { updateGameStats } from "@/lib/progress";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 // Client component to inject metadata
 const HeadMetadata = () => {
@@ -36,7 +37,7 @@ type Difficulty = 'easy' | 'medium' | 'hard';
 
 const DIFFICULTY_LEVELS: Record<Difficulty, { pairs: number; gridClass: string; label: string; Icon: LucideIcon }> = {
   easy: { pairs: 6, gridClass: 'grid-cols-4', label: 'Easy', Icon: Shield },
-  medium: { pairs: 8, gridClass: 'grid-cols-4', label: 'Medium', Icon: Star },
+  medium: { pairs: 8, gridClass: 'grid-cols-4', label: 'Medium', Icon: StarIcon },
   hard: { pairs: 10, gridClass: 'grid-cols-5', label: 'Hard', Icon: Gem },
 };
 
@@ -75,9 +76,31 @@ const MemoryMatchPage: NextPage = () => {
   const [isChecking, setIsChecking] = useState(false);
   const [isGameWon, setIsGameWon] = useState(false);
   const [isCalculatingReward, setIsCalculatingReward] = useState(false);
+  const [lastReward, setLastReward] = useState<{points: number, coins: number, stars: number} | null>(null);
   
   const timerRef =  useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
+
+  const StarRating = ({ rating }: { rating: number }) => (
+    <div className="flex justify-center">
+        {[...Array(3)].map((_, i) => (
+            <StarIcon key={i} className={cn("h-10 w-10", i < rating ? "text-yellow-400 fill-yellow-400" : "text-gray-300")} />
+        ))}
+    </div>
+  );
+
+  const calculateStars = useCallback((time: number, moves: number, difficulty: Difficulty): number => {
+    const thresholds = {
+      easy: { time: 45, moves: 12 },
+      medium: { time: 75, moves: 20 },
+      hard: { time: 120, moves: 30 },
+    };
+    const perfectScore = time <= thresholds[difficulty].time && moves <= thresholds[difficulty].moves;
+    const goodScore = time <= thresholds[difficulty].time * 1.5 && moves <= thresholds[difficulty].moves * 1.5;
+    if (perfectScore) return 3;
+    if (goodScore) return 2;
+    return 1;
+  }, []);
 
   const cleanupTimer = () => {
     if (timerRef.current) {
@@ -96,15 +119,26 @@ const MemoryMatchPage: NextPage = () => {
       try {
         const rewards = await calculateRewards({ gameId: 'memory', difficulty, performanceMetrics: { moves, time } });
         const earned = applyRewards(rewards.sPoints, rewards.sCoins, `Completed Memory Match (${difficulty})`);
+        const stars = calculateStars(time, moves, difficulty);
+        setLastReward({ points: earned.points, coins: earned.coins, stars });
 
         toast({
-            title: "You Win!",
+            title: "You Win! 🏆",
             description: (
-                <div className="flex flex-col gap-2">
-                    <span>Congratulations! You earned:</span>
-                    <div className="flex items-center gap-4">
-                        <span className="flex items-center font-bold">{earned.points} <SPointsIcon className="ml-1.5 h-5 w-5 text-yellow-300" /></span>
-                        <span className="flex items-center font-bold">{earned.coins} <SCoinsIcon className="ml-1.5 h-5 w-5 text-amber-400" /></span>
+                <div className="flex flex-col gap-1">
+                    <div className="flex items-center">
+                        {Array.from({ length: 3 }).map((_, i) => (
+                            <StarIcon key={i} size={16} className={cn(i < stars ? "text-yellow-300 fill-yellow-300" : "text-white/50")} />
+                        ))}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                    <span>You earned:</span>
+                    <span className="flex items-center font-bold">
+                        {earned.points} <SPointsIcon className="ml-1.5 h-5 w-5 text-yellow-300" />
+                    </span>
+                    <span className="flex items-center font-bold">
+                        {earned.coins} <SCoinsIcon className="ml-1.5 h-5 w-5 text-amber-400" />
+                    </span>
                     </div>
                 </div>
             ),
@@ -118,7 +152,7 @@ const MemoryMatchPage: NextPage = () => {
       } finally {
         setIsCalculatingReward(false);
       }
-  }, [difficulty, moves, time, toast]);
+  }, [difficulty, moves, time, toast, calculateStars]);
 
   const startGame = useCallback((selectedDifficulty: Difficulty) => {
     cleanupTimer();
@@ -132,6 +166,7 @@ const MemoryMatchPage: NextPage = () => {
     setIsChecking(false);
     setIsGameWon(false);
     setIsCalculatingReward(false);
+    setLastReward(null);
     setView('playing');
   }, []);
   
@@ -247,6 +282,45 @@ const MemoryMatchPage: NextPage = () => {
   return (
     <div className="flex flex-col items-center space-y-6 p-4">
       <HeadMetadata />
+      <AlertDialog open={isGameWon}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                <AlertDialogTitle className="text-2xl text-green-600 flex items-center justify-center gap-2">
+                   <Award size={28} /> You Win!
+                </AlertDialogTitle>
+                </AlertDialogHeader>
+                 <div className="py-4 text-center">
+                    {isCalculatingReward ? (
+                        <div className="flex flex-col items-center justify-center gap-2 pt-4">
+                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                            <p className="text-sm text-muted-foreground">Calculating your awesome rewards...</p>
+                        </div>
+                    ) : lastReward ? (
+                        <div className="flex flex-col items-center gap-3 text-center">
+                            <StarRating rating={lastReward.stars} />
+                            <AlertDialogDescription className="text-center text-base pt-2">
+                                Congratulations! You matched all the pairs.
+                                <br />
+                                <strong className="text-lg">Moves: {moves}</strong> | <strong className="text-lg">Time: {formatTime(time)}</strong>
+                            </AlertDialogDescription>
+                            <div className="flex items-center gap-6 mt-2">
+                                <span className="flex items-center font-bold text-2xl">
+                                    +{lastReward.points} <SPointsIcon className="ml-2 h-7 w-7 text-yellow-400" />
+                                </span>
+                                <span className="flex items-center font-bold text-2xl">
+                                    +{lastReward.coins} <SCoinsIcon className="ml-2 h-7 w-7 text-amber-500" />
+                                </span>
+                            </div>
+                        </div>
+                    ) : null}
+                </div>
+                <AlertDialogFooter>
+                    <AlertDialogAction onClick={() => difficulty && startGame(difficulty)} disabled={isCalculatingReward}>Play Again</AlertDialogAction>
+                    <AlertDialogCancel onClick={() => setView('select')} disabled={isCalculatingReward}>Back to Menu</AlertDialogCancel>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+
       <ShadCNCard className="w-full max-w-2xl shadow-xl">
         <CardHeader className="bg-primary/10">
           <div className="flex items-center justify-between">
@@ -273,24 +347,7 @@ const MemoryMatchPage: NextPage = () => {
               <RefreshCw className="mr-2 h-5 w-5" /> Reset
             </Button>
           </div>
-
-          {isGameWon ? (
-            <div className="text-center py-10 bg-green-100 rounded-lg shadow-inner">
-              <Award className="mx-auto h-20 w-20 text-yellow-500 mb-4" />
-              <h2 className="text-3xl font-bold text-green-700">Congratulations!</h2>
-              {isCalculatingReward ? (
-                  <Loader2 className="h-12 w-12 animate-spin mx-auto mt-4 text-green-600"/>
-              ) : (
-                <>
-                <p className="text-xl text-green-600 mt-2">You found all pairs!</p>
-                <p className="text-lg text-green-600 mt-1">Moves: {moves} | Time: {formatTime(time)}</p>
-                <Button onClick={() => difficulty && startGame(difficulty)} className="mt-6 bg-accent text-accent-foreground hover:bg-accent/90">
-                    Play Again
-                </Button>
-                </>
-              )}
-            </div>
-          ) : (
+          
             <div className={cn("grid gap-3 sm:gap-4 aspect-square max-w-md mx-auto", difficulty && DIFFICULTY_LEVELS[difficulty].gridClass)}>
               {cards.map((card, index) => (
                 <MemoryCard
@@ -300,7 +357,6 @@ const MemoryMatchPage: NextPage = () => {
                 />
               ))}
             </div>
-          )}
         </CardContent>
       </ShadCNCard>
     </div>

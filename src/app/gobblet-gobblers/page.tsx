@@ -1,11 +1,16 @@
 
 "use client";
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { RotateCw, Award, Users, Cpu, ArrowLeft, ArrowRight, Circle, Brain } from 'lucide-react';
+import { RotateCw, Award, Users, Cpu, ArrowLeft, ArrowRight, Circle, Brain, Loader2, Star as StarIcon } from 'lucide-react';
 import { cn } from "@/lib/utils";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { S_POINTS_ICON as SPointsIcon, S_COINS_ICON as SCoinsIcon } from '@/lib/constants';
+import { applyRewards, calculateRewards } from "@/lib/rewards";
+import { updateGameStats } from "@/lib/progress";
+import { useToast } from '@/hooks/use-toast';
 
 type PlayerId = 'P1' | 'P2';
 type PieceSize = 1 | 2 | 3; // Small, Medium, Large
@@ -144,17 +149,65 @@ export default function GobbletGobblersPage() {
   const [selectedPiece, setSelectedPiece] = useState<{ piece: Piece, from?: {r: number, c: number} } | null>(null);
   const [winner, setWinner] = useState<PlayerId | 'draw' | null>(null);
 
+  const [isCalculatingReward, setIsCalculatingReward] = useState(false);
+  const [lastReward, setLastReward] = useState<{points: number, coins: number, stars: number} | null>(null);
+  const { toast } = useToast();
+
+  const StarRating = ({ rating }: { rating: number }) => (
+    <div className="flex justify-center">
+        {[...Array(3)].map((_, i) => (
+            <StarIcon key={i} className={cn("h-10 w-10", i < rating ? "text-yellow-400 fill-yellow-400" : "text-gray-300")} />
+        ))}
+    </div>
+  );
+
+  const handleWin = useCallback(async (winnerId: PlayerId) => {
+    setWinner(winnerId);
+    setIsCalculatingReward(true);
+    updateGameStats({ gameId: 'gobblet-gobblers', didWin: true });
+
+    try {
+        const rewards = await calculateRewards({
+            gameId: 'gobblet-gobblers',
+            difficulty: 'easy',
+            performanceMetrics: { winner: winnerId },
+        });
+        const earned = applyRewards(rewards.sPoints, rewards.sCoins, `Won Gobblet Gobblers`);
+        const stars = 3; // Always 3 stars for a win in this game
+        setLastReward({ points: earned.points, coins: earned.coins, stars });
+        
+        toast({
+            title: `Player ${winnerId === 'P1' ? '1' : '2'} Wins! 🏆`,
+            description: (
+                <div className="flex flex-col gap-1">
+                    <span className="flex items-center font-bold">You earned: {earned.points} S-Points and {earned.coins} S-Coins!</span>
+                </div>
+            ),
+            className: "bg-green-600 border-green-700 text-white",
+            duration: 5000,
+        });
+    } catch (error) {
+         console.error("Error calculating rewards:", error);
+         toast({ variant: 'destructive', title: 'Reward Error', description: 'Could not calculate rewards.' });
+    } finally {
+        setIsCalculatingReward(false);
+    }
+  }, [toast]);
+
+
   const getStatusMessage = () => {
     if (winner) return winner === 'draw' ? "It's a draw!" : `Player ${winner === 'P1' ? '1 (Blue)' : '2 (Red)'} wins!`;
     return `Player ${currentPlayer === 'P1' ? '1 (Blue)' : '2 (Red)'}'s Turn`;
   };
 
   const resetGame = useCallback(() => {
+    updateGameStats({ gameId: 'gobblet-gobblers', didWin: false });
     setBoard(createInitialBoard());
     setPlayerPieces(createInitialPlayerPieces());
     setCurrentPlayer('P1');
     setSelectedPiece(null);
     setWinner(null);
+    setLastReward(null);
   }, []);
 
   const handleModeSelect = (mode: GameMode) => {
@@ -174,7 +227,6 @@ export default function GobbletGobblersPage() {
 
   const handleBoardClick = (r: number, c: number) => {
     if (!selectedPiece || winner) {
-      // If a piece on the board is clicked without a piece being selected, select it
       const topPiece = board[r][c].stack[board[r][c].stack.length - 1];
       if (topPiece) {
         handleSelectPiece(topPiece, {r, c});
@@ -187,21 +239,16 @@ export default function GobbletGobblersPage() {
     const topPieceOnTarget = targetCell.stack[targetCell.stack.length - 1];
 
     if (topPieceOnTarget && piece.size <= topPieceOnTarget.size) {
-      // Cannot place on a piece of same or larger size
       return;
     }
 
     const newBoard = board.map(row => row.map(cell => ({ stack: [...cell.stack] })));
 
-    // Place the new piece
     newBoard[r][c].stack.push(piece);
     
-    // Remove the piece from its origin
     if (from) {
-      // Moved from another square
       newBoard[from.r][from.c].stack.pop();
     } else {
-      // Moved from player's hand
       const newPlayerPieces = { ...playerPieces };
       newPlayerPieces[piece.player] = newPlayerPieces[piece.player].filter(p => p.id !== piece.id);
       setPlayerPieces(newPlayerPieces);
@@ -211,7 +258,7 @@ export default function GobbletGobblersPage() {
     
     const newWinner = checkWin(newBoard);
     if (newWinner) {
-        setWinner(newWinner);
+        handleWin(newWinner);
     } else {
         setCurrentPlayer(currentPlayer === 'P1' ? 'P2' : 'P1');
     }
@@ -246,6 +293,43 @@ export default function GobbletGobblersPage() {
 
   return (
     <div className="flex flex-col items-center justify-center p-4 space-y-4">
+       <AlertDialog open={!!winner}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                <AlertDialogTitle className="text-2xl text-green-600 flex items-center justify-center gap-2">
+                   <Award size={28} /> {winner ? `Player ${winner === 'P1' ? '1' : '2'} Wins!` : "Game Over"}
+                </AlertDialogTitle>
+                </AlertDialogHeader>
+                 <div className="py-4 text-center">
+                    {isCalculatingReward ? (
+                        <div className="flex flex-col items-center justify-center gap-2 pt-4">
+                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                            <p className="text-sm text-muted-foreground">Calculating your rewards...</p>
+                        </div>
+                    ) : lastReward ? (
+                        <div className="flex flex-col items-center gap-3 text-center">
+                            <StarRating rating={lastReward.stars} />
+                            <AlertDialogDescription className="text-center text-base pt-2">
+                                Congratulations! You won the game.
+                            </AlertDialogDescription>
+                            <div className="flex items-center gap-6 mt-2">
+                                <span className="flex items-center font-bold text-2xl">
+                                    +{lastReward.points} <SPointsIcon className="ml-2 h-7 w-7 text-yellow-400" />
+                                </span>
+                                <span className="flex items-center font-bold text-2xl">
+                                    +{lastReward.coins} <SCoinsIcon className="ml-2 h-7 w-7 text-amber-500" />
+                                </span>
+                            </div>
+                        </div>
+                    ) : null}
+                </div>
+                <AlertDialogFooter>
+                    <AlertDialogAction onClick={startGame} disabled={isCalculatingReward}>Play Again</AlertDialogAction>
+                    <AlertDialogCancel onClick={() => setGameState('setup')} disabled={isCalculatingReward}>Back to Menu</AlertDialogCancel>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+
       <Card className="w-full max-w-xl text-center shadow-xl">
         <CardHeader>
           <CardTitle className="text-3xl font-bold">Gobblet Gobblers</CardTitle>
@@ -293,7 +377,7 @@ export default function GobbletGobblersPage() {
       </div>
       
       <div className="w-full max-w-xl flex gap-4 mt-4">
-        <Button onClick={() => gameMode && resetGame()} className="w-full"><RotateCw className="mr-2"/> Reset Game</Button>
+        <Button onClick={startGame} className="w-full"><RotateCw className="mr-2"/> Reset Game</Button>
         <Button onClick={() => setGameState('setup')} variant="outline" className="w-full"><ArrowLeft className="mr-2"/> Change Mode</Button>
       </div>
     </div>

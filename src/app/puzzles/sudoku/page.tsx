@@ -5,12 +5,13 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Grid3x3, RotateCw, Lightbulb, ArrowLeft, Shield, Star, Gem, Timer, Loader2 } from 'lucide-react';
+import { Grid3x3, RotateCw, Lightbulb, ArrowLeft, Shield, Star as StarIcon, Gem, Timer, Loader2, Award } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { applyRewards, calculateRewards } from "@/lib/rewards";
 import { updateGameStats } from "@/lib/progress";
 import { S_COINS_ICON as SCoinsIcon, S_POINTS_ICON as SPointsIcon } from '@/lib/constants';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 type Difficulty = 'easy' | 'medium' | 'hard';
 type SudokuGrid = (number | null)[][];
@@ -33,7 +34,7 @@ const generatePuzzle = (difficulty: Difficulty): { puzzle: SudokuGrid, solution:
     const puzzle = solution.map(row => [...row]);
 
     const cellsToRemove = { easy: 35, medium: 45, hard: 55 };
-    removed = 0;
+    let removed = 0;
     while (removed < cellsToRemove[difficulty]) {
         const row = Math.floor(Math.random() * 9);
         const col = Math.floor(Math.random() * 9);
@@ -45,8 +46,6 @@ const generatePuzzle = (difficulty: Difficulty): { puzzle: SudokuGrid, solution:
     return { puzzle, solution };
 };
 
-let removed = 0; // Define 'removed' at a scope accessible by generatePuzzle
-
 export default function SudokuPage() {
     const [difficulty, setDifficulty] = useState<Difficulty | null>(null);
     const [grid, setGrid] = useState<SudokuGrid>([]);
@@ -56,7 +55,28 @@ export default function SudokuPage() {
     const [incorrectCells, setIncorrectCells] = useState<{ r: number, c: number }[]>([]);
     const [time, setTime] = useState(0);
     const [isCalculatingReward, setIsCalculatingReward] = useState(false);
+    const [lastReward, setLastReward] = useState<{points: number, coins: number, stars: number} | null>(null);
     const { toast } = useToast();
+
+    const StarRating = ({ rating }: { rating: number }) => (
+        <div className="flex justify-center">
+            {[...Array(3)].map((_, i) => (
+                <StarIcon key={i} className={cn("h-10 w-10", i < rating ? "text-yellow-400 fill-yellow-400" : "text-gray-300")} />
+            ))}
+        </div>
+    );
+    
+    const calculateStars = useCallback((timeInSeconds: number, difficulty: Difficulty): number => {
+        const thresholds = {
+            easy: { best: 300, good: 600 },   // 5m, 10m
+            medium: { best: 600, good: 900 }, // 10m, 15m
+            hard: { best: 900, good: 1200 },  // 15m, 20m
+        };
+        const diffThresholds = thresholds[difficulty];
+        if (timeInSeconds <= diffThresholds.best) return 3;
+        if (timeInSeconds <= diffThresholds.good) return 2;
+        return 1;
+    }, []);
 
     useEffect(() => {
         let timer: NodeJS.Timeout;
@@ -87,18 +107,20 @@ export default function SudokuPage() {
                 difficulty,
                 performanceMetrics: { timeInSeconds: time }
             });
-
             const earned = applyRewards(rewards.sPoints, rewards.sCoins, `Solved Sudoku (${difficulty})`);
-
+            const stars = calculateStars(time, difficulty);
+            setLastReward({ points: earned.points, coins: earned.coins, stars });
+            
             toast({
                 title: "Congratulations! You solved it!",
                 description: (
-                    <div className="flex flex-col gap-2">
-                        <span>You earned:</span>
-                        <div className="flex items-center gap-4">
-                            <span className="flex items-center font-bold">{earned.points} <SPointsIcon className="ml-1.5 h-5 w-5 text-yellow-300" /></span>
-                            <span className="flex items-center font-bold">{earned.coins} <SCoinsIcon className="ml-1.5 h-5 w-5 text-amber-400" /></span>
+                    <div className="flex flex-col gap-1">
+                        <div className="flex items-center">
+                            {Array.from({ length: 3 }).map((_, i) => (
+                                <StarIcon key={i} size={16} className={cn(i < stars ? "text-yellow-300 fill-yellow-300" : "text-white/50")} />
+                            ))}
                         </div>
+                        <span>You earned: {earned.points} S-Points and {earned.coins} S-Coins!</span>
                     </div>
                 ),
                 className: "bg-green-600 border-green-700 text-white",
@@ -111,10 +133,13 @@ export default function SudokuPage() {
         } finally {
             setIsCalculatingReward(false);
         }
-    }, [difficulty, time, toast]);
+    }, [difficulty, time, toast, calculateStars]);
 
 
     const startGame = useCallback((diff: Difficulty) => {
+        if (!isComplete && difficulty) {
+            updateGameStats({ gameId: 'sudoku', didWin: false });
+        }
         setDifficulty(diff);
         const { puzzle, solution: sol } = generatePuzzle(diff);
         setGrid(puzzle.map(row => [...row]));
@@ -124,7 +149,8 @@ export default function SudokuPage() {
         setIncorrectCells([]);
         setTime(0);
         setIsCalculatingReward(false);
-    }, []);
+        setLastReward(null);
+    }, [isComplete, difficulty]);
 
     const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>, row: number, col: number) => {
         if (isComplete) return;
@@ -187,7 +213,7 @@ export default function SudokuPage() {
                     </CardHeader>
                     <CardContent className="grid grid-cols-1 gap-4">
                         <Button onClick={() => startGame('easy')} className="text-lg py-6"><Shield className="mr-2"/> Easy</Button>
-                        <Button onClick={() => startGame('medium')} className="text-lg py-6"><Star className="mr-2"/> Medium</Button>
+                        <Button onClick={() => startGame('medium')} className="text-lg py-6"><StarIcon className="mr-2"/> Medium</Button>
                         <Button onClick={() => startGame('hard')} className="text-lg py-6"><Gem className="mr-2"/> Hard</Button>
                     </CardContent>
                     <CardFooter>
@@ -202,6 +228,44 @@ export default function SudokuPage() {
 
     return (
         <div className="flex flex-col lg:flex-row items-center lg:items-start justify-center p-4 gap-6">
+            <AlertDialog open={isComplete && !!lastReward}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                    <AlertDialogTitle className="text-2xl text-green-600 flex items-center justify-center gap-2">
+                       <Award size={28} /> You solved it!
+                    </AlertDialogTitle>
+                    </AlertDialogHeader>
+                     <div className="py-4 text-center">
+                        {isCalculatingReward ? (
+                            <div className="flex flex-col items-center justify-center gap-2 pt-4">
+                                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                                <p className="text-sm text-muted-foreground">Calculating your rewards...</p>
+                            </div>
+                        ) : lastReward ? (
+                            <div className="flex flex-col items-center gap-3 text-center">
+                                <StarRating rating={lastReward.stars} />
+                                <AlertDialogDescription className="text-center text-base pt-2">
+                                    Congratulations! You solved the puzzle.
+                                    <br />
+                                    <strong className="text-lg">Time: {formatTime(time)}</strong>
+                                </AlertDialogDescription>
+                                <div className="flex items-center gap-6 mt-2">
+                                    <span className="flex items-center font-bold text-2xl">
+                                        +{lastReward.points} <SPointsIcon className="ml-2 h-7 w-7 text-yellow-400" />
+                                    </span>
+                                    <span className="flex items-center font-bold text-2xl">
+                                        +{lastReward.coins} <SCoinsIcon className="ml-2 h-7 w-7 text-amber-500" />
+                                    </span>
+                                </div>
+                            </div>
+                        ) : null}
+                    </div>
+                    <AlertDialogFooter>
+                    <AlertDialogAction onClick={() => startGame(difficulty)} disabled={isCalculatingReward}>Play Again</AlertDialogAction>
+                    <AlertDialogCancel onClick={() => setDifficulty(null)} disabled={isCalculatingReward}>Back to Menu</AlertDialogCancel>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
             <Card className="shadow-xl">
                 <CardHeader>
                     <CardTitle className="text-2xl font-bold text-center">Sudoku</CardTitle>

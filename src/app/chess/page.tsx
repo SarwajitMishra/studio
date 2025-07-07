@@ -6,9 +6,13 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { Crown, AlertTriangle, Timer, ListChecks, ArrowRight, ArrowLeft, Brain, Gamepad2 } from "lucide-react";
+import { Crown, AlertTriangle, Timer, ListChecks, ArrowRight, ArrowLeft, Brain, Gamepad2, Award, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { S_POINTS_ICON as SPointsIcon, S_COINS_ICON as SCoinsIcon } from '@/lib/constants';
+import { applyRewards, calculateRewards } from "@/lib/rewards";
+import { updateGameStats } from "@/lib/progress";
 
 
 interface Piece {
@@ -237,8 +241,46 @@ export default function ChessPage() {
   const [capturedPieces, setCapturedPieces] = useState<{w: Piece[], b: Piece[]}>({w: [], b: []});
   const [playerTimers, setPlayerTimers] = useState({w: 600, b: 600});
 
+  const [isCalculatingReward, setIsCalculatingReward] = useState(false);
+  const [lastReward, setLastReward] = useState<{points: number, coins: number} | null>(null);
+
   const { toast } = useToast();
   
+  const handleGameEnd = useCallback(async (winnerColor: PlayerColor | 'draw' | null, reason: string) => {
+    setGameOver(true);
+    setWinner(winnerColor);
+    setGameStatusMessage(reason);
+    setIsCalculatingReward(true);
+
+    const didWin = winnerColor === 'w' || winnerColor === 'b';
+    updateGameStats({ gameId: 'chess', didWin });
+
+    try {
+        const rewards = await calculateRewards({
+            gameId: 'chess',
+            difficulty: winnerColor === 'draw' ? 'medium' : 'hard', // Simplified logic for reward call
+            performanceMetrics: { result: winnerColor }
+        });
+
+        const earned = applyRewards(rewards.sPoints, rewards.sCoins, `Chess Game: ${reason}`);
+        setLastReward(earned);
+
+        toast({
+            title: `Game Over: ${reason}`,
+            description: `You earned ${earned.points} S-Points and ${earned.coins} S-Coins!`,
+            className: "bg-primary/20",
+            duration: 5000,
+        });
+
+    } catch(e) {
+        console.error("Error calculating rewards:", e);
+        toast({ variant: 'destructive', title: 'Reward Error', description: 'Could not calculate rewards.' });
+    } finally {
+        setIsCalculatingReward(false);
+    }
+  }, [toast]);
+
+
   useEffect(() => {
     if (gameOver || gameState !== 'playing') return;
 
@@ -250,11 +292,8 @@ export default function ChessPage() {
         }
         const newTimers = { ...prevTimers, [currentPlayer]: prevTimers[currentPlayer] - 1 };
         if (newTimers[currentPlayer] === 0) {
-          setGameOver(true);
           const winnerColor = currentPlayer === 'w' ? 'b' : 'w';
-          setWinner(winnerColor);
-          setGameStatusMessage(`Time's up! ${winnerColor === 'w' ? 'White' : 'Black'} wins!`);
-          toast({ title: "Time's Up!", description: `${winnerColor === 'w' ? 'White' : 'Black'} wins on time.` });
+          handleGameEnd(winnerColor, `Time's up! ${winnerColor === 'w' ? 'White' : 'Black'} wins!`);
           clearInterval(timer);
         }
         return newTimers;
@@ -262,7 +301,7 @@ export default function ChessPage() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [currentPlayer, gameOver, toast, gameState]);
+  }, [currentPlayer, gameOver, toast, gameState, handleGameEnd]);
 
   const isSquareOnBoard = (row: number, col: number): boolean => row >= 0 && row < 8 && col >= 0 && col < 8;
 
@@ -531,15 +570,9 @@ export default function ChessPage() {
 
         if (isOpponentInCheck && !opponentHasLegalMoves) {
           finalMoveNotation += '#'; // Checkmate
-          setGameOver(true);
-          setWinner(currentPlayer);
-          setGameStatusMessage(`Checkmate! ${currentPlayer === 'w' ? 'White' : 'Black'} wins!`);
-          toast({ title: "Checkmate!", description: `${currentPlayer === 'w' ? 'White' : 'Black'} wins!` });
+          handleGameEnd(currentPlayer, `Checkmate! ${currentPlayer === 'w' ? 'White' : 'Black'} wins!`);
         } else if (!isOpponentInCheck && !opponentHasLegalMoves) {
-          setGameOver(true);
-          setWinner('draw');
-          setGameStatusMessage("Stalemate! It's a draw.");
-          toast({ title: "Stalemate!", description: "The game is a draw." });
+          handleGameEnd('draw', "Stalemate! It's a draw.");
         } else {
           if (isOpponentInCheck) finalMoveNotation += '+'; // Check
           setCurrentPlayer(opponentColor);
@@ -589,13 +622,9 @@ export default function ChessPage() {
     const opponentHasLegalMoves = getAllLegalMovesForPlayer(finalBoard, opponentColor, kingPositions).length > 0;
 
     if (isOpponentInCheck && !opponentHasLegalMoves) {
-        setGameOver(true);
-        setWinner(currentPlayer);
-        setGameStatusMessage(`Checkmate! ${currentPlayer === 'w' ? 'White' : 'Black'} wins!`);
+        handleGameEnd(currentPlayer, `Checkmate! ${currentPlayer === 'w' ? 'White' : 'Black'} wins!`);
     } else if (!isOpponentInCheck && !opponentHasLegalMoves) {
-        setGameOver(true);
-        setWinner('draw');
-        setGameStatusMessage("Stalemate! It's a draw.");
+        handleGameEnd('draw', "Stalemate! It's a draw.");
     } else {
         setCurrentPlayer(opponentColor);
         setGameStatusMessage(`${isOpponentInCheck ? "Check! " : ""}${opponentColor === 'w' ? "White" : "Black"}'s turn.`);
@@ -607,6 +636,7 @@ export default function ChessPage() {
   };
 
   const resetGame = () => {
+    updateGameStats({ gameId: 'chess', didWin: false }); // Log a reset as a non-win
     const newInitialSetup = initialBoardSetup();
     setBoard(newInitialSetup.board);
     setKingPositions(newInitialSetup.kings);
@@ -625,6 +655,7 @@ export default function ChessPage() {
     setPlayerTimers({ w: 600, b: 600 });
     toast({ title: "Game Reset", description: "The board has been reset." });
     setGameState('setup');
+    setLastReward(null);
   };
   
   const movePairs = [];
@@ -664,6 +695,42 @@ export default function ChessPage() {
 
   return (
     <div className="flex flex-col xl:flex-row gap-4 lg:gap-8 items-start justify-center p-2 md:p-4">
+      <AlertDialog open={gameOver && !!lastReward}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+            <AlertDialogTitle className="text-2xl text-primary flex items-center justify-center gap-2">
+                <Award size={28} /> {gameStatusMessage}
+            </AlertDialogTitle>
+            </AlertDialogHeader>
+            <div className="py-4 text-center">
+                {isCalculatingReward ? (
+                    <div className="flex flex-col items-center justify-center gap-2 pt-4">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        <p className="text-sm text-muted-foreground">Calculating your rewards...</p>
+                    </div>
+                ) : lastReward ? (
+                    <div className="flex flex-col items-center gap-3 text-center">
+                        <AlertDialogDescription className="text-center text-base pt-2">
+                           Congratulations on finishing the game!
+                        </AlertDialogDescription>
+                        <div className="flex items-center gap-6 mt-2">
+                            <span className="flex items-center font-bold text-2xl">
+                                +{lastReward.points} <SPointsIcon className="ml-2 h-7 w-7 text-yellow-400" />
+                            </span>
+                            <span className="flex items-center font-bold text-2xl">
+                                +{lastReward.coins} <SCoinsIcon className="ml-2 h-7 w-7 text-amber-500" />
+                            </span>
+                        </div>
+                    </div>
+                ) : null}
+            </div>
+            <AlertDialogFooter>
+             <Button onClick={resetGame} disabled={isCalculatingReward}>Play Again</Button>
+             <Button onClick={() => setGameState('setup')} variant="outline" disabled={isCalculatingReward}>Back to Menu</Button>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <div className="w-full xl:max-w-2xl flex-shrink-0">
         <Card className="shadow-xl bg-card/80 backdrop-blur-sm">
           <PlayerInfoPanel color="b" timer={playerTimers.b} capturedPieces={capturedPieces.w} isCurrentTurn={currentPlayer === 'b' && !gameOver} />

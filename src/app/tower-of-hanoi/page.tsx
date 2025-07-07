@@ -5,8 +5,13 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { RotateCw, Award, ArrowLeft, ArrowRight, Shield, Star, Gem, Brain } from 'lucide-react';
+import { RotateCw, Award, ArrowLeft, ArrowRight, Shield, Star as StarIcon, Gem, Brain, Loader2 } from 'lucide-react';
 import { cn } from "@/lib/utils";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { S_POINTS_ICON as SPointsIcon, S_COINS_ICON as SCoinsIcon } from '@/lib/constants';
+import { applyRewards, calculateRewards } from "@/lib/rewards";
+import { updateGameStats } from "@/lib/progress";
+import { useToast } from '@/hooks/use-toast';
 
 type Towers = number[][];
 type Difficulty = 3 | 4 | 5 | 6;
@@ -149,7 +154,55 @@ export default function TowerOfHanoiPage() {
     const [moves, setMoves] = useState(0);
     const [isWon, setIsWon] = useState(false);
 
+    const [isCalculatingReward, setIsCalculatingReward] = useState(false);
+    const [lastReward, setLastReward] = useState<{points: number, coins: number, stars: number} | null>(null);
+    const { toast } = useToast();
+    
     const minMoves = useMemo(() => difficulty ? MINIMUM_MOVES[difficulty] : 0, [difficulty]);
+
+    const StarRating = ({ rating }: { rating: number }) => (
+        <div className="flex justify-center">
+            {[...Array(3)].map((_, i) => (
+                <StarIcon key={i} className={cn("h-10 w-10", i < rating ? "text-yellow-400 fill-yellow-400" : "text-gray-300")} />
+            ))}
+        </div>
+    );
+    
+    const calculateStars = (moves: number, minMoves: number): number => {
+        if (moves === minMoves) return 3;
+        if (moves <= minMoves * 1.5) return 2;
+        return 1;
+    };
+
+    const handleWin = useCallback(async () => {
+        if (!difficulty) return;
+        setIsWon(true);
+        setIsCalculatingReward(true);
+        updateGameStats({ gameId: 'towerOfHanoi', didWin: true, score: minMoves * 100 - moves });
+
+        try {
+            const rewards = await calculateRewards({
+                gameId: 'towerOfHanoi',
+                difficulty: 'hard', // Maps to a single reward type
+                performanceMetrics: { moves: moves, minMoves: minMoves },
+            });
+            const earned = applyRewards(rewards.sPoints, rewards.sCoins, `Solved Tower of Hanoi (${difficulty} disks)`);
+            const stars = calculateStars(moves, minMoves);
+            setLastReward({ points: earned.points, coins: earned.coins, stars });
+            
+            toast({
+                title: "You Solved It! 🏆",
+                description: `You earned ${earned.points} S-Points and ${earned.coins} S-Coins!`,
+                className: "bg-green-600 border-green-700 text-white",
+                duration: 5000,
+            });
+        } catch (error) {
+             console.error("Error calculating rewards:", error);
+             toast({ variant: 'destructive', title: 'Reward Error', description: 'Could not calculate rewards.' });
+        } finally {
+            setIsCalculatingReward(false);
+        }
+    }, [difficulty, moves, minMoves, toast]);
     
     const handleDifficultySelect = (numDisks: Difficulty) => {
         setDifficulty(numDisks);
@@ -158,6 +211,9 @@ export default function TowerOfHanoiPage() {
     
     const startGame = useCallback(() => {
         if (!difficulty) return;
+        if (moves > 0 && !isWon) {
+            updateGameStats({ gameId: 'towerOfHanoi', didWin: false });
+        }
         const initialTowers: Towers = [[], [], []];
         for (let i = difficulty; i > 0; i--) {
             initialTowers[0].push(i);
@@ -166,8 +222,9 @@ export default function TowerOfHanoiPage() {
         setSelectedRod(null);
         setMoves(0);
         setIsWon(false);
+        setLastReward(null);
         setGameState('playing');
-    }, [difficulty]);
+    }, [difficulty, moves, isWon]);
 
 
     const moveDisk = useCallback((fromIndex: number, toIndex: number) => {
@@ -185,13 +242,14 @@ export default function TowerOfHanoiPage() {
             fromRod.pop();
             toRod.push(diskToMove);
             setTowers(newTowers);
-            setMoves(m => m + 1);
+            const newMoves = moves + 1;
+            setMoves(newMoves);
 
             if ((newTowers[1].length === difficulty) || (newTowers[2].length === difficulty)) {
-                setIsWon(true);
+                handleWin();
             }
         }
-    }, [towers, isWon, difficulty]);
+    }, [towers, isWon, difficulty, moves, handleWin]);
 
     const handleRodClick = (rodIndex: number) => {
         if (isWon) return;
@@ -236,7 +294,7 @@ export default function TowerOfHanoiPage() {
                     </CardHeader>
                     <CardContent className="grid grid-cols-2 gap-4">
                         <Button onClick={() => handleDifficultySelect(3)} className="text-lg py-6"><Shield className="mr-2"/> 3 Disks</Button>
-                        <Button onClick={() => handleDifficultySelect(4)} className="text-lg py-6"><Star className="mr-2"/> 4 Disks</Button>
+                        <Button onClick={() => handleDifficultySelect(4)} className="text-lg py-6"><StarIcon className="mr-2"/> 4 Disks</Button>
                         <Button onClick={() => handleDifficultySelect(5)} className="text-lg py-6"><Gem className="mr-2"/> 5 Disks</Button>
                         <Button onClick={() => handleDifficultySelect(6)} className="text-lg py-6"><Award className="mr-2"/> 6 Disks</Button>
                     </CardContent>
@@ -260,6 +318,44 @@ export default function TowerOfHanoiPage() {
 
     return (
         <div className="flex flex-col items-center p-4">
+            <AlertDialog open={isWon}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                    <AlertDialogTitle className="text-2xl text-green-600 flex items-center justify-center gap-2">
+                       <Award size={28} /> Puzzle Solved!
+                    </AlertDialogTitle>
+                    </AlertDialogHeader>
+                     <div className="py-4 text-center">
+                        {isCalculatingReward ? (
+                            <div className="flex flex-col items-center justify-center gap-2 pt-4">
+                                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                                <p className="text-sm text-muted-foreground">Calculating your rewards...</p>
+                            </div>
+                        ) : lastReward ? (
+                            <div className="flex flex-col items-center gap-3 text-center">
+                                <StarRating rating={lastReward.stars} />
+                                <AlertDialogDescription className="text-center text-base pt-2">
+                                    Congratulations! You solved the puzzle.
+                                    <br />
+                                    <strong className="text-lg">Moves: {moves}</strong> | <strong className="text-lg">Minimum: {minMoves}</strong>
+                                </AlertDialogDescription>
+                                <div className="flex items-center gap-6 mt-2">
+                                    <span className="flex items-center font-bold text-2xl">
+                                        +{lastReward.points} <SPointsIcon className="ml-2 h-7 w-7 text-yellow-400" />
+                                    </span>
+                                    <span className="flex items-center font-bold text-2xl">
+                                        +{lastReward.coins} <SCoinsIcon className="ml-2 h-7 w-7 text-amber-500" />
+                                    </span>
+                                </div>
+                            </div>
+                        ) : null}
+                    </div>
+                    <AlertDialogFooter>
+                        <AlertDialogAction onClick={startGame} disabled={isCalculatingReward}>Play Again</AlertDialogAction>
+                        <AlertDialogCancel onClick={() => setGameState('setup')} disabled={isCalculatingReward}>Back to Menu</AlertDialogCancel>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
             <Card className="w-full max-w-2xl shadow-xl">
                 <CardHeader className="text-center">
                     <CardTitle className="text-3xl font-bold">Tower of Hanoi</CardTitle>
@@ -268,15 +364,6 @@ export default function TowerOfHanoiPage() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                    {isWon && (
-                        <div className="p-4 bg-green-100 dark:bg-green-900 rounded-lg text-center">
-                             <Award className="mx-auto h-12 w-12 text-yellow-500 mb-2"/>
-                            <h3 className="text-2xl font-bold text-green-700 dark:text-green-300">You Win!</h3>
-                            <p className="text-green-600 dark:text-green-400">
-                                {moves === minMoves ? "Perfect score! Well done." : `You did it in ${moves} moves.`}
-                            </p>
-                        </div>
-                    )}
                     <div className="grid grid-cols-3 gap-4">
                         {towers.map((disks, index) => (
                             <Rod 
@@ -293,7 +380,7 @@ export default function TowerOfHanoiPage() {
                         ))}
                     </div>
                      <div className="mt-6 flex gap-4">
-                        <Button onClick={() => difficulty && startGame()} className="w-full"><RotateCw className="mr-2"/> Reset</Button>
+                        <Button onClick={startGame} className="w-full"><RotateCw className="mr-2"/> Reset</Button>
                         <Button onClick={() => setGameState('setup')} variant="outline" className="w-full"><ArrowLeft className="mr-2"/> Change Difficulty</Button>
                     </div>
                 </CardContent>
