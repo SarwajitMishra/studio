@@ -16,7 +16,7 @@ import { REWARD_LOGIC } from '@/lib/reward-logic';
 // Define Zod schemas for structured input and output.
 const RewardCalculationInputSchema = z.object({
   gameId: z.string().describe('The unique identifier for the game played (e.g., "guessTheNumber", "chess").'),
-  difficulty: z.enum(['easy', 'medium', 'hard']).describe('The difficulty level of the game played.'),
+  difficulty: z.enum(['easy', 'medium', 'hard', 'beginner', 'expert', 'pro']).describe('The difficulty level of the game played.'),
   performanceMetrics: z
     .record(z.any())
     .optional()
