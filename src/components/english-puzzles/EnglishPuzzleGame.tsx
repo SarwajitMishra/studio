@@ -64,7 +64,7 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
   };
   
   const resetSessionHistory = () => {
-    if (typeof window !== 'undefined') {
+    if (typeof window === 'undefined') {
       sessionStorage.removeItem(sessionKey);
     }
   };
@@ -120,6 +120,14 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
     }
   }, [puzzleType, difficulty, sessionKey, toast]);
 
+  const handleGameOver = useCallback((finalScore: number) => {
+    setIsRoundOver(true);
+    const didWin = finalScore === MAX_QUESTIONS;
+    updateGameStats({ gameId: 'easy-english', didWin, score: finalScore * 100 });
+    setFeedback({ message: `Round Over! Your final score: ${finalScore}/${MAX_QUESTIONS}`, type: "info" });
+    setCurrentPuzzle(null);
+  }, []);
+
   const processAnswerResult = useCallback((isCorrect: boolean) => {
     setIsAnswered(true);
     if (isCorrect) {
@@ -150,45 +158,33 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
     }
 
     setTimeout(() => {
-      setQuestionsAnswered(prevQuestionsAnswered => {
-        const newQuestionsAnswered = prevQuestionsAnswered + 1;
-        
-        if (newQuestionsAnswered >= MAX_QUESTIONS) {
-          setIsRoundOver(true);
-          setScore(currentScore => {
-            const finalScore = currentScore;
-            const didWin = finalScore === MAX_QUESTIONS;
-            updateGameStats({ gameId: 'easy-english', didWin, score: finalScore * 100 });
-            setFeedback({ message: `Round Over! Your final score: ${finalScore}/${MAX_QUESTIONS}`, type: "info" });
-            setCurrentPuzzle(null);
-            return finalScore;
-          });
-        } else {
-          loadNextPuzzle();
-        }
-        return newQuestionsAnswered;
-      });
+      const newQuestionsAnswered = questionsAnswered + 1;
+      setQuestionsAnswered(newQuestionsAnswered);
+      
+      if (newQuestionsAnswered >= MAX_QUESTIONS) {
+        // Use the current score state, adding one if the answer was correct, to get the final score.
+        // This avoids issues with stale state inside the setTimeout closure.
+        handleGameOver(isCorrect ? score + 1 : score);
+      } else {
+        loadNextPuzzle();
+      }
     }, isCorrect ? 1500 : 3000);
-  }, [currentPuzzle, loadNextPuzzle, toast]);
+  }, [currentPuzzle, loadNextPuzzle, toast, questionsAnswered, score, handleGameOver]);
 
   const startNewRound = useCallback(() => {
-    if (questionsAnswered > 0 && !isRoundOver) {
-        updateGameStats({ gameId: 'easy-english', didWin: false, score: score * 100 });
-    }
-    resetSessionHistory(); // Clear history for a completely new round
+    resetSessionHistory();
     setScore(0);
     setQuestionsAnswered(0);
     setIsRoundOver(false);
     setFeedback(null);
     loadNextPuzzle();
-  }, [loadNextPuzzle, questionsAnswered, isRoundOver, score]);
+  }, [loadNextPuzzle]);
 
   useEffect(() => {
+    // This effect now correctly depends on `startNewRound` and `difficulty`.
+    // The `startNewRound` function has been stabilized to not cause loops.
     startNewRound();
-    // This effect should only run once when the component mounts or difficulty changes.
-    // The dependency array is empty because startNewRound has its own dependencies.
-    // Let's add startNewRound to the dependency array to satisfy the linter.
-  }, [startNewRound]);
+  }, [startNewRound, difficulty]);
 
   const handleOptionSelect = (selectedOption: string) => {
     if (!currentPuzzle || isAnswered || currentPuzzle.type === 'sentenceScramble') return;
