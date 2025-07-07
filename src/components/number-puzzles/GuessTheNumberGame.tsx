@@ -6,11 +6,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Target, RotateCcw, Lightbulb, Award, ArrowLeft } from "lucide-react";
+import { Target, RotateCcw, Lightbulb, Award, ArrowLeft, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import type { Difficulty } from "@/lib/constants";
-import { addRewards } from "@/lib/rewards";
+import { applyRewards, calculateRewards } from "@/lib/rewards";
 
 const DIFFICULTY_CONFIG = {
   easy: { max: 20 },
@@ -30,6 +30,7 @@ export default function GuessTheNumberGame({ onBack, difficulty }: GuessTheNumbe
   const [attempts, setAttempts] = useState<number>(0);
   const [isGameWon, setIsGameWon] = useState<boolean>(false);
   const [showHint, setShowHint] = useState<boolean>(false);
+  const [isCalculatingReward, setIsCalculatingReward] = useState<boolean>(false);
   const { toast } = useToast();
 
   const maxNumber = DIFFICULTY_CONFIG[difficulty].max;
@@ -42,15 +43,16 @@ export default function GuessTheNumberGame({ onBack, difficulty }: GuessTheNumbe
     setAttempts(0);
     setIsGameWon(false);
     setShowHint(false);
+    setIsCalculatingReward(false);
   }, [maxNumber]);
 
   useEffect(() => {
     resetGame();
   }, [resetGame, difficulty]);
 
-  const handleGuessSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleGuessSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (isGameWon || secretNumber === null) return;
+    if (isGameWon || secretNumber === null || isCalculatingReward) return;
     const guessNum = parseInt(currentGuess, 10);
 
     if (isNaN(guessNum) || guessNum < 1 || guessNum > maxNumber) {
@@ -67,20 +69,34 @@ export default function GuessTheNumberGame({ onBack, difficulty }: GuessTheNumbe
     setAttempts(newAttemptCount);
 
     if (guessNum === secretNumber) {
-      setFeedback(`Congratulations! You guessed it in ${newAttemptCount} attempts.`);
+      setFeedback(`Congratulations! You guessed it in ${newAttemptCount} attempts. Calculating your reward...`);
       setIsGameWon(true);
+      setIsCalculatingReward(true);
       
-      // Award points and coins
-      let points = difficulty === 'easy' ? 50 : difficulty === 'medium' ? 75 : 100;
-      let coins = newAttemptCount === 1 ? 6 : 1; // 1 for win, +5 bonus for first try
-      const rewards = addRewards(points, coins);
-      
-      toast({
-        title: "You Win! 🏆",
-        description: `You earned ${rewards.points} S-Points and ${rewards.coins} S-Coins!`,
-        className: "bg-green-500 text-white",
-        duration: 5000,
-      });
+      try {
+        const rewards = await calculateRewards({
+            gameId: 'guessTheNumber',
+            difficulty,
+            performanceMetrics: { attempts: newAttemptCount }
+        });
+
+        const earned = applyRewards(rewards.sPoints, rewards.sCoins);
+        
+        toast({
+          title: "You Win! 🏆",
+          description: `You earned ${earned.points} S-Points and ${earned.coins} S-Coins!`,
+          className: "bg-green-500 text-white",
+          duration: 5000,
+        });
+        setFeedback(`You guessed it in ${newAttemptCount} attempts! You've been awarded ${earned.points} S-Points and ${earned.coins} S-Coins.`);
+
+      } catch (error) {
+        console.error("Error calculating rewards:", error);
+        toast({ variant: 'destructive', title: 'Reward Error', description: 'Could not calculate rewards.' });
+        setFeedback(`You guessed it in ${newAttemptCount} attempts! There was an error calculating rewards.`);
+      } finally {
+        setIsCalculatingReward(false);
+      }
 
     } else if (guessNum < secretNumber) {
       setFeedback("Too low! Try a higher number.");
@@ -122,7 +138,8 @@ export default function GuessTheNumberGame({ onBack, difficulty }: GuessTheNumbe
             <Award className="mx-auto h-16 w-16 text-yellow-500 mb-3" />
             <h2 className="text-2xl font-bold text-green-700">You Guessed It!</h2>
             <p className="text-lg text-green-600 mt-1">{feedback}</p>
-            <Button onClick={resetGame} className="mt-6 w-full sm:w-auto bg-accent text-accent-foreground hover:bg-accent/90">
+            {isCalculatingReward && <Loader2 className="animate-spin mx-auto my-2" />}
+            <Button onClick={resetGame} className="mt-6 w-full sm:w-auto bg-accent text-accent-foreground hover:bg-accent/90" disabled={isCalculatingReward}>
               <RotateCcw className="mr-2 h-5 w-5" /> Play Again
             </Button>
           </div>

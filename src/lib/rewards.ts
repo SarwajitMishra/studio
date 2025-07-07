@@ -1,6 +1,8 @@
 
+'use client';
 // src/lib/rewards.ts
 import { LOCAL_STORAGE_S_POINTS_KEY, LOCAL_STORAGE_S_COINS_KEY } from "@/lib/constants";
+import { calculateRewards as calculateRewardsFlow, type RewardCalculationInput } from '@/ai/flows/calculate-rewards-flow';
 
 const S_POINTS_TO_S_COIN_CONVERSION_THRESHOLD = 500;
 
@@ -26,13 +28,13 @@ const setStoredGameCurrency = (key: string, value: number): void => {
 };
 
 /**
- * Adds S-Points and S-Coins to the user's balance, handles S-Point to S-Coin conversion,
- * and notifies the app of the update.
+ * Applies the given S-Points and S-Coins to the user's balance, handles S-Point to S-Coin conversion,
+ * and notifies the app of the update. This function should only be called on the client.
  * @param pointsToAdd The number of S-Points to add.
  * @param coinsToAdd The number of S-Coins to add.
  * @returns The total number of points and coins earned in this transaction (including conversions).
  */
-export function addRewards(pointsToAdd: number, coinsToAdd: number): { points: number; coins: number } {
+export function applyRewards(pointsToAdd: number, coinsToAdd: number): { points: number; coins: number } {
   if (typeof window === 'undefined') return { points: pointsToAdd, coins: coinsToAdd };
 
   // Get current values
@@ -58,7 +60,16 @@ export function addRewards(pointsToAdd: number, coinsToAdd: number): { points: n
   // Dispatch a custom event to notify other parts of the app (like the profile page)
   window.dispatchEvent(new CustomEvent('storageUpdated'));
   
-  console.log(`Rewards added. Points: +${pointsToAdd}, Coins: +${coinsToAdd}. Converted Coins: ${convertedCoins}. New Total Points: ${newPoints}, New Total Coins: ${newCoins}`);
+  console.log(`Rewards applied. Points: +${pointsToAdd}, Coins: +${coinsToAdd}. Converted Coins: ${convertedCoins}. New Total Points: ${newPoints}, New Total Coins: ${newCoins}`);
 
   return { points: pointsToAdd, coins: coinsToAdd + convertedCoins };
+}
+
+
+/**
+ * A server action that calls the AI flow to determine rewards.
+ * This can be safely called from client components.
+ */
+export async function calculateRewards(input: RewardCalculationInput): Promise<{ sPoints: number; sCoins: number; }> {
+    return await calculateRewardsFlow(input);
 }
