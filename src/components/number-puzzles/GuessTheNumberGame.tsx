@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { Difficulty } from "@/lib/constants";
 import { applyRewards, calculateRewards } from "@/lib/rewards";
 import { S_POINTS_ICON as SPointsIcon, S_COINS_ICON as SCoinsIcon } from "@/lib/constants";
+import { updateGameStats } from "@/lib/progress";
 
 const DIFFICULTY_CONFIG = {
   easy: { max: 20 },
@@ -59,6 +60,10 @@ export default function GuessTheNumberGame({ onBack, difficulty }: GuessTheNumbe
 
 
   const resetGame = useCallback(() => {
+    // If a game was in progress and is being reset, count it as played (but not won)
+    if (attempts > 0 && !isGameWon) {
+        updateGameStats({ gameId: 'guessTheNumber', didWin: false });
+    }
     const newSecret = Math.floor(Math.random() * maxNumber) + 1;
     setSecretNumber(newSecret);
     setCurrentGuess("");
@@ -67,11 +72,18 @@ export default function GuessTheNumberGame({ onBack, difficulty }: GuessTheNumbe
     setIsGameWon(false);
     setShowHint(false);
     setIsCalculatingReward(false);
-  }, [maxNumber]);
+  }, [maxNumber, attempts, isGameWon]);
 
   useEffect(() => {
-    resetGame();
-  }, [resetGame, difficulty]);
+    const newSecret = Math.floor(Math.random() * maxNumber) + 1;
+    setSecretNumber(newSecret);
+    setCurrentGuess("");
+    setFeedback(`I'm thinking of a number between 1 and ${maxNumber}.`);
+    setAttempts(0);
+    setIsGameWon(false);
+    setShowHint(false);
+    setIsCalculatingReward(false);
+  }, [difficulty, maxNumber]);
 
   const handleGuessSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -95,6 +107,9 @@ export default function GuessTheNumberGame({ onBack, difficulty }: GuessTheNumbe
       setFeedback(<span className="text-green-600">Congratulations! You guessed it. Calculating reward...</span>);
       setIsGameWon(true);
       setIsCalculatingReward(true);
+
+      const scoreForStat = Math.max(0, 1000 - newAttemptCount * 50);
+      updateGameStats({ gameId: 'guessTheNumber', didWin: true, score: scoreForStat });
       
       try {
         const rewards = await calculateRewards({

@@ -36,6 +36,7 @@ import {
 } from '@/lib/firebase';
 import { ref as storageRef, uploadString, getDownloadURL } from 'firebase/storage';
 import { applyColorTheme } from '@/components/theme-provider';
+import { getGameStats, type GameStat } from '@/lib/progress';
 
 const THEME_OPTIONS = [
   { value: 'light', label: 'Light Mode', Icon: Sun },
@@ -55,13 +56,6 @@ const LOCAL_STORAGE_AVATAR_KEY = 'shravyaPlayhouse_avatar';
 const DEFAULT_AVATAR_SRC = '/images/avatars/modern_girl.png';
 const DEFAULT_USER_NAME = "Kiddo";
 
-interface GameStat {
-  gameId: string;
-  gamesPlayed: number | string;
-  wins: number | string;
-  highScore: number | string;
-}
-
 const getStoredGameCurrency = (key: string): number => {
   if (typeof window !== 'undefined') {
     try {
@@ -73,16 +67,6 @@ const getStoredGameCurrency = (key: string): number => {
     }
   }
   return 0;
-};
-
-const setStoredGameCurrency = (key: string, value: number): void => {
-  if (typeof window !== 'undefined') {
-    try {
-      localStorage.setItem(key, value.toString());
-    } catch (e) {
-      console.error("Error writing to localStorage", e);
-    }
-  }
 };
 
 
@@ -110,13 +94,22 @@ export default function ProfilePage() {
     setSCoins(getStoredGameCurrency(LOCAL_STORAGE_S_COINS_KEY));
   }, []);
 
-  // Effect to listen for currency updates from other components
+  const updateStatsDisplay = useCallback(() => {
+    // Only update from local storage if user is offline
+    if (!auth.currentUser) {
+        setGameStats(getGameStats());
+    }
+  }, []);
+
+  // Effect to listen for currency and stats updates from other components
   useEffect(() => {
     window.addEventListener('storageUpdated', updateCurrencyDisplay);
+    window.addEventListener('statsUpdated', updateStatsDisplay);
     return () => {
       window.removeEventListener('storageUpdated', updateCurrencyDisplay);
+      window.removeEventListener('statsUpdated', updateStatsDisplay);
     };
-  }, [updateCurrencyDisplay]);
+  }, [updateCurrencyDisplay, updateStatsDisplay]);
 
 
   // Effect for loading local data on initial mount (theme is handled by ThemeProvider)
@@ -134,8 +127,8 @@ export default function ProfilePage() {
         wins: 'N/A',
         highScore: 'N/A',
     }));
-    setGameStats(initialStats);
-  }, []);
+    updateStatsDisplay();
+  }, [updateStatsDisplay]);
 
   // Simplified, single effect for handling Firebase Auth state changes
   useEffect(() => {
@@ -187,18 +180,12 @@ export default function ProfilePage() {
             setSPoints(getStoredGameCurrency(LOCAL_STORAGE_S_POINTS_KEY));
             setSCoins(getStoredGameCurrency(LOCAL_STORAGE_S_COINS_KEY));
             
-            const offlineStats = GAMES.map(game => ({
-                gameId: game.id,
-                gamesPlayed: 'N/A',
-                wins: 'N/A',
-                highScore: 'N/A',
-            }));
-            setGameStats(offlineStats);
+            updateStatsDisplay();
         }
     });
 
     return () => unsubscribe();
-  }, [toast]);
+  }, [toast, updateStatsDisplay]);
 
   const handleAutoSaveAvatar = useCallback(async (avatarToSave: string) => {
       if (!currentUser) return;
@@ -512,13 +499,15 @@ export default function ProfilePage() {
                 <CardTitle className="text-2xl">Your Game Journey</CardTitle>
               </div>
               <CardDescription>
-                {currentUser ? "Your activity across Shravya Playhouse games." : "Log in to see your game progress and achievements. Placeholder data shown below."}
+                {currentUser ? "Your activity across Shravya Playhouse games (illustrative data shown)." : "Your game progress is saved in this browser. Log in to sync across devices."}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6 pt-4">
-              {GAMES.map((game) => {
+              {gameStats.length > 0 ? GAMES.map((game) => {
                 const stat = gameStats.find(s => s.gameId === game.id);
                 const IconComponent = game.Icon || Gamepad2; 
+                if (!stat) return null; // Should not happen with getGameStats
+                
                 return (
                   <Card key={game.id} className="p-4 bg-muted/30">
                     <div className="flex items-center mb-3">
@@ -528,36 +517,26 @@ export default function ProfilePage() {
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2 text-sm">
                       <div>
                         <p className="text-muted-foreground">Played:</p>
-                        <p className="font-medium">{currentUser && stat ? stat.gamesPlayed : '--'}</p>
+                        <p className="font-medium">{stat.gamesPlayed}</p>
                       </div>
                       <div>
                         <p className="text-muted-foreground">Wins:</p>
-                        <p className="font-medium">{currentUser && stat ? stat.wins : '--'}</p>
+                        <p className="font-medium">{stat.wins}</p>
                       </div>
                       <div>
                         <p className="text-muted-foreground">High Score:</p>
-                        <p className="font-medium">{currentUser && stat ? stat.highScore : '--'}</p>
+                        <p className="font-medium">{stat.highScore}</p>
                       </div>
                     </div>
                   </Card>
                 );
-              })}
-              {!currentUser && (
-                <div className="text-center py-6">
-                    <BarChart3 size={48} className="mx-auto text-primary/30 mb-3" />
-                    <p className="text-md text-foreground/90">
-                        Log in to track your progress and compete!
-                    </p>
-                     <p className="text-sm text-muted-foreground mt-1">Your game stats will be saved to your online profile.</p>
-                </div>
-              )}
-               {currentUser && gameStats.length === 0 && (
+              }) : (
                  <div className="text-center py-6">
                     <Gamepad2 size={48} className="mx-auto text-primary/30 mb-3" />
                     <p className="text-md text-foreground/90">No game activity yet.</p>
                     <p className="text-sm text-muted-foreground mt-1">Play some games to see your stats here!</p>
                 </div>
-               )}
+              )}
                {currentUser && gameStats.length > 0 && (
                  <p className="text-xs text-muted-foreground text-center pt-4">
                     (Note: Current stats are illustrative. Real-time detailed tracking coming soon!)
@@ -652,6 +631,7 @@ export default function ProfilePage() {
     
 
     
+
 
 
 

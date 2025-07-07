@@ -1,0 +1,83 @@
+'use client';
+
+import { GAMES } from './constants';
+
+export const LOCAL_STORAGE_GAME_STATS_KEY = 'shravyaPlayhouse_gameStats';
+
+export interface GameStat {
+  gameId: string;
+  gamesPlayed: number;
+  wins: number;
+  highScore: number;
+}
+
+export const getGameStats = (): GameStat[] => {
+    if (typeof window === 'undefined') {
+        // Return default structure during server-side rendering
+        return GAMES.map(game => ({ gameId: game.id, gamesPlayed: 0, wins: 0, highScore: 0 }));
+    }
+    try {
+        const stored = localStorage.getItem(LOCAL_STORAGE_GAME_STATS_KEY);
+        const stats = stored ? JSON.parse(stored) : [];
+        
+        // Ensure all games from constants are present in stats, and handle malformed data
+        const allGameStats = GAMES.map(game => {
+            const foundStat = stats.find((s: any) => s && s.gameId === game.id);
+            return {
+                gameId: game.id,
+                gamesPlayed: (foundStat && typeof foundStat.gamesPlayed === 'number') ? foundStat.gamesPlayed : 0,
+                wins: (foundStat && typeof foundStat.wins === 'number') ? foundStat.wins : 0,
+                highScore: (foundStat && typeof foundStat.highScore === 'number') ? foundStat.highScore : 0
+            };
+        });
+        return allGameStats;
+    } catch (e) {
+        console.error("Error reading game stats from localStorage", e);
+        return GAMES.map(game => ({ gameId: game.id, gamesPlayed: 0, wins: 0, highScore: 0 }));
+    }
+};
+
+const setGameStats = (stats: GameStat[]) => {
+    if (typeof window === 'undefined') return;
+    try {
+        localStorage.setItem(LOCAL_STORAGE_GAME_STATS_KEY, JSON.stringify(stats));
+        // Dispatch event so other components (like profile page) can update
+        window.dispatchEvent(new CustomEvent('statsUpdated'));
+    } catch (e) {
+        console.error("Error writing game stats to localStorage", e);
+    }
+}
+
+interface UpdateStatsPayload {
+    gameId: string;
+    didWin: boolean;
+    score?: number; 
+}
+
+export const updateGameStats = (payload: UpdateStatsPayload) => {
+    if (typeof window === 'undefined') return;
+    const stats = getGameStats();
+    const statIndex = stats.findIndex(s => s.gameId === payload.gameId);
+
+    if (statIndex !== -1) {
+        const statToUpdate = stats[statIndex];
+        statToUpdate.gamesPlayed += 1;
+        if (payload.didWin) {
+            statToUpdate.wins += 1;
+        }
+        if (payload.score !== undefined && payload.score > statToUpdate.highScore) {
+            statToUpdate.highScore = payload.score;
+        }
+        stats[statIndex] = statToUpdate;
+    } else {
+        // This case should be handled by getGameStats, but as a fallback:
+        stats.push({
+            gameId: payload.gameId,
+            gamesPlayed: 1,
+            wins: payload.didWin ? 1 : 0,
+            highScore: payload.score || 0,
+        });
+    }
+
+    setGameStats(stats);
+}
