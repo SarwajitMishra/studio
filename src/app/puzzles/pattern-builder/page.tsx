@@ -109,7 +109,7 @@ export default function PatternBuilderPage() {
     return (
        <div
             className="grid gap-1 bg-muted p-2 rounded-lg"
-            style={{ gridTemplateColumns: `repeat(${config.gridSize}, minmax(0, 1fr))` }}
+            style={{ gridTemplateColumns: 'repeat(' + config.gridSize + ', minmax(0, 1fr))' }}
         >
             {gridData.map((color, index) => (
                 <button
