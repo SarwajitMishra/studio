@@ -9,6 +9,7 @@ import { KeyRound, ArrowLeft, RotateCw, Check, Award, XCircle } from 'lucide-rea
 import { cn } from "@/lib/utils";
 import type { Difficulty } from "@/lib/constants";
 import { useToast } from "@/hooks/use-toast";
+import { updateGameStats } from "@/lib/progress";
 
 type Color = 'red' | 'blue' | 'green' | 'yellow' | 'purple' | 'orange';
 const COLORS: Color[] = ['red', 'blue', 'green', 'yellow', 'purple', 'orange'];
@@ -61,6 +62,9 @@ export default function CodeBreakerGame({ onBack, difficulty }: CodeBreakerGameP
   }, [difficulty]);
 
   const resetGame = useCallback(() => {
+    if (guesses.length > 0 && !isGameOver) {
+        updateGameStats({ gameId: 'number-puzzles', didWin: false, score: 0 });
+    }
     const newConfig = DIFFICULTY_CONFIG[difficulty];
     setConfig(newConfig);
     setCurrentGuess(Array(newConfig.codeLength).fill(null));
@@ -68,7 +72,7 @@ export default function CodeBreakerGame({ onBack, difficulty }: CodeBreakerGameP
     setIsGameOver(false);
     setIsWin(false);
     generateSecretCode();
-  }, [difficulty, generateSecretCode]);
+  }, [difficulty, generateSecretCode, guesses, isGameOver]);
 
   useEffect(() => {
     resetGame();
@@ -130,10 +134,12 @@ export default function CodeBreakerGame({ onBack, difficulty }: CodeBreakerGameP
     if (correctPosition === config.codeLength) {
       setIsGameOver(true);
       setIsWin(true);
+      updateGameStats({ gameId: 'number-puzzles', didWin: true, score: config.maxGuesses - newGuesses.length });
       toast({ title: "You Won!", description: `You cracked the code in ${newGuesses.length} guesses!`, className: "bg-green-500 text-white" });
     } else if (newGuesses.length >= config.maxGuesses) {
       setIsGameOver(true);
       setIsWin(false);
+      updateGameStats({ gameId: 'number-puzzles', didWin: false, score: 0 });
       toast({ variant: 'destructive', title: "Game Over", description: "You've run out of guesses." });
     }
   };
@@ -189,7 +195,7 @@ export default function CodeBreakerGame({ onBack, difficulty }: CodeBreakerGameP
                       <p>The code was:</p>
                       <div className="flex gap-2">{secretCode.map((c, i) => <div key={i} className={cn("w-6 h-6 rounded-full shadow-inner", COLOR_MAP[c])} />)}</div>
                     </div>
-                    <Button onClick={resetGame} className="mt-4"><RotateCw className="mr-2" /> Play Again</Button>
+                    <Button onClick={resetGame} className="mt-4"><RotateCcw className="mr-2" /> Play Again</Button>
                 </div>
             ): (
                  <>

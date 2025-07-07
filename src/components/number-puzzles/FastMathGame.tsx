@@ -9,6 +9,7 @@ import { Swords, RotateCw, Award, ArrowLeft, CheckCircle, XCircle } from "lucide
 import { cn } from "@/lib/utils";
 import type { Difficulty } from "@/lib/constants";
 import { useToast } from "@/hooks/use-toast";
+import { updateGameStats } from "@/lib/progress";
 
 const GAME_DURATION_S = 60;
 const GRID_SIZE = 9;
@@ -96,8 +97,9 @@ export default function FastMathGame({ onBack, difficulty }: FastMathGameProps) 
       return () => clearTimeout(timer);
     } else if (timeLeft <= 0 && !isGameOver) {
       setIsGameOver(true);
+      updateGameStats({ gameId: 'number-puzzles', didWin: score > 0, score });
     }
-  }, [timeLeft, isGameOver]);
+  }, [timeLeft, isGameOver, score]);
 
   const handleAnswerClick = (selectedAnswer: number) => {
     if (feedback) return;
@@ -146,7 +148,7 @@ export default function FastMathGame({ onBack, difficulty }: FastMathGameProps) 
             <h2 className="text-2xl font-bold text-blue-700">Time's Up!</h2>
             <p className="text-lg text-blue-600 mt-1">Your final score is {score}.</p>
             <Button onClick={resetGame} className="mt-6 w-full sm:w-auto bg-accent text-accent-foreground hover:bg-accent/90">
-              <RotateCw className="mr-2 h-5 w-5" /> Play Again
+              <RotateCcw className="mr-2 h-5 w-5" /> Play Again
             </Button>
           </div>
         ) : problem && (

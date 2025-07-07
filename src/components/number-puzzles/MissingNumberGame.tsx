@@ -10,6 +10,7 @@ import { Search, Hash, RotateCcw, Award, ArrowLeft, CheckCircle, XCircle } from 
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import type { Difficulty } from "@/lib/constants";
+import { updateGameStats } from "@/lib/progress";
 
 const QUESTIONS_PER_ROUND = 5;
 const SEQUENCE_LENGTH = 5; 
@@ -79,11 +80,14 @@ export default function MissingNumberGame({ onBack, difficulty }: MissingNumberG
   }, [generateProblem]);
 
   const resetGame = useCallback(() => {
+    if (questionsAnswered > 0 && !isGameOver) {
+        updateGameStats({ gameId: 'number-puzzles', didWin: false, score: score * 100 });
+    }
     setScore(0);
     setQuestionsAnswered(0);
     setIsGameOver(false);
     loadNewProblem();
-  }, [loadNewProblem]);
+  }, [loadNewProblem, questionsAnswered, isGameOver, score]);
 
   useEffect(() => {
     resetGame();
@@ -119,7 +123,10 @@ export default function MissingNumberGame({ onBack, difficulty }: MissingNumberG
       setQuestionsAnswered(newQuestionsAnswered);
       if (newQuestionsAnswered >= QUESTIONS_PER_ROUND) {
         setIsGameOver(true);
-        setFeedback(isCorrect ? `Correct! Final Score: ${score + 1}/${QUESTIONS_PER_ROUND}` : `Not quite. The missing number was ${currentProblem.answer}. ${currentProblem.description || ''} Final Score: ${score}/${QUESTIONS_PER_ROUND}`);
+        const finalScore = isCorrect ? score + 1 : score;
+        const didWin = finalScore === QUESTIONS_PER_ROUND;
+        updateGameStats({ gameId: 'number-puzzles', didWin, score: finalScore * 100 });
+        setFeedback(isCorrect ? `Correct! Final Score: ${finalScore}/${QUESTIONS_PER_ROUND}` : `Not quite. The missing number was ${currentProblem.answer}. ${currentProblem.description || ''} Final Score: ${finalScore}/${QUESTIONS_PER_ROUND}`);
       } else {
         loadNewProblem();
       }

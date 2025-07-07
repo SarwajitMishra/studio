@@ -10,6 +10,7 @@ import { Calculator, Hash, RotateCcw, Award, ArrowLeft, CheckCircle, XCircle } f
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import type { Difficulty } from "@/lib/constants";
+import { updateGameStats } from "@/lib/progress";
 
 const QUESTIONS_PER_ROUND = 5;
 
@@ -65,11 +66,14 @@ export default function ArithmeticChallengeGame({ onBack, difficulty }: Arithmet
   }, [difficulty]);
 
   const resetGame = useCallback(() => {
+    if (questionsAnswered > 0 && !isGameOver) {
+        updateGameStats({ gameId: 'number-puzzles', didWin: false, score: score * 100 });
+    }
     setScore(0);
     setQuestionsAnswered(0);
     setIsGameOver(false);
     generateProblem();
-  }, [generateProblem]);
+  }, [generateProblem, questionsAnswered, isGameOver, score]);
 
   useEffect(() => {
     resetGame();
@@ -102,7 +106,10 @@ export default function ArithmeticChallengeGame({ onBack, difficulty }: Arithmet
       setQuestionsAnswered(newQuestionsAnswered);
       if (newQuestionsAnswered >= QUESTIONS_PER_ROUND) {
         setIsGameOver(true);
-        setFeedback(isCorrect ? `Correct! Final Score: ${score + 1}/${QUESTIONS_PER_ROUND}` : `Not quite. The answer was ${currentProblem.answer}. Final Score: ${score}/${QUESTIONS_PER_ROUND}`);
+        const finalScore = isCorrect ? score + 1 : score;
+        const didWin = finalScore === QUESTIONS_PER_ROUND;
+        updateGameStats({ gameId: 'number-puzzles', didWin, score: finalScore * 100 });
+        setFeedback(isCorrect ? `Correct! Final Score: ${finalScore}/${QUESTIONS_PER_ROUND}` : `Not quite. The answer was ${currentProblem.answer}. Final Score: ${finalScore}/${QUESTIONS_PER_ROUND}`);
       } else {
         generateProblem();
       }

@@ -11,6 +11,7 @@ import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import type { Difficulty } from "@/lib/constants";
+import { updateGameStats } from "@/lib/progress";
 
 const QUESTIONS_PER_ROUND = 5;
 
@@ -103,6 +104,9 @@ export default function CountTheObjectsGame({ onBack, difficulty }: CountTheObje
   }, [difficulty, sessionKey]);
 
   const startNewRound = useCallback((clearHistory = false) => {
+    if (questionsAnswered > 0 && !isRoundOver) {
+        updateGameStats({ gameId: 'number-puzzles', didWin: false, score: score * 100 });
+    }
     if (clearHistory) {
       resetSessionHistory();
     }
@@ -112,7 +116,7 @@ export default function CountTheObjectsGame({ onBack, difficulty }: CountTheObje
     setAllIconsUsed(false);
     setFeedback(null);
     loadNewProblem();
-  }, [loadNewProblem]);
+  }, [loadNewProblem, questionsAnswered, isRoundOver, score]);
   
   useEffect(() => {
     startNewRound(false);
@@ -151,7 +155,10 @@ export default function CountTheObjectsGame({ onBack, difficulty }: CountTheObje
       setQuestionsAnswered(newQuestionsAnswered);
       if (newQuestionsAnswered >= QUESTIONS_PER_ROUND) {
         setIsRoundOver(true);
-        setFeedback(isCorrect ? `Correct! Final Score: ${newScore}/${QUESTIONS_PER_ROUND}` : `Not quite. There were ${currentProblem.count} ${currentProblem.iconName.toLowerCase()}s. Final Score: ${score}/${QUESTIONS_PER_ROUND}`);
+        const finalScore = isCorrect ? newScore : score;
+        const didWin = finalScore === QUESTIONS_PER_ROUND;
+        updateGameStats({ gameId: 'number-puzzles', didWin, score: finalScore * 100 });
+        setFeedback(isCorrect ? `Correct! Final Score: ${finalScore}/${QUESTIONS_PER_ROUND}` : `Not quite. There were ${currentProblem.count} ${currentProblem.iconName.toLowerCase()}s. Final Score: ${score}/${QUESTIONS_PER_ROUND}`);
         setCurrentProblem(null);
       } else {
         loadNewProblem();

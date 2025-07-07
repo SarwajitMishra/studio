@@ -9,6 +9,7 @@ import { LayoutGrid, ArrowLeft, RotateCw, Check } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import type { Difficulty } from "@/lib/constants";
 import { useToast } from "@/hooks/use-toast";
+import { updateGameStats } from "@/lib/progress";
 
 interface WordGridGameProps {
   onBack: () => void;
@@ -78,6 +79,7 @@ export default function WordGridGame({ onBack, difficulty }: WordGridGameProps) 
       return () => clearTimeout(timer);
     } else if (timeLeft <= 0 && !isGameOver) {
       setIsGameOver(true);
+      updateGameStats({ gameId: 'easy-english', didWin: true, score });
       toast({ title: "Time's Up!", description: `Your final score is ${score}.`});
     }
   }, [timeLeft, isGameOver, score, toast]);
@@ -185,4 +187,3 @@ export default function WordGridGame({ onBack, difficulty }: WordGridGameProps) 
     </Card>
   );
 }
-

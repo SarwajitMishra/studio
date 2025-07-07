@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import type { EnglishPuzzleItem, EnglishPuzzleSubtype, Difficulty } from "@/lib/constants";
 import { generateEnglishPuzzle, type GenerateEnglishPuzzleInput } from "@/ai/flows/generate-english-puzzle-flow";
+import { updateGameStats } from "@/lib/progress";
 
 const shuffleArray = <T,>(array: T[]): T[] => {
   const newArray = [...array];
@@ -121,13 +122,16 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
 
 
   const startNewRound = useCallback(() => {
+    if (questionsAnswered > 0 && !isRoundOver) {
+        updateGameStats({ gameId: 'easy-english', didWin: false, score: score * 100 });
+    }
     resetSessionHistory(); // Clear history for a completely new round
     setScore(0);
     setQuestionsAnswered(0);
     setIsRoundOver(false);
     setFeedback(null);
     loadNextPuzzle();
-  }, [loadNextPuzzle]);
+  }, [loadNextPuzzle, questionsAnswered, isRoundOver, score]);
 
   useEffect(() => {
     startNewRound();
@@ -170,7 +174,10 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
 
       if (newQuestionsAnswered >= MAX_QUESTIONS) {
         setIsRoundOver(true);
-        setFeedback({ message: `Round Over! Your final score: ${newScore}/${MAX_QUESTIONS}`, type: "info" });
+        const finalScore = newScore;
+        const didWin = finalScore === MAX_QUESTIONS;
+        updateGameStats({ gameId: 'easy-english', didWin, score: finalScore * 100 });
+        setFeedback({ message: `Round Over! Your final score: ${finalScore}/${MAX_QUESTIONS}`, type: "info" });
         setCurrentPuzzle(null);
       } else {
         loadNextPuzzle();

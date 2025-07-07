@@ -9,6 +9,7 @@ import { Keyboard, Heart, Trophy, Play, Pause, RotateCw, ArrowLeft } from "lucid
 import { cn } from "@/lib/utils";
 import type { Difficulty } from "@/lib/constants";
 import { useToast } from "@/hooks/use-toast";
+import { updateGameStats } from "@/lib/progress";
 
 interface TypingRushGameProps {
   onBack: () => void;
@@ -153,8 +154,9 @@ export default function TypingRushGame({ onBack, difficulty }: TypingRushGamePro
     useEffect(() => {
         if (lives <= 0 && gameState === 'playing') {
             setGameState("gameOver");
+            updateGameStats({ gameId: 'easy-english', didWin: true, score });
         }
-    }, [lives, gameState]);
+    }, [lives, gameState, score]);
 
     useEffect(() => {
         if (gameState === "playing") {
