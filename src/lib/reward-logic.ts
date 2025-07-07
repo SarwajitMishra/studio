@@ -1,3 +1,4 @@
+
 /**
  * This file acts as the "Admin Logic Page".
  * A game admin can modify the rules in this object, and the AI reward
@@ -7,16 +8,11 @@ export const REWARD_LOGIC = {
   // Strategy Games
   chess: { win: { sPoints: 200, sCoins: 30 }, draw: { sPoints: 100, sCoins: 5 }, bonus: { description: "Win streak of 5", sCoins: 15 } },
   towerOfHanoi: { complete: { sPoints: 150, sCoins: 15 }, bonus: { description: "Speed solve", sCoins: 5 } },
-  '2048': { base: { sPoints: "50–150", sCoins: "0–15" }, bonus: { description: "2048 tile", sCoins: 10 } },
-  'connect-four': { win: { sPoints: 25, sCoins: 2 }, bonus: { description: "Winning in under 10 moves", sCoins: 1 } },
-  tictactoe: { win: { sPoints: 10, sCoins: 1 }, draw: { sPoints: 5, sCoins: 0 } },
   'gobblet-gobblers': { win: { sPoints: 50, sCoins: 5 }, bonus: { description: "Winning without losing a piece", sCoins: 5 } },
-  ludo: { win: { sPoints: 100, sCoins: 10 }, bonus: { description: "Capturing an opponent's token", sCoins: 1, perEvent: true } },
 
   // Puzzle Games
   sudoku: { base: { sPoints: "50–200", sCoins: "5–20" }, bonus: { description: "No hint", sCoins: 5 } },
   patternBuilder: { base: { sPoints: "50–100", sCoins: "0–10" }, bonus: { description: "Perfect accuracy", sCoins: 10 } },
-  memoryMaze: { base: { sPoints: "50–100", sCoins: "0–15" }, bonus: { description: "All levels clear", sCoins: 10 } },
   jigsaw: { base: { sPoints: "50–100", sCoins: "0–15" }, bonus: { description: "Speed solve", sCoins: 5 } },
   memory: { base: { sPoints: "50–100", sCoins: "0–10" }, bonus: { description: "Full match", sCoins: 10 } },
 
