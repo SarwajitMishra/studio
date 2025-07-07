@@ -353,25 +353,25 @@ export default function CrosswordPage() {
 
             {/* Left Column: Grid and Actions */}
             <div className="w-full lg:w-auto space-y-4">
-                <div className="overflow-auto p-2 bg-card rounded-lg shadow-lg">
+                 <div className="w-full max-w-md mx-auto p-1 sm:p-2 bg-card rounded-lg shadow-lg">
                     <div className="grid" style={{ gridTemplateColumns: `repeat(${puzzle.gridSize}, minmax(0, 1fr))` }}>
                         {grid.map((row, r) => row.map((cell, c) => {
                             const isActiveWord = activeWordIndex !== undefined && cell.words[activeDirection] === activeWordIndex;
                             const isActiveCell = activeCell?.row === r && activeCell?.col === c;
 
                             if (cell.isBlock) {
-                                return <div key={`${r}-${c}`} className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 lg:w-10 lg:h-10 bg-primary/80" />;
+                                return <div key={`${r}-${c}`} className="aspect-square bg-primary/80" />;
                             }
                             
                             return (
-                                <div key={`${r}-${c}`} className="relative w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 lg:w-10 lg:h-10">
-                                    {cell.number && <span className="absolute top-0 left-0.5 text-[0.5rem] sm:text-xs text-muted-foreground">{cell.number}</span>}
+                                <div key={`${r}-${c}`} className="relative aspect-square">
+                                    {cell.number && <span className="absolute top-0.5 left-0.5 text-muted-foreground select-none text-[8px] sm:text-[10px] md:text-xs">{cell.number}</span>}
                                     <input
                                         ref={el => { if (el) inputRefs.current[r][c] = el; }}
                                         type="text"
                                         maxLength={1}
                                         className={cn(
-                                            "w-full h-full border border-primary/30 text-center uppercase font-bold text-sm sm:text-base md:text-lg text-primary bg-background focus:z-10 focus:ring-2 focus:ring-accent focus:outline-none",
+                                            "w-full h-full p-0 border border-primary/30 text-center uppercase font-bold text-base sm:text-lg md:text-xl text-primary bg-background focus:z-10 focus:ring-2 focus:ring-accent focus:outline-none",
                                             isActiveWord && "bg-accent/20",
                                             isActiveCell && "ring-2 ring-accent"
                                         )}
