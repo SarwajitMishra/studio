@@ -6,7 +6,7 @@ import {
     Sigma, Brain, ToyBrick, Star as StarIcon, Coins as CoinsIcon, BookMarked, 
     Target, Calculator, ListOrdered, SpellCheck, CaseLower, AlignJustify, Filter, 
     Keyboard, Gamepad2, Languages, Lightbulb, Mail, Calendar, Heart, Hash, CircleDot,
-    Grid3x3, Route, Blocks, KeyRound, LayoutGrid, XCircle, Ticket, Dice6, Users
+    Grid3x3, Route, Blocks, KeyRound, LayoutGrid, XCircle, Ticket, Dice6, Users, FileText
 } from 'lucide-react';
 
 export type GameCategory = 'Strategy' | 'Puzzles' | 'Learning';
@@ -88,6 +88,15 @@ export const GAMES: Game[] = [
     description: 'Recreate complex patterns from memory using fun icons.',
     href: '/puzzles/pattern-builder',
     disabled: false,
+  },
+  {
+    id: 'crossword',
+    title: 'Crossword Challenge',
+    category: 'Puzzles',
+    Icon: FileText,
+    description: 'Solve clues to fill in words in a grid. A classic test of vocabulary!',
+    href: '/puzzles/crossword',
+    color: 'text-gray-500',
   },
   {
     id: 'number-puzzles',

@@ -15,6 +15,13 @@ export const REWARD_LOGIC = {
   patternBuilder: { base: { sPoints: "50–100", sCoins: "0–10" }, bonus: { description: "Perfect accuracy", sCoins: 10 } },
   jigsaw: { base: { sPoints: "50–100", sCoins: "0–15" }, bonus: { description: "Speed solve", sCoins: 5 } },
   memory: { base: { sPoints: "50–100", sCoins: "0–10" }, bonus: { description: "Full match", sCoins: 10 } },
+  crossword: {
+    base: { description: "10 S-Points per correctly filled word at the end.", sPoints: "10 per word" },
+    completionBonus: { description: "Bonus for finishing the full puzzle.", sPoints: 100, sCoins: 2 },
+    perfectBonus: { description: "Bonus for finishing with no mistakes or hints.", sPoints: 50, sCoins: 2 },
+    timeBonus: { description: "Bonus for finishing under the time limit (if applicable).", sPoints: 20, sCoins: 1 },
+    hintPenalty: { description: "Penalty for using a hint.", sPoints: -5 }
+  },
 
   // Number Puzzles (sub-games, but treated as distinct for reward logic)
   guessTheNumber: { base: { sPoints: "50–100", sCoins: "0–10" }, bonus: { description: "First try guess", sCoins: 5 } },
