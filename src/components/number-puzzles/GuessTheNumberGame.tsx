@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, FormEvent } from "react";
+import React, { useState, useEffect, useCallback, FormEvent, ReactNode } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import type { Difficulty } from "@/lib/constants";
 import { applyRewards, calculateRewards } from "@/lib/rewards";
+import { S_POINTS_ICON as SPointsIcon, S_COINS_ICON as SCoinsIcon } from "@/lib/constants";
 
 const DIFFICULTY_CONFIG = {
   easy: { max: 20 },
@@ -26,7 +27,7 @@ interface GuessTheNumberGameProps {
 export default function GuessTheNumberGame({ onBack, difficulty }: GuessTheNumberGameProps) {
   const [secretNumber, setSecretNumber] = useState<number | null>(null);
   const [currentGuess, setCurrentGuess] = useState<string>("");
-  const [feedback, setFeedback] = useState<string>("Make your first guess!");
+  const [feedback, setFeedback] = useState<ReactNode>("Make your first guess!");
   const [attempts, setAttempts] = useState<number>(0);
   const [isGameWon, setIsGameWon] = useState<boolean>(false);
   const [showHint, setShowHint] = useState<boolean>(false);
@@ -56,7 +57,7 @@ export default function GuessTheNumberGame({ onBack, difficulty }: GuessTheNumbe
     const guessNum = parseInt(currentGuess, 10);
 
     if (isNaN(guessNum) || guessNum < 1 || guessNum > maxNumber) {
-      setFeedback(`Please enter a valid number between 1 and ${maxNumber}.`);
+      setFeedback(<span className="text-red-600">{`Please enter a valid number between 1 and ${maxNumber}.`}</span>);
       toast({
         variant: "destructive",
         title: "Invalid Guess",
@@ -69,7 +70,7 @@ export default function GuessTheNumberGame({ onBack, difficulty }: GuessTheNumbe
     setAttempts(newAttemptCount);
 
     if (guessNum === secretNumber) {
-      setFeedback(`Congratulations! You guessed it in ${newAttemptCount} attempts. Calculating your reward...`);
+      setFeedback(<span className="text-green-600">Congratulations! You guessed it. Calculating reward...</span>);
       setIsGameWon(true);
       setIsCalculatingReward(true);
       
@@ -84,24 +85,47 @@ export default function GuessTheNumberGame({ onBack, difficulty }: GuessTheNumbe
         
         toast({
           title: "You Win! 🏆",
-          description: `You earned ${earned.points} S-Points and ${earned.coins} S-Coins!`,
-          className: "bg-green-500 text-white",
+          description: (
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+              <span>You earned:</span>
+              <span className="flex items-center font-bold">
+                {earned.points} <SPointsIcon className="ml-1.5 h-5 w-5 text-yellow-300" />
+              </span>
+              <span className="flex items-center font-bold">
+                {earned.coins} <SCoinsIcon className="ml-1.5 h-5 w-5 text-amber-400" />
+              </span>
+            </div>
+          ),
+          className: "bg-green-600 border-green-700 text-white",
           duration: 5000,
         });
-        setFeedback(`You guessed it in ${newAttemptCount} attempts! You've been awarded ${earned.points} S-Points and ${earned.coins} S-Coins.`);
+
+        setFeedback(
+            <div className="flex flex-col items-center gap-1 text-center text-green-700">
+                <span>You guessed it in {newAttemptCount} attempts! You earned:</span>
+                <div className="flex items-center gap-4 mt-1">
+                    <span className="flex items-center font-bold text-lg">
+                        +{earned.points} <SPointsIcon className="ml-1 h-5 w-5 text-yellow-400" />
+                    </span>
+                    <span className="flex items-center font-bold text-lg">
+                        +{earned.coins} <SCoinsIcon className="ml-1 h-5 w-5 text-amber-500" />
+                    </span>
+                </div>
+            </div>
+        );
 
       } catch (error) {
         console.error("Error calculating rewards:", error);
         toast({ variant: 'destructive', title: 'Reward Error', description: 'Could not calculate rewards.' });
-        setFeedback(`You guessed it in ${newAttemptCount} attempts! There was an error calculating rewards.`);
+        setFeedback(<span className="text-green-600">You guessed it in {newAttemptCount} attempts! There was an error calculating rewards.</span>);
       } finally {
         setIsCalculatingReward(false);
       }
 
     } else if (guessNum < secretNumber) {
-      setFeedback("Too low! Try a higher number.");
+      setFeedback(<span className="text-red-600">Too low! Try a higher number.</span>);
     } else {
-      setFeedback("Too high! Try a lower number.");
+      setFeedback(<span className="text-red-600">Too high! Try a lower number.</span>);
     }
     setCurrentGuess("");
   };
@@ -137,7 +161,7 @@ export default function GuessTheNumberGame({ onBack, difficulty }: GuessTheNumbe
           <div className="text-center p-6 bg-green-100 rounded-lg shadow-inner">
             <Award className="mx-auto h-16 w-16 text-yellow-500 mb-3" />
             <h2 className="text-2xl font-bold text-green-700">You Guessed It!</h2>
-            <p className="text-lg text-green-600 mt-1">{feedback}</p>
+            <div className="text-lg mt-1 min-h-[3em] flex items-center justify-center">{feedback}</div>
             {isCalculatingReward && <Loader2 className="animate-spin mx-auto my-2" />}
             <Button onClick={resetGame} className="mt-6 w-full sm:w-auto bg-accent text-accent-foreground hover:bg-accent/90" disabled={isCalculatingReward}>
               <RotateCcw className="mr-2 h-5 w-5" /> Play Again
@@ -168,13 +192,9 @@ export default function GuessTheNumberGame({ onBack, difficulty }: GuessTheNumbe
         )}
         {!isGameWon && secretNumber !== null && (
           <div className="text-center space-y-3 pt-4 border-t border-border">
-            <p className={cn(
-              "text-lg font-medium min-h-[1.5em]",
-              feedback.includes("Too high") || feedback.includes("Too low") ? "text-red-600" : "text-foreground",
-              feedback.includes("Congratulations") || feedback.includes("guessed it") ? "text-green-600" : ""
-            )}>
+            <div className="text-lg font-medium min-h-[1.5em] flex items-center justify-center">
               {feedback}
-            </p>
+            </div>
             <p className="text-sm text-muted-foreground">Attempts: {attempts}</p>
             {!showHint && (
               <Button variant="outline" size="sm" onClick={() => setFeedback(getHintText())}>
