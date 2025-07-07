@@ -104,6 +104,19 @@ export default function ProfilePage() {
   const [sCoins, setSCoins] = useState<number>(0);
 
   const [isConfigMissing, setIsConfigMissing] = useState(false);
+  
+  const updateCurrencyDisplay = useCallback(() => {
+    setSPoints(getStoredGameCurrency(LOCAL_STORAGE_S_POINTS_KEY));
+    setSCoins(getStoredGameCurrency(LOCAL_STORAGE_S_COINS_KEY));
+  }, []);
+
+  // Effect to listen for currency updates from other components
+  useEffect(() => {
+    window.addEventListener('storageUpdated', updateCurrencyDisplay);
+    return () => {
+      window.removeEventListener('storageUpdated', updateCurrencyDisplay);
+    };
+  }, [updateCurrencyDisplay]);
 
 
   // Effect for loading local data on initial mount (theme is handled by ThemeProvider)
@@ -639,6 +652,7 @@ export default function ProfilePage() {
     
 
     
+
 
 
 

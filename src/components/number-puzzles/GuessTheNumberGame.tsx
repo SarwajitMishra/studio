@@ -10,6 +10,7 @@ import { Target, RotateCcw, Lightbulb, Award, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import type { Difficulty } from "@/lib/constants";
+import { addRewards } from "@/lib/rewards";
 
 const DIFFICULTY_CONFIG = {
   easy: { max: 20 },
@@ -61,15 +62,26 @@ export default function GuessTheNumberGame({ onBack, difficulty }: GuessTheNumbe
       });
       return;
     }
-    setAttempts(prev => prev + 1);
+    
+    const newAttemptCount = attempts + 1;
+    setAttempts(newAttemptCount);
+
     if (guessNum === secretNumber) {
-      setFeedback(`Congratulations! You guessed it in ${attempts + 1} attempts.`);
+      setFeedback(`Congratulations! You guessed it in ${newAttemptCount} attempts.`);
       setIsGameWon(true);
+      
+      // Award points and coins
+      let points = difficulty === 'easy' ? 50 : difficulty === 'medium' ? 75 : 100;
+      let coins = newAttemptCount === 1 ? 6 : 1; // 1 for win, +5 bonus for first try
+      const rewards = addRewards(points, coins);
+      
       toast({
-        title: "You Win!",
-        description: `You guessed ${secretNumber} in ${attempts + 1} tries!`,
+        title: "You Win! 🏆",
+        description: `You earned ${rewards.points} S-Points and ${rewards.coins} S-Coins!`,
         className: "bg-green-500 text-white",
+        duration: 5000,
       });
+
     } else if (guessNum < secretNumber) {
       setFeedback("Too low! Try a higher number.");
     } else {
