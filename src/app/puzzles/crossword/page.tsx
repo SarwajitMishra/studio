@@ -7,7 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { FileText, RotateCw, Lightbulb, CheckCircle, Award, Loader2, Star as StarIcon, Gem, Shield, ArrowLeft } from 'lucide-react';
+import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { FileText, RotateCw, Lightbulb, CheckCircle, Award, Loader2, Star as StarIcon, Gem, Shield, ArrowLeft, List } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { applyRewards, calculateRewards } from "@/lib/rewards";
@@ -285,6 +286,37 @@ export default function CrosswordPage() {
     const activeWordIndex = activeCell ? grid[activeCell.row][activeCell.col].words[activeDirection] : undefined;
     const activeClue = activeWordIndex !== undefined ? `${activeWordIndex+1} ${activeDirection}: ${puzzle.words[activeWordIndex].clue}` : "Click a cell to see a clue.";
 
+    const ClueList = ({ puzzle, inDialog = false }: { puzzle: CrosswordPuzzle, inDialog?: boolean }) => {
+        return (
+            <Card className={cn("shadow-lg", inDialog && "shadow-none border-none")}>
+                <Tabs defaultValue="across" className={cn("w-full", inDialog && "flex flex-col h-full")}>
+                    <CardHeader className={cn(inDialog && "flex-shrink-0")}>
+                        <CardTitle>Clues List</CardTitle>
+                         <TabsList className="grid w-full grid-cols-2 mt-2">
+                            <TabsTrigger value="across">Across</TabsTrigger>
+                            <TabsTrigger value="down">Down</TabsTrigger>
+                        </TabsList>
+                    </CardHeader>
+                    <CardContent className={cn("p-2 sm:p-4", inDialog && "flex-grow overflow-hidden")}>
+                        <TabsContent value="across" className={cn(inDialog && "h-full")}>
+                            <ScrollArea className={cn("pr-3", inDialog ? "h-full" : "h-[300px] md:h-[450px]")}>
+                                <ul className="space-y-2 text-sm">
+                                {puzzle.words.filter(w => w.direction === 'across').sort((a,b) => (puzzle.words.indexOf(a)) - (puzzle.words.indexOf(b))).map((w) => <li key={`across-${puzzle.words.indexOf(w)}`} className="p-1"><strong>{puzzle.words.indexOf(w)+1}.</strong> {w.clue}</li>)}
+                                </ul>
+                            </ScrollArea>
+                        </TabsContent>
+                        <TabsContent value="down" className={cn(inDialog && "h-full")}>
+                             <ScrollArea className={cn("pr-3", inDialog ? "h-full" : "h-[300px] md:h-[450px]")}>
+                                <ul className="space-y-2 text-sm">
+                                {puzzle.words.filter(w => w.direction === 'down').sort((a,b) => (puzzle.words.indexOf(a)) - (puzzle.words.indexOf(b))).map((w) => <li key={`down-${puzzle.words.indexOf(w)}`} className="p-1"><strong>{puzzle.words.indexOf(w)+1}.</strong> {w.clue}</li>)}
+                                </ul>
+                            </ScrollArea>
+                        </TabsContent>
+                    </CardContent>
+                </Tabs>
+            </Card>
+        );
+    };
 
     return (
         <div className="flex flex-col lg:flex-row items-start justify-center p-2 md:p-4 gap-6">
@@ -368,39 +400,24 @@ export default function CrosswordPage() {
                         <Button onClick={() => startGame(difficulty!)} variant="destructive" className="col-span-2"><RotateCw className="mr-2"/>Reset</Button>
                     </CardContent>
                 </Card>
+
+                 {/* Mobile-only button to show clues */}
+                 <div className="lg:hidden">
+                    <Dialog>
+                        <DialogTrigger asChild>
+                            <Button variant="outline" className="w-full"><List className="mr-2"/> View All Clues</Button>
+                        </DialogTrigger>
+                        <DialogContent className="h-[80vh] flex flex-col p-2">
+                             <ClueList puzzle={puzzle} inDialog />
+                        </DialogContent>
+                    </Dialog>
+                </div>
             </div>
             
-            {/* Right Column: Clue Lists with Tabs */}
-            <div className="w-full lg:max-w-md">
-                 <Card className="shadow-lg">
-                    <Tabs defaultValue="across" className="w-full">
-                        <CardHeader>
-                            <CardTitle>Clues List</CardTitle>
-                             <TabsList className="grid w-full grid-cols-2 mt-2">
-                                <TabsTrigger value="across">Across</TabsTrigger>
-                                <TabsTrigger value="down">Down</TabsTrigger>
-                            </TabsList>
-                        </CardHeader>
-                        <CardContent className="p-2 sm:p-4">
-                            <TabsContent value="across">
-                                <ScrollArea className="h-[300px] md:h-[450px] pr-3">
-                                    <ul className="space-y-2 text-sm">
-                                    {puzzle.words.filter(w => w.direction === 'across').sort((a,b) => (puzzle.words.indexOf(a)) - (puzzle.words.indexOf(b))).map((w) => <li key={`across-${puzzle.words.indexOf(w)}`} className="p-1"><strong>{puzzle.words.indexOf(w)+1}.</strong> {w.clue}</li>)}
-                                    </ul>
-                                </ScrollArea>
-                            </TabsContent>
-                            <TabsContent value="down">
-                                 <ScrollArea className="h-[300px] md:h-[450px] pr-3">
-                                    <ul className="space-y-2 text-sm">
-                                    {puzzle.words.filter(w => w.direction === 'down').sort((a,b) => (puzzle.words.indexOf(a)) - (puzzle.words.indexOf(b))).map((w) => <li key={`down-${puzzle.words.indexOf(w)}`} className="p-1"><strong>{puzzle.words.indexOf(w)+1}.</strong> {w.clue}</li>)}
-                                    </ul>
-                                </ScrollArea>
-                            </TabsContent>
-                        </CardContent>
-                    </Tabs>
-                </Card>
+            {/* Right Column: Clue Lists (Desktop Only) */}
+            <div className="w-full lg:max-w-md hidden lg:block">
+                 <ClueList puzzle={puzzle} />
             </div>
         </div>
     );
 }
-
