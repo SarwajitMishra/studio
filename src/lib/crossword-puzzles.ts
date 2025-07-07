@@ -29,7 +29,7 @@ export const CROSSWORD_PUZZLES: CrosswordPuzzle[] = [
       { clue: "Sound a cat makes", answer: "MEOW", direction: 'across', row: 5, col: 0 },
       { clue: "A friendly ghost", answer: "BOO", direction: 'down', row: 0, col: 6 },
       { clue: "A house for a dog", answer: "KENNEL", direction: 'down', row: 1, col: 1 },
-      { clue: "Something you read", answer: "BOOK", direction: 'down', row: 4, col: 4 },
+      { clue: "Something you read", answer: "BOOK", direction: 'down', row: 3, col: 4 },
     ]
   },
   // Medium Puzzle (10x10)
@@ -48,7 +48,7 @@ export const CROSSWORD_PUZZLES: CrosswordPuzzle[] = [
       { clue: "Opposite of cold", answer: "HOT", direction: 'down', row: 1, col: 2 },
       { clue: "Not fast", answer: "SLOW", direction: 'down', row: 2, col: 0 },
       { clue: "A small, biting insect", answer: "ANT", direction: 'down', row: 5, col: 5 },
-      { clue: "You wear it on your foot", answer: "SHOE", direction: 'down', row: 7, col: 3 },
+      { clue: "You wear it on your foot", answer: "SHOE", direction: 'down', row: 6, col: 3 },
     ]
   },
   // Hard Puzzle (15x15)
