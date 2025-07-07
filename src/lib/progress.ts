@@ -41,8 +41,8 @@ const setGameStats = (stats: GameStat[]) => {
     if (typeof window === 'undefined') return;
     try {
         localStorage.setItem(LOCAL_STORAGE_GAME_STATS_KEY, JSON.stringify(stats));
-        // Dispatch event so other components (like profile page) can update
-        window.dispatchEvent(new CustomEvent('statsUpdated'));
+        // Dispatch unified event so other components can update
+        window.dispatchEvent(new CustomEvent('storageUpdated'));
     } catch (e) {
         console.error("Error writing game stats to localStorage", e);
     }

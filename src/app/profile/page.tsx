@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { formatDistanceToNow } from 'date-fns';
 import { 
@@ -23,7 +24,7 @@ import {
   LOCAL_STORAGE_S_POINTS_KEY,
   LOCAL_STORAGE_S_COINS_KEY
 } from "@/lib/constants";
-import { UserCircle, BarChart3, Settings, CheckCircle, LogIn, LogOut, UploadCloud, Edit3, User as UserIcon, Palette, Sun, Moon, Trophy, Gamepad2, Star, Coins, AlertTriangle, Loader2 } from 'lucide-react';
+import { UserCircle, BarChart3, Settings, CheckCircle, LogIn, LogOut, UploadCloud, Edit3, User as UserIcon, Palette, Sun, Moon, Trophy, Gamepad2, Star, Coins, AlertTriangle, Loader2, History } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -89,30 +90,32 @@ export default function ProfilePage() {
   const [sPoints, setSPoints] = useState<number>(0);
   const [sCoins, setSCoins] = useState<number>(0);
   const [rewardHistory, setRewardHistory] = useState<RewardEvent[]>([]);
+  const [gameStats, setGameStats] = useState<GameStat[]>([]);
 
   const [isConfigMissing, setIsConfigMissing] = useState(false);
   
-  const updateDisplays = useCallback(() => {
+  const updateLocalData = useCallback(() => {
     setSPoints(getStoredGameCurrency(LOCAL_STORAGE_S_POINTS_KEY));
     setSCoins(getStoredGameCurrency(LOCAL_STORAGE_S_COINS_KEY));
     setRewardHistory(getRewardHistory());
+    setGameStats(getGameStats());
   }, []);
 
   // Effect to listen for currency and stats updates from other components
   useEffect(() => {
-    window.addEventListener('storageUpdated', updateDisplays);
+    window.addEventListener('storageUpdated', updateLocalData);
     return () => {
-      window.removeEventListener('storageUpdated', updateDisplays);
+      window.removeEventListener('storageUpdated', updateLocalData);
     };
-  }, [updateDisplays]);
+  }, [updateLocalData]);
 
 
   // Effect for loading local data on initial mount (theme is handled by ThemeProvider)
   useEffect(() => {
     setTheme(localStorage.getItem('theme') || 'light');
     setFavoriteColor(localStorage.getItem('favoriteColor') || 'default');
-    updateDisplays(); // Load currency and history on mount
-  }, [updateDisplays]);
+    updateLocalData(); // Load all local data on mount
+  }, [updateLocalData]);
 
   // Simplified, single effect for handling Firebase Auth state changes
   useEffect(() => {
@@ -147,17 +150,18 @@ export default function ProfilePage() {
             setSPoints(100); 
             setSCoins(10);  
             setRewardHistory([]); // Placeholder for online history
+            setGameStats(GAMES.map(game => ({ gameId: game.id, gamesPlayed: 0, wins: 0, highScore: 0 }))); // Placeholder for online stats
             
         } else { 
             // User is logged out, load all data from local storage
             setEditingUserName(localStorage.getItem(LOCAL_STORAGE_USER_NAME_KEY) || DEFAULT_USER_NAME);
             setSelectedAvatar(localStorage.getItem(LOCAL_STORAGE_AVATAR_KEY) || DEFAULT_AVATAR_SRC);
-            updateDisplays();
+            updateLocalData();
         }
     });
 
     return () => unsubscribe();
-  }, [toast, updateDisplays]);
+  }, [toast, updateLocalData]);
 
   const handleAutoSaveAvatar = useCallback(async (avatarToSave: string) => {
       if (!currentUser) return;
@@ -363,7 +367,7 @@ export default function ProfilePage() {
             </AvatarFallback>
           </Avatar>
         )}
-        <div className="text-center sm:text-left">
+        <div className="text-center sm:text-left flex-grow">
           <h1 className="text-3xl font-bold text-foreground">My Profile</h1>
           <p className="text-lg text-muted-foreground">Welcome back, {editingUserName}!</p>
           <div className="mt-3 flex flex-col sm:flex-row sm:space-x-6 space-y-2 sm:space-y-0 items-center justify-center sm:justify-start">
@@ -385,6 +389,51 @@ export default function ProfilePage() {
              <p className="text-xs text-muted-foreground mt-1">(Locally stored points shown)</p>
            )}
         </div>
+         <Dialog>
+            <DialogTrigger asChild>
+                <Button variant="outline" className="mt-2 sm:mt-0">
+                    <History className="mr-2 h-4 w-4" /> View Reward History
+                </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>Recent Rewards</DialogTitle>
+                    <DialogDescription>Your latest S-Point and S-Coin earnings.</DialogDescription>
+                </DialogHeader>
+                {rewardHistory.length > 0 ? (
+                    <ScrollArea className="h-96 w-full pr-4 mt-4">
+                        <div className="space-y-4">
+                            {rewardHistory.map(event => (
+                                <div key={event.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                                    <div>
+                                        <p className="font-semibold text-foreground">{event.description}</p>
+                                        <p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(event.timestamp), { addSuffix: true })}</p>
+                                    </div>
+                                    <div className="flex flex-col items-end text-sm">
+                                        {event.points > 0 && (
+                                            <span className="font-semibold flex items-center text-yellow-600 dark:text-yellow-400">
+                                                +{event.points} <SPointsIcon className="ml-1.5 h-4 w-4" />
+                                            </span>
+                                        )}
+                                        {event.coins > 0 && (
+                                             <span className="font-semibold flex items-center text-amber-600 dark:text-amber-500">
+                                                +{event.coins} <SCoinsIcon className="ml-1.5 h-4 w-4" />
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </ScrollArea>
+                ) : (
+                    <div className="text-center py-10">
+                        <History size={48} className="mx-auto text-primary/30 mb-3" />
+                        <p className="text-md text-foreground/90">No rewards earned yet.</p>
+                        <p className="text-sm text-muted-foreground mt-1">Play some games to see your history!</p>
+                    </div>
+                )}
+            </DialogContent>
+        </Dialog>
       </header>
 
       <Tabs defaultValue="avatar" className="w-full">
@@ -393,7 +442,7 @@ export default function ProfilePage() {
             <UserCircle className="mr-2 h-5 w-5" /> Avatar
           </TabsTrigger>
           <TabsTrigger value="progress" className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
-            <BarChart3 className="mr-2 h-5 w-5" /> Reward History
+            <BarChart3 className="mr-2 h-5 w-5" /> Progress
           </TabsTrigger>
           <TabsTrigger value="settings" className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
             <Settings className="mr-2 h-5 w-5" /> Preferences
@@ -468,43 +517,42 @@ export default function ProfilePage() {
             <CardHeader>
               <div className="flex items-center space-x-3">
                 <BarChart3 size={28} className="text-primary" />
-                <CardTitle className="text-2xl">Reward History</CardTitle>
+                <CardTitle className="text-2xl">Game Progress</CardTitle>
               </div>
               <CardDescription>
-                A list of your most recent S-Point and S-Coin earnings.
+                Your performance across all games. Stats are stored locally in your browser.
               </CardDescription>
             </CardHeader>
             <CardContent>
-                {rewardHistory.length > 0 ? (
+                {gameStats.length > 0 ? (
                     <ScrollArea className="h-96 w-full pr-2">
                         <div className="space-y-4">
-                            {rewardHistory.map(event => (
-                                <div key={event.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                                    <div>
-                                        <p className="font-semibold text-foreground">{event.description}</p>
-                                        <p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(event.timestamp), { addSuffix: true })}</p>
+                            {gameStats.map(stat => {
+                                const game = GAMES.find(g => g.id === stat.gameId);
+                                if (!game) return null;
+                                return (
+                                    <div key={stat.gameId} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                                        <div className="flex items-center gap-3">
+                                            <game.Icon size={24} className={cn("text-primary", game.color)} />
+                                            <div>
+                                                <p className="font-semibold text-foreground">{game.title}</p>
+                                                <p className="text-xs text-muted-foreground">{stat.gamesPlayed} {stat.gamesPlayed === 1 ? 'play' : 'plays'}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-col items-end text-sm">
+                                            <span className="font-semibold flex items-center">{stat.wins} {stat.wins === 1 ? 'win' : 'wins'}</span>
+                                            <span className="text-xs text-muted-foreground">High Score: {stat.highScore}</span>
+                                        </div>
                                     </div>
-                                    <div className="flex flex-col items-end text-sm">
-                                        {event.points > 0 && (
-                                            <span className="font-semibold flex items-center text-yellow-600 dark:text-yellow-400">
-                                                +{event.points} <SPointsIcon className="ml-1.5 h-4 w-4" />
-                                            </span>
-                                        )}
-                                        {event.coins > 0 && (
-                                             <span className="font-semibold flex items-center text-amber-600 dark:text-amber-500">
-                                                +{event.coins} <SCoinsIcon className="ml-1.5 h-4 w-4" />
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </ScrollArea>
                 ) : (
                     <div className="text-center py-10">
                         <BarChart3 size={48} className="mx-auto text-primary/30 mb-3" />
-                        <p className="text-md text-foreground/90">No rewards earned yet.</p>
-                        <p className="text-sm text-muted-foreground mt-1">Play some games to earn S-Points and S-Coins!</p>
+                        <p className="text-md text-foreground/90">No game stats yet.</p>
+                        <p className="text-sm text-muted-foreground mt-1">Play some games to see your progress!</p>
                     </div>
                 )}
             </CardContent>
@@ -596,6 +644,7 @@ export default function ProfilePage() {
     
 
     
+
 
 
 
