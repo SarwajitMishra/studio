@@ -146,7 +146,7 @@ export default function PatternBuilderPage() {
             </CardContent>
             <CardFooter>
                 <Button asChild variant="ghost" className="w-full">
-                    <Link href="/puzzles"><ArrowLeft className="mr-2"/> Back to All Puzzles</Link>
+                    <Link href="/"><ArrowLeft className="mr-2"/> Back to Menu</Link>
                 </Button>
             </CardFooter>
         </Card>
