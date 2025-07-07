@@ -272,8 +272,8 @@ export default function JigsawPuzzlePage() {
 
             const imagePromises = imagesForDifficulty.map(async (img) => {
                 const results = await searchImages(img.hint, apiKey, { perPage: 3 });
-                if (results.length > 0) {
-                    return { ...img, src: results[0].largeImageURL };
+                if (results.length > 0 && results[0].webformatURL) {
+                    return { ...img, src: results[0].webformatURL };
                 }
                 return { ...img, src: `https://placehold.co/400x400.png?text=Not+Found` }; 
             });
@@ -523,7 +523,6 @@ export default function JigsawPuzzlePage() {
                                         "rounded-md shadow-md transition-opacity duration-300",
                                         showHint ? "opacity-100" : "opacity-30 blur-sm"
                                     )}
-                                    unoptimized
                                 />
                             </div>
                         </div>
@@ -556,7 +555,6 @@ export default function JigsawPuzzlePage() {
                                     height={400}
                                     data-ai-hint={img.hint}
                                     className="object-cover w-full h-full aspect-square group-hover:scale-105 transition-transform duration-300"
-                                    unoptimized
                                 />
                             </button>
                         ))

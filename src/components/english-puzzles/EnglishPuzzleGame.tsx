@@ -341,7 +341,6 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
               style={{ objectFit: 'contain' }}
               data-ai-hint={currentPuzzle.correctWord}
               priority
-              unoptimized={!currentPuzzle.imageSrc.startsWith('https://placehold.co')}
             />
           </div>
         )}
