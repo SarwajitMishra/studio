@@ -284,7 +284,7 @@ export default function CrosswordPage() {
 
 
     return (
-        <div className="flex flex-col lg:flex-row items-center lg:items-start justify-center p-2 sm:p-4 gap-6">
+        <div className="flex flex-col lg:flex-row items-start justify-center p-2 md:p-4 gap-6">
              <AlertDialog open={gameState === 'gameOver'}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
@@ -316,47 +316,47 @@ export default function CrosswordPage() {
                 </AlertDialogContent>
             </AlertDialog>
 
-            {/* Grid */}
-            <div className="overflow-auto p-2 bg-card rounded-lg shadow-lg">
-                <div className="grid" style={{ gridTemplateColumns: `repeat(${puzzle.gridSize}, minmax(0, 1fr))` }}>
-                    {grid.map((row, r) => row.map((cell, c) => {
-                        const isActiveWord = activeWordIndex !== undefined && cell.words[activeDirection] === activeWordIndex;
-                        const isActiveCell = activeCell?.row === r && activeCell?.col === c;
+            {/* Left Column: Grid and Actions */}
+            <div className="w-full lg:w-auto space-y-4">
+                <div className="overflow-auto p-2 bg-card rounded-lg shadow-lg">
+                    <div className="grid" style={{ gridTemplateColumns: `repeat(${puzzle.gridSize}, minmax(0, 1fr))` }}>
+                        {grid.map((row, r) => row.map((cell, c) => {
+                            const isActiveWord = activeWordIndex !== undefined && cell.words[activeDirection] === activeWordIndex;
+                            const isActiveCell = activeCell?.row === r && activeCell?.col === c;
 
-                        if (cell.isBlock) {
-                            return <div key={`${r}-${c}`} className="w-8 h-8 sm:w-10 sm:h-10 bg-primary/80" />;
-                        }
-                        
-                        return (
-                            <div key={`${r}-${c}`} className="relative w-8 h-8 sm:w-10 sm:h-10">
-                                {cell.number && <span className="absolute top-0 left-0.5 text-xs text-muted-foreground">{cell.number}</span>}
-                                <input
-                                    ref={el => { if (el) inputRefs.current[r][c] = el; }}
-                                    type="text"
-                                    maxLength={1}
-                                    className={cn(
-                                        "w-full h-full border border-primary/30 text-center uppercase font-bold text-lg text-primary bg-background focus:z-10 focus:ring-2 focus:ring-accent focus:outline-none",
-                                        isActiveWord && "bg-accent/20",
-                                        isActiveCell && "ring-2 ring-accent"
-                                    )}
-                                    value={userGrid[r]?.[c] || ''}
-                                    onClick={() => handleCellClick(r, c)}
-                                    onChange={(e) => handleInputChange(e, r, c)}
-                                    onKeyDown={(e) => handleKeyDown(e, r, c)}
-                                    disabled={gameState === 'gameOver'}
-                                />
-                            </div>
-                        );
-                    }))}
+                            if (cell.isBlock) {
+                                return <div key={`${r}-${c}`} className="w-8 h-8 sm:w-10 sm:h-10 bg-primary/80" />;
+                            }
+                            
+                            return (
+                                <div key={`${r}-${c}`} className="relative w-8 h-8 sm:w-10 sm:h-10">
+                                    {cell.number && <span className="absolute top-0 left-0.5 text-xs text-muted-foreground">{cell.number}</span>}
+                                    <input
+                                        ref={el => { if (el) inputRefs.current[r][c] = el; }}
+                                        type="text"
+                                        maxLength={1}
+                                        className={cn(
+                                            "w-full h-full border border-primary/30 text-center uppercase font-bold text-lg text-primary bg-background focus:z-10 focus:ring-2 focus:ring-accent focus:outline-none",
+                                            isActiveWord && "bg-accent/20",
+                                            isActiveCell && "ring-2 ring-accent"
+                                        )}
+                                        value={userGrid[r]?.[c] || ''}
+                                        onClick={() => handleCellClick(r, c)}
+                                        onChange={(e) => handleInputChange(e, r, c)}
+                                        onKeyDown={(e) => handleKeyDown(e, r, c)}
+                                        disabled={gameState === 'gameOver'}
+                                    />
+                                </div>
+                            );
+                        }))}
+                    </div>
                 </div>
-            </div>
 
-            {/* Clues & Actions */}
-            <div className="w-full lg:max-w-sm space-y-4">
                 <Card className="shadow-lg">
                     <CardHeader><CardTitle>Clue</CardTitle></CardHeader>
                     <CardContent><p className="min-h-[40px] text-muted-foreground font-semibold">{activeClue}</p></CardContent>
                 </Card>
+
                 <Card className="shadow-lg">
                     <CardHeader><CardTitle>Actions</CardTitle></CardHeader>
                     <CardContent className="grid grid-cols-2 gap-2">
@@ -365,12 +365,16 @@ export default function CrosswordPage() {
                         <Button onClick={() => startGame(difficulty!)} variant="destructive" className="col-span-2"><RotateCw className="mr-2"/>Reset</Button>
                     </CardContent>
                 </Card>
+            </div>
+            
+            {/* Right Column: Clue Lists */}
+            <div className="w-full lg:max-w-md">
                 <Card className="shadow-lg">
                     <CardHeader><CardTitle>Clues List</CardTitle></CardHeader>
                     <CardContent className="grid grid-cols-2 gap-x-4 gap-y-2">
                         <div>
                             <h3 className="font-bold border-b mb-2">Across</h3>
-                             <ScrollArea className="h-40">
+                            <ScrollArea className="h-96 pr-2">
                                 <ul className="space-y-1 text-sm">
                                 {puzzle.words.filter(w => w.direction === 'across').map((w, i) => <li key={`across-${i}`}><strong>{puzzle.words.indexOf(w)+1}.</strong> {w.clue}</li>)}
                                 </ul>
@@ -378,7 +382,7 @@ export default function CrosswordPage() {
                         </div>
                         <div>
                             <h3 className="font-bold border-b mb-2">Down</h3>
-                             <ScrollArea className="h-40">
+                            <ScrollArea className="h-96 pr-2">
                                 <ul className="space-y-1 text-sm">
                                 {puzzle.words.filter(w => w.direction === 'down').map((w, i) => <li key={`down-${i}`}><strong>{puzzle.words.indexOf(w)+1}.</strong> {w.clue}</li>)}
                                 </ul>
@@ -387,7 +391,7 @@ export default function CrosswordPage() {
                     </CardContent>
                 </Card>
             </div>
+
         </div>
     );
 }
-
