@@ -6,7 +6,7 @@ import {
     Sigma, Brain, ToyBrick, Star as StarIcon, Coins as CoinsIcon, BookMarked, 
     Target, Calculator, ListOrdered, SpellCheck, CaseLower, AlignJustify, Filter, 
     Keyboard, Gamepad2, Languages, Lightbulb, Mail, Calendar, Heart, Hash, CircleDot,
-    Grid3x3, Route, Blocks, KeyRound, LayoutGrid, XCircle, Ticket
+    Grid3x3, Route, Blocks, KeyRound, LayoutGrid, XCircle, Ticket, Dice6, Users
 } from 'lucide-react';
 
 export type GameCategory = 'Strategy' | 'Puzzles' | 'Learning';
@@ -31,6 +31,42 @@ export const GAMES: Game[] = [
     description: 'Classic strategy board game. Sharpen your mind!',
     href: '/chess',
     color: 'text-sky-600',
+  },
+  {
+    id: 'tictactoe',
+    title: 'Tic-Tac-Toe',
+    category: 'Strategy',
+    Icon: XCircle,
+    description: 'The classic game of Xs and Os. Can you get three in a row?',
+    href: '/tictactoe',
+    color: 'text-orange-500',
+  },
+  {
+    id: 'connect-four',
+    title: 'Connect Four',
+    category: 'Strategy',
+    Icon: CircleDot,
+    description: 'Drop your discs and be the first to get four in a row!',
+    href: '/connect-four',
+    color: 'text-red-500',
+  },
+  {
+    id: 'gobblet-gobblers',
+    title: 'Gobblet Gobblers',
+    category: 'Strategy',
+    Icon: Users,
+    description: 'A tic-tac-toe style game where bigger pieces gobble smaller ones.',
+    href: '/gobblet-gobblers',
+    color: 'text-blue-500',
+  },
+  {
+    id: 'ludo',
+    title: 'Ludo',
+    category: 'Strategy',
+    Icon: Dice6,
+    description: 'Race your tokens from start to finish in this classic dice game.',
+    href: '/ludo',
+    color: 'text-yellow-500',
   },
   {
     id: 'tower-of-hanoi',
@@ -90,7 +126,7 @@ export const GAMES: Game[] = [
     disabled: false,
   },
   {
-    id: 'pattern-builder',
+    id: 'patternBuilder',
     title: 'Pattern Builder',
     category: 'Puzzles',
     Icon: Blocks,
@@ -206,7 +242,7 @@ export const MATH_PUZZLE_TYPES: MathPuzzleType[] = [
     color: "text-gray-500",
   },
   {
-    id: "mathDuel",
+    id: "fastMath",
     name: "Fast Math",
     description: "Find the answer to the problem in a grid of numbers!",
     Icon: Swords,

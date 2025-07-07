@@ -7,10 +7,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from "@/components/ui/button";
 import { 
   Blocks, Eye, Pointer, RotateCw, ArrowLeft, Shield, Star, Gem, Check, X, Award,
-  Apple, Heart, Sun, Cloud, Gift
+  Apple, Heart, Sun, Cloud, Gift, Loader2
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+import { applyRewards, calculateRewards } from "@/lib/rewards";
+import { updateGameStats } from "@/lib/progress";
+import { S_COINS_ICON as SCoinsIcon, S_POINTS_ICON as SPointsIcon } from '@/lib/constants';
 
 type Difficulty = 'easy' | 'medium' | 'hard';
 type GameState = 'setup' | 'memorize' | 'build' | 'result';
@@ -57,6 +61,8 @@ export default function PatternBuilderPage() {
   const [userPattern, setUserPattern] = useState<(IconData | null)[]>([]);
   const [selectedIcon, setSelectedIcon] = useState<IconData>(ICONS[0]);
   const [score, setScore] = useState(0);
+  const [isCalculatingReward, setIsCalculatingReward] = useState(false);
+  const { toast } = useToast();
 
   const config = difficulty ? DIFFICULTY_CONFIG[difficulty] : null;
 
@@ -76,7 +82,7 @@ export default function PatternBuilderPage() {
     setDifficulty(diff);
     setScore(0);
     const newConfig = DIFFICULTY_CONFIG[diff];
-    setSelectedIcon(ICONS[0]); // Reset selected icon
+    setSelectedIcon(ICONS[0]);
     const newPattern = generatePattern(newConfig.gridSize, newConfig.icons);
     setPattern(newPattern);
     setUserPattern(Array(newConfig.gridSize * newConfig.gridSize).fill(null));
@@ -94,8 +100,11 @@ export default function PatternBuilderPage() {
     setUserPattern(newUserPattern);
   };
 
-  const checkPattern = () => {
-    if (!config) return;
+  const checkPattern = async () => {
+    if (!config || !difficulty) return;
+    
+    setIsCalculatingReward(true);
+
     let correctCells = 0;
     for(let i = 0; i < pattern.length; i++) {
       if(pattern[i]?.name === userPattern[i]?.name) {
@@ -104,7 +113,23 @@ export default function PatternBuilderPage() {
     }
     const accuracy = (correctCells / (config.gridSize * config.gridSize)) * 100;
     setScore(accuracy);
-    setGameState('result');
+
+    updateGameStats({ gameId: 'patternBuilder', didWin: accuracy >= 75, score: accuracy });
+
+    try {
+        const rewards = await calculateRewards({ gameId: 'patternBuilder', difficulty, performanceMetrics: { accuracy } });
+        applyRewards(rewards.sPoints, rewards.sCoins, `Pattern Builder round (${difficulty}, ${accuracy.toFixed(0)}% accuracy)`);
+        toast({
+            title: "Round Complete!",
+            description: `You earned ${rewards.sPoints} S-Points and ${rewards.sCoins} S-Coins!`,
+        });
+    } catch(error) {
+        console.error("Error calculating rewards:", error);
+        toast({ variant: 'destructive', title: 'Reward Error', description: 'Could not calculate rewards.' });
+    } finally {
+        setIsCalculatingReward(false);
+        setGameState('result');
+    }
   };
 
   const getResultContent = () => {
@@ -210,7 +235,10 @@ export default function PatternBuilderPage() {
                               </button>
                           ))}
                       </div>
-                      <Button onClick={checkPattern} className="mt-4 w-full bg-accent text-accent-foreground">Check My Pattern</Button>
+                      <Button onClick={checkPattern} className="mt-4 w-full bg-accent text-accent-foreground" disabled={isCalculatingReward}>
+                        {isCalculatingReward ? <Loader2 className="mr-2 animate-spin"/> : <Check className="mr-2"/>}
+                        Check My Pattern
+                      </Button>
                   </div>
               )}
               {gameState === 'result' && (

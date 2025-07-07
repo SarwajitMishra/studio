@@ -6,10 +6,13 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card as ShadCNCard, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { RefreshCw, Award, Brain, Timer, ArrowLeft, Shield, Star, Gem } from 'lucide-react';
-import { MEMORY_ICONS } from '@/lib/constants';
+import { RefreshCw, Award, Brain, Timer, ArrowLeft, Shield, Star, Gem, Loader2 } from 'lucide-react';
+import { MEMORY_ICONS, S_COINS_ICON as SCoinsIcon, S_POINTS_ICON as SPointsIcon } from '@/lib/constants';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useToast } from "@/hooks/use-toast";
+import { applyRewards, calculateRewards } from "@/lib/rewards";
+import { updateGameStats } from "@/lib/progress";
 
 // Client component to inject metadata
 const HeadMetadata = () => {
@@ -71,8 +74,10 @@ const MemoryMatchPage: NextPage = () => {
   const [time, setTime] = useState(0);
   const [isChecking, setIsChecking] = useState(false);
   const [isGameWon, setIsGameWon] = useState(false);
+  const [isCalculatingReward, setIsCalculatingReward] = useState(false);
   
   const timerRef =  useRef<NodeJS.Timeout | null>(null);
+  const { toast } = useToast();
 
   const cleanupTimer = () => {
     if (timerRef.current) {
@@ -80,6 +85,40 @@ const MemoryMatchPage: NextPage = () => {
       timerRef.current = null;
     }
   };
+  
+  const handleWin = useCallback(async () => {
+      if (!difficulty) return;
+      setIsGameWon(true);
+      cleanupTimer();
+      setIsCalculatingReward(true);
+      updateGameStats({ gameId: 'memory', didWin: true, score: 1000 - moves - time });
+      
+      try {
+        const rewards = await calculateRewards({ gameId: 'memory', difficulty, performanceMetrics: { moves, time } });
+        const earned = applyRewards(rewards.sPoints, rewards.sCoins, `Completed Memory Match (${difficulty})`);
+
+        toast({
+            title: "You Win!",
+            description: (
+                <div className="flex flex-col gap-2">
+                    <span>Congratulations! You earned:</span>
+                    <div className="flex items-center gap-4">
+                        <span className="flex items-center font-bold">{earned.points} <SPointsIcon className="ml-1.5 h-5 w-5 text-yellow-300" /></span>
+                        <span className="flex items-center font-bold">{earned.coins} <SCoinsIcon className="ml-1.5 h-5 w-5 text-amber-400" /></span>
+                    </div>
+                </div>
+            ),
+            className: "bg-green-600 border-green-700 text-white",
+            duration: 5000,
+        });
+
+      } catch (error) {
+         console.error("Error calculating rewards:", error);
+         toast({ variant: 'destructive', title: 'Reward Error', description: 'Could not calculate rewards.' });
+      } finally {
+        setIsCalculatingReward(false);
+      }
+  }, [difficulty, moves, time, toast]);
 
   const startGame = useCallback((selectedDifficulty: Difficulty) => {
     cleanupTimer();
@@ -92,6 +131,7 @@ const MemoryMatchPage: NextPage = () => {
     setTime(0);
     setIsChecking(false);
     setIsGameWon(false);
+    setIsCalculatingReward(false);
     setView('playing');
   }, []);
   
@@ -107,6 +147,12 @@ const MemoryMatchPage: NextPage = () => {
     return cleanupTimer;
   }, [view, isGameWon]);
   
+  useEffect(() => {
+    if (difficulty && matchedPairsCount === DIFFICULTY_LEVELS[difficulty].pairs) {
+        handleWin();
+    }
+  }, [matchedPairsCount, difficulty, handleWin]);
+
 
   const handleCardClick = (index: number) => {
     if (isChecking || cards[index].isFlipped || cards[index].isMatched || flippedIndices.length >= 2) {
@@ -130,15 +176,7 @@ const MemoryMatchPage: NextPage = () => {
       if (card1.value === card2.value) { // Comparing icon components directly
         newCards[firstIndex].isMatched = true;
         newCards[secondIndex].isMatched = true;
-        const newMatchedCount = matchedPairsCount + 1;
-        setMatchedPairsCount(newMatchedCount);
-
-        const totalPairs = difficulty ? DIFFICULTY_LEVELS[difficulty].pairs : 0;
-        if (newMatchedCount === totalPairs) {
-            setIsGameWon(true);
-            cleanupTimer();
-        }
-        
+        setMatchedPairsCount(prev => prev + 1);
         setCards(newCards);
         setFlippedIndices([]);
         setIsChecking(false);
@@ -240,11 +278,17 @@ const MemoryMatchPage: NextPage = () => {
             <div className="text-center py-10 bg-green-100 rounded-lg shadow-inner">
               <Award className="mx-auto h-20 w-20 text-yellow-500 mb-4" />
               <h2 className="text-3xl font-bold text-green-700">Congratulations!</h2>
-              <p className="text-xl text-green-600 mt-2">You found all pairs!</p>
-              <p className="text-lg text-green-600 mt-1">Moves: {moves} | Time: {formatTime(time)}</p>
-              <Button onClick={() => difficulty && startGame(difficulty)} className="mt-6 bg-accent text-accent-foreground hover:bg-accent/90">
-                Play Again
-              </Button>
+              {isCalculatingReward ? (
+                  <Loader2 className="h-12 w-12 animate-spin mx-auto mt-4 text-green-600"/>
+              ) : (
+                <>
+                <p className="text-xl text-green-600 mt-2">You found all pairs!</p>
+                <p className="text-lg text-green-600 mt-1">Moves: {moves} | Time: {formatTime(time)}</p>
+                <Button onClick={() => difficulty && startGame(difficulty)} className="mt-6 bg-accent text-accent-foreground hover:bg-accent/90">
+                    Play Again
+                </Button>
+                </>
+              )}
             </div>
           ) : (
             <div className={cn("grid gap-3 sm:gap-4 aspect-square max-w-md mx-auto", difficulty && DIFFICULTY_LEVELS[difficulty].gridClass)}>

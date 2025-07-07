@@ -11,7 +11,9 @@ import { cn } from "@/lib/utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { searchImages } from "@/services/pixabay";
 import { useToast } from "@/hooks/use-toast";
-
+import { applyRewards, calculateRewards } from "@/lib/rewards";
+import { updateGameStats } from "@/lib/progress";
+import { S_COINS_ICON as SCoinsIcon, S_POINTS_ICON as SPointsIcon } from '@/lib/constants';
 
 type Difficulty = "beginner" | "expert" | "pro";
 
@@ -132,6 +134,7 @@ export default function JigsawPuzzlePage() {
     const [gridSize, setGridSize] = useState(3);
     const [selectedPieceId, setSelectedPieceId] = useState<string | null>(null);
     const [isComplete, setIsComplete] = useState(false);
+    const [isCalculatingReward, setIsCalculatingReward] = useState(false);
     const [moves, setMoves] = useState(0);
     const [time, setTime] = useState(0);
     const [showHint, setShowHint] = useState(false);
@@ -163,6 +166,45 @@ export default function JigsawPuzzlePage() {
         }
         return () => clearInterval(timer);
     }, [viewMode, isComplete]);
+    
+    const handleWin = useCallback(async () => {
+        if (!selectedDifficulty) return;
+        setIsComplete(true);
+        setIsCalculatingReward(true);
+        updateGameStats({ gameId: 'jigsaw', didWin: true, score: 10000 - time * 10 - moves });
+
+        try {
+            const rewards = await calculateRewards({
+                gameId: 'jigsaw',
+                difficulty: selectedDifficulty,
+                performanceMetrics: { timeInSeconds: time, moves },
+            });
+            const earned = applyRewards(rewards.sPoints, rewards.sCoins, `Solved Jigsaw (${selectedDifficulty})`);
+            
+            toast({
+                title: "Puzzle Complete!",
+                description: `You earned ${earned.points} S-Points and ${earned.coins} S-Coins!`,
+                className: "bg-green-600 border-green-700 text-white",
+                duration: 5000,
+            });
+        } catch (error) {
+             console.error("Error calculating rewards:", error);
+             toast({ variant: 'destructive', title: 'Reward Error', description: 'Could not calculate rewards.' });
+        } finally {
+            setIsCalculatingReward(false);
+        }
+    }, [selectedDifficulty, time, moves, toast]);
+
+    const checkCompletion = useCallback((currentPieces: PuzzlePiece[]) => {
+        const isSolved = currentPieces.every((p, index) => {
+            const currentRow = Math.floor(index / gridSize);
+            const currentCol = index % gridSize;
+            return p.correctRow === currentRow && p.correctCol === currentCol;
+        });
+        if (isSolved) {
+            handleWin();
+        }
+    }, [gridSize, handleWin]);
 
 
     const handleDifficultySelect = (difficulty: Difficulty) => {
@@ -191,7 +233,6 @@ export default function JigsawPuzzlePage() {
                 if (results.length > 0) {
                     return { ...img, src: results[0].largeImageURL };
                 }
-                // Fallback for a single image if not found
                 return { ...img, src: `https://placehold.co/400x400.png?text=Not+Found` }; 
             });
 
@@ -206,7 +247,6 @@ export default function JigsawPuzzlePage() {
     const handleImageSelect = (image: PuzzleImage) => {
         if (!selectedDifficulty || !image.src) return;
         
-        // Reset game state
         setTime(0);
         setMoves(0);
         setIsComplete(false);
@@ -229,17 +269,6 @@ export default function JigsawPuzzlePage() {
         setViewMode("playing");
     };
 
-    const checkCompletion = useCallback((currentPieces: PuzzlePiece[]) => {
-        const isSolved = currentPieces.every((p, index) => {
-            const currentRow = Math.floor(index / gridSize);
-            const currentCol = index % gridSize;
-            return p.correctRow === currentRow && p.correctCol === currentCol;
-        });
-        if (isSolved) {
-            setIsComplete(true);
-        }
-    }, [gridSize]);
-
     const swapPieces = useCallback((piece1Id: string, piece2Id: string) => {
         const newPieces = [...puzzlePieces];
         const piece1Index = newPieces.findIndex(p => p.id === piece1Id);
@@ -260,7 +289,7 @@ export default function JigsawPuzzlePage() {
         if (!selectedPieceId) {
             setSelectedPieceId(clickedPieceId);
         } else if (selectedPieceId === clickedPieceId) {
-            setSelectedPieceId(null); // Deselect if the same piece is clicked again
+            setSelectedPieceId(null);
         } else {
             swapPieces(selectedPieceId, clickedPieceId);
             setSelectedPieceId(null);
@@ -271,7 +300,7 @@ export default function JigsawPuzzlePage() {
         e.dataTransfer.setData("application/jigsaw-piece", pieceId);
         e.dataTransfer.effectAllowed = "move";
         if (selectedPieceId) {
-            setSelectedPieceId(null); // Clear selection when drag starts
+            setSelectedPieceId(null);
         }
     };
     
@@ -288,6 +317,7 @@ export default function JigsawPuzzlePage() {
     };
     
     const handleReset = () => {
+        updateGameStats({ gameId: 'jigsaw', didWin: false });
         setViewMode("selectDifficulty");
         setSelectedDifficulty(null);
         setSelectedImage(null);
@@ -341,19 +371,25 @@ export default function JigsawPuzzlePage() {
                         <AlertDialogTitle className="text-2xl text-green-600 flex items-center justify-center gap-2">
                            <CheckCircle size={28} /> Puzzle Complete!
                         </AlertDialogTitle>
-                        <AlertDialogDescription className="text-center text-base pt-2">
-                            Congratulations! You solved the puzzle.
-                            <br />
-                            <strong className="text-lg">Moves: {moves}</strong> | <strong className="text-lg">Time: {formatTime(time)}</strong>
-                        </AlertDialogDescription>
+                         {isCalculatingReward ? (
+                             <div className="flex flex-col items-center justify-center gap-2 pt-4">
+                                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                                <p className="text-sm text-muted-foreground">Calculating your awesome rewards...</p>
+                            </div>
+                         ) : (
+                            <AlertDialogDescription className="text-center text-base pt-2">
+                                Congratulations! You solved the puzzle.
+                                <br />
+                                <strong className="text-lg">Moves: {moves}</strong> | <strong className="text-lg">Time: {formatTime(time)}</strong>
+                            </AlertDialogDescription>
+                         )}
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                         <AlertDialogAction onClick={() => {
                           setViewMode('selectImage');
-                          // Trigger image fetching for the current difficulty again
                           handleDifficultySelect(selectedDifficulty);
-                        }}>Choose New Puzzle</AlertDialogAction>
-                        <AlertDialogCancel onClick={handleReset}>Back to Menu</AlertDialogCancel>
+                        }} disabled={isCalculatingReward}>Choose New Puzzle</AlertDialogAction>
+                        <AlertDialogCancel onClick={handleReset} disabled={isCalculatingReward}>Back to Menu</AlertDialogCancel>
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>

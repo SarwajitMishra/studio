@@ -5,9 +5,12 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Grid3x3, RotateCw, Lightbulb, ArrowLeft, Shield, Star, Gem } from 'lucide-react';
+import { Grid3x3, RotateCw, Lightbulb, ArrowLeft, Shield, Star, Gem, Timer, Loader2 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { applyRewards, calculateRewards } from "@/lib/rewards";
+import { updateGameStats } from "@/lib/progress";
+import { S_COINS_ICON as SCoinsIcon, S_POINTS_ICON as SPointsIcon } from '@/lib/constants';
 
 type Difficulty = 'easy' | 'medium' | 'hard';
 type SudokuGrid = (number | null)[][];
@@ -30,7 +33,7 @@ const generatePuzzle = (difficulty: Difficulty): { puzzle: SudokuGrid, solution:
     const puzzle = solution.map(row => [...row]);
 
     const cellsToRemove = { easy: 35, medium: 45, hard: 55 };
-    let removed = 0;
+    removed = 0;
     while (removed < cellsToRemove[difficulty]) {
         const row = Math.floor(Math.random() * 9);
         const col = Math.floor(Math.random() * 9);
@@ -42,6 +45,8 @@ const generatePuzzle = (difficulty: Difficulty): { puzzle: SudokuGrid, solution:
     return { puzzle, solution };
 };
 
+let removed = 0; // Define 'removed' at a scope accessible by generatePuzzle
+
 export default function SudokuPage() {
     const [difficulty, setDifficulty] = useState<Difficulty | null>(null);
     const [grid, setGrid] = useState<SudokuGrid>([]);
@@ -49,9 +54,67 @@ export default function SudokuPage() {
     const [solution, setSolution] = useState<SudokuGrid>([]);
     const [isComplete, setIsComplete] = useState(false);
     const [incorrectCells, setIncorrectCells] = useState<{ r: number, c: number }[]>([]);
+    const [time, setTime] = useState(0);
+    const [isCalculatingReward, setIsCalculatingReward] = useState(false);
     const { toast } = useToast();
 
-    const startGame = (diff: Difficulty) => {
+    useEffect(() => {
+        let timer: NodeJS.Timeout;
+        if (difficulty && !isComplete) {
+            timer = setInterval(() => {
+                setTime(prevTime => prevTime + 1);
+            }, 1000);
+        }
+        return () => clearInterval(timer);
+    }, [difficulty, isComplete]);
+    
+    const formatTime = (seconds: number) => {
+        const minutes = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    const handleWin = useCallback(async () => {
+        if (!difficulty) return;
+        setIsComplete(true);
+        setIsCalculatingReward(true);
+
+        updateGameStats({ gameId: 'sudoku', didWin: true, score: 3600 - time }); // Score based on time remaining from an hour
+
+        try {
+            const rewards = await calculateRewards({
+                gameId: 'sudoku',
+                difficulty,
+                performanceMetrics: { timeInSeconds: time }
+            });
+
+            const earned = applyRewards(rewards.sPoints, rewards.sCoins, `Solved Sudoku (${difficulty})`);
+
+            toast({
+                title: "Congratulations! You solved it!",
+                description: (
+                    <div className="flex flex-col gap-2">
+                        <span>You earned:</span>
+                        <div className="flex items-center gap-4">
+                            <span className="flex items-center font-bold">{earned.points} <SPointsIcon className="ml-1.5 h-5 w-5 text-yellow-300" /></span>
+                            <span className="flex items-center font-bold">{earned.coins} <SCoinsIcon className="ml-1.5 h-5 w-5 text-amber-400" /></span>
+                        </div>
+                    </div>
+                ),
+                className: "bg-green-600 border-green-700 text-white",
+                duration: 5000,
+            });
+
+        } catch (error) {
+            console.error("Error calculating rewards:", error);
+            toast({ variant: 'destructive', title: 'Reward Error', description: 'Could not calculate rewards.' });
+        } finally {
+            setIsCalculatingReward(false);
+        }
+    }, [difficulty, time, toast]);
+
+
+    const startGame = useCallback((diff: Difficulty) => {
         setDifficulty(diff);
         const { puzzle, solution: sol } = generatePuzzle(diff);
         setGrid(puzzle.map(row => [...row]));
@@ -59,29 +122,29 @@ export default function SudokuPage() {
         setSolution(sol);
         setIsComplete(false);
         setIncorrectCells([]);
-    };
+        setTime(0);
+        setIsCalculatingReward(false);
+    }, []);
 
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>, row: number, col: number) => {
+    const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>, row: number, col: number) => {
         if (isComplete) return;
     
-        const value = e.target.value.replace(/[^1-9]/g, ''); // Only allow numbers 1-9
+        const value = e.target.value.replace(/[^1-9]/g, '');
         const newGrid = grid.map(r => [...r]);
     
         if (value === '' || (value.length === 1)) {
             newGrid[row][col] = value === '' ? null : parseInt(value, 10);
             setGrid(newGrid);
     
-            // Check for win condition if the board is full
             const isBoardFull = newGrid.every(r => r.every(cell => cell !== null));
             if (isBoardFull) {
                 const isSolved = newGrid.every((r, r_idx) => r.every((cell, c_idx) => cell === solution[r_idx][c_idx]));
                 if (isSolved) {
-                    setIsComplete(true);
-                    toast({ title: "Congratulations!", description: "You solved the Sudoku puzzle!", className: "bg-green-500 text-white" });
+                    handleWin();
                 }
             }
         }
-    };
+    }, [grid, isComplete, solution, handleWin]);
     
     const validateEntries = () => {
         if (isComplete) return;
@@ -91,7 +154,6 @@ export default function SudokuPage() {
     
         for (let r = 0; r < 9; r++) {
             for (let c = 0; c < 9; c++) {
-                // Check only user-editable cells that have a value
                 if (initialGrid[r][c] === null && grid[r][c] !== null) {
                     userEntries++;
                     if (grid[r][c] !== solution[r][c]) {
@@ -109,7 +171,7 @@ export default function SudokuPage() {
         if (errors.length > 0) {
             setIncorrectCells(errors);
             toast({ variant: "destructive", title: "Found Mistakes!", description: `${errors.length} incorrect number(s) marked in red.` });
-            setTimeout(() => setIncorrectCells([]), 2000); // Clear highlighting after 2 seconds
+            setTimeout(() => setIncorrectCells([]), 2000);
         } else {
             toast({ title: "All Good!", description: "All your entries so far are correct. Keep going!", className: "bg-green-500 text-white" });
         }
@@ -143,7 +205,7 @@ export default function SudokuPage() {
             <Card className="shadow-xl">
                 <CardHeader>
                     <CardTitle className="text-2xl font-bold text-center">Sudoku</CardTitle>
-                    <CardDescription className="text-center">Fill the grid with numbers from 1 to 9.</CardDescription>
+                    <CardDescription className="text-center">Difficulty: <span className="capitalize">{difficulty}</span></CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="grid grid-cols-9 bg-muted/30 p-1 rounded-md">
@@ -190,15 +252,22 @@ export default function SudokuPage() {
             </Card>
             
             <div className="w-full lg:w-64 space-y-4">
-                 {isComplete && (
-                    <Card className="bg-green-100 dark:bg-green-900/50 text-center p-4">
-                        <h3 className="text-xl font-bold text-green-700 dark:text-green-300">You Win!</h3>
-                    </Card>
-                 )}
+                 <Card>
+                    <CardHeader><CardTitle className="flex items-center gap-2"><Timer /> Status</CardTitle></CardHeader>
+                    <CardContent className="space-y-3">
+                        <div className="text-center font-mono text-2xl p-2 bg-muted rounded-md">{formatTime(time)}</div>
+                         {isComplete && (
+                            <div className="text-center p-2 bg-green-100 dark:bg-green-900/50 rounded-md">
+                                <h3 className="text-lg font-bold text-green-700 dark:text-green-300">You Win!</h3>
+                                {isCalculatingReward && <Loader2 className="animate-spin mx-auto mt-2" />}
+                            </div>
+                         )}
+                    </CardContent>
+                </Card>
                  <Card>
                     <CardHeader><CardTitle>Actions</CardTitle></CardHeader>
                     <CardContent className="space-y-3">
-                        <Button variant="outline" className="w-full" onClick={validateEntries} disabled={isComplete}><Lightbulb className="mr-2"/> Validate Answers</Button>
+                        <Button variant="outline" className="w-full" onClick={validateEntries} disabled={isComplete}><Lightbulb className="mr-2"/> Validate</Button>
                         <Button variant="outline" className="w-full" onClick={() => startGame(difficulty)}><RotateCw className="mr-2"/> New Game</Button>
                         <Button variant="ghost" className="w-full" onClick={() => setDifficulty(null)}><ArrowLeft className="mr-2"/> Change Difficulty</Button>
                     </CardContent>
