@@ -52,20 +52,6 @@ export default function WelcomePage() {
           style={{ top: '75%', left: '60%', width: '20%', height: '10%' }}
         />
       </div>
-
-       {/* Optional: You can still have non-interactive text over the video if you like */}
-      <div className="relative z-5 flex flex-col items-center justify-center w-full h-full p-4 pointer-events-none">
-        <div className="w-full max-w-md text-center space-y-8">
-          <div className="space-y-4">
-            <h1 className="text-4xl sm:text-5xl font-bold text-white tracking-tight" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.7)' }}>
-              Welcome to Shravya Playhouse!
-            </h1>
-            <p className="text-lg text-slate-200" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.7)' }}>
-              Use the buttons to get started!
-            </p>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
