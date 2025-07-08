@@ -1,57 +1,51 @@
+'use client';
 
-"use client";
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { PlaySquare, Loader2 } from 'lucide-react';
 
-import { useMemo } from 'react';
-import { Separator } from '@/components/ui/separator';
-import { Component } from 'lucide-react';
-import { 
-  GAMES,
-  type GameCategory,
-} from '@/lib/constants';
-import { cn } from '@/lib/utils';
-import GameCard from '@/components/game-card';
+export default function WelcomePage() {
+  const [isLoading, setIsLoading] = useState(true);
 
-const CATEGORIES_ORDER: GameCategory[] = ['Strategy', 'Puzzles', 'Learning'];
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 2500); // Simulate loading time
 
-export default function DashboardPage() {
-  const groupedGames = useMemo(() => GAMES.reduce((acc, game) => {
-    const category = game.category;
-    if (!acc[category]) acc[category] = [];
-    acc[category].push(game);
-    return acc;
-  }, {} as Record<GameCategory, typeof GAMES>), []);
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
-    <div className="space-y-6">
-      <header className="text-center py-8 bg-primary/10 rounded-lg shadow">
-        <h1 className="text-4xl font-bold text-primary tracking-tight">Welcome to Shravya Playhouse!</h1>
-        <p className="mt-3 text-lg text-foreground/80 max-w-2xl mx-auto">
-          Explore a world of fun and learning with our exciting collection of games and features.
-        </p>
-      </header>
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-primary/20 via-background to-background p-4">
+      <div className="w-full max-w-md text-center space-y-8">
+        <div className="space-y-4">
+          <PlaySquare size={80} className="mx-auto text-primary animate-pulse" />
+          <h1 className="text-4xl sm:text-5xl font-bold text-primary tracking-tight">
+            Welcome to Shravya Playhouse!
+          </h1>
+          <p className="text-lg text-foreground/80">
+            Let’s play, learn and win!
+          </p>
+        </div>
 
-      <div className="space-y-12">
-          {CATEGORIES_ORDER.map((category) => {
-              const gamesInCategory = groupedGames[category];
-              if (!gamesInCategory || gamesInCategory.length === 0) return null;
-              const CategoryIconComponent = gamesInCategory[0]?.Icon || Component;
-              return (
-                  <section key={category} aria-labelledby={`category-title-${category.toLowerCase()}`}>
-                      <div className="flex items-center mb-6">
-                      <CategoryIconComponent size={32} className={cn("mr-3", gamesInCategory[0]?.color || "text-primary")} />
-                      <h2 id={`category-title-${category.toLowerCase()}`} className="text-3xl font-semibold text-foreground">
-                          {category} Games
-                      </h2>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                      {gamesInCategory.map((game) => (
-                          <GameCard key={game.id} game={game} />
-                      ))}
-                      </div>
-                      {category !== CATEGORIES_ORDER[CATEGORIES_ORDER.length -1] && <Separator className="my-12" />}
-                  </section>
-              );
-          })}
+        <div className="min-h-[160px] flex flex-col items-center justify-center">
+          {isLoading ? (
+            <div className="space-y-4 animate-in fade-in duration-500">
+              <Loader2 size={32} className="mx-auto animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Getting things ready...</p>
+            </div>
+          ) : (
+            <div className="space-y-4 w-full animate-in fade-in slide-in-from-bottom-5 duration-700">
+              <Button asChild size="lg" className="w-full text-lg">
+                <Link href="/profile">Sign Up / Log In</Link>
+              </Button>
+              <Button asChild size="lg" variant="outline" className="w-full text-lg">
+                <Link href="/dashboard">Continue as Guest</Link>
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

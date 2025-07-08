@@ -20,7 +20,7 @@ export default function ShopPage() {
         <CardContent>
           <p>Get ready to spend your S-Coins on exciting items and rewards!</p>
           <Button asChild className="mt-4">
-            <Link href="/">
+            <Link href="/dashboard">
               <ArrowLeft className="mr-2 h-4 w-4" /> Go to Homepage
             </Link>
           </Button>

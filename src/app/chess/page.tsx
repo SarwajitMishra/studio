@@ -602,7 +602,7 @@ export default function ChessPage() {
                 </CardContent>
                 <CardFooter>
                     <Button asChild variant="ghost" className="w-full">
-                        <Link href="/"><ArrowLeft className="mr-2"/> Back to Menu</Link>
+                        <Link href="/dashboard"><ArrowLeft className="mr-2"/> Back to Menu</Link>
                     </Button>
                 </CardFooter>
             </Card>

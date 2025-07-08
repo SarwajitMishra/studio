@@ -25,7 +25,7 @@ export default function PuzzlesPage() {
         <CardContent className="p-6 text-center">
             <p className="mb-4">You can find Jigsaw, Sudoku, Memory Matching and more right on the main page.</p>
             <Button asChild variant="default" className="mt-auto bg-accent text-accent-foreground hover:bg-accent/90">
-              <Link href="/">
+              <Link href="/dashboard">
                 Go to Homepage <ArrowRight size={16} className="ml-2" />
               </Link>
             </Button>

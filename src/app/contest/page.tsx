@@ -80,7 +80,7 @@ export default function ContestPage() {
         <CardFooter className="flex-col gap-4">
           <p className="text-xs text-muted-foreground">Contest ends on the last day of the month. Winners are announced on the 1st. One entry per user. Entry is non-refundable.</p>
            <Button asChild variant="ghost" className="w-full">
-              <Link href="/"><ArrowLeft className="mr-2 h-4 w-4"/> Back to Home</Link>
+              <Link href="/dashboard"><ArrowLeft className="mr-2 h-4 w-4"/> Back to Home</Link>
           </Button>
         </CardFooter>
       </Card>

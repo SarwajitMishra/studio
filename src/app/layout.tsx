@@ -1,5 +1,6 @@
+'use client';
 
-import type { Metadata } from 'next';
+import { usePathname } from 'next/navigation';
 import { Quicksand } from 'next/font/google'; // Changed from Inter to Quicksand
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
@@ -14,29 +15,35 @@ const quicksand = Quicksand({
   weight: ['300', '400', '500', '600', '700'] // Include a range of weights
 });
 
-export const metadata: Metadata = {
-  title: {
-    default: 'Shravya Playhouse',
-    template: '%s | Shravya Playhouse',
-  },
-  description: 'Fun and educational games for kids at Shravya Playhouse!',
-  manifest: '/manifest.json',
-};
+// The 'metadata' export has been removed to fix a Next.js error.
+// Metadata cannot be exported from a file that uses the 'use client' directive.
 
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const pathname = usePathname();
+  const isWelcomePage = pathname === '/';
+
   return (
     <html lang="en" suppressHydrationWarning>
-      <head><meta name="theme-color" content="#87CEEB" /></head>
+      <head>
+        <title>Shravya Playhouse</title>
+        <meta name="description" content="Fun and educational games for kids at Shravya Playhouse!"/>
+        <meta name="theme-color" content="#87CEEB" />
+        <link rel="manifest" href="/manifest.json" />
+      </head>
       {/* Apply Quicksand font variable to the body */}
       <body className={`${quicksand.variable} font-sans antialiased`} suppressHydrationWarning>
         <ThemeProvider>
-          <MainLayout>
-            {children}
-          </MainLayout>
+          {isWelcomePage ? (
+            <>{children}</>
+          ) : (
+            <MainLayout>
+              {children}
+            </MainLayout>
+          )}
           <Toaster />
           <PWALoader />
         </ThemeProvider>

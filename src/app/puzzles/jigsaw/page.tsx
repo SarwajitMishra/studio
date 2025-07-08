@@ -613,7 +613,7 @@ export default function JigsawPuzzlePage() {
                     </div>
                     <div className="text-center mt-6">
                         <Button variant="ghost" asChild>
-                            <Link href="/puzzles">Back to All Puzzles</Link>
+                            <Link href="/dashboard">Back to All Puzzles</Link>
                         </Button>
                     </div>
                 </CardContent>

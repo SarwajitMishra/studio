@@ -21,7 +21,7 @@ export default function GameUnavailablePage() {
         <CardContent>
           <p>Please check back later or explore other games!</p>
           <Button asChild className="mt-4">
-            <Link href="/">
+            <Link href="/dashboard">
               <ArrowLeft className="mr-2 h-4 w-4" /> Go to Homepage
             </Link>
           </Button>
