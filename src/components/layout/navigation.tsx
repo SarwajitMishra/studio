@@ -13,10 +13,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Settings, UserCircle, Home, Store, BookOpen, Bell, BookText, LogOut } from 'lucide-react';
+import { Settings, UserCircle, Home, Store, BookOpen, Bell, BookText, LogOut, Shield } from 'lucide-react';
 import { SETTINGS_MENU_ITEMS } from '@/lib/constants';
 import { auth, signOut as firebaseSignOut, onAuthStateChanged, type User } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
+import { isUserAdmin } from '@/lib/users';
 
 interface NavigationProps {
   side: 'left' | 'right';
@@ -27,10 +28,17 @@ export default function Navigation({ side }: NavigationProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
+      if (user) {
+        const adminStatus = await isUserAdmin(user.uid);
+        setIsAdmin(adminStatus);
+      } else {
+        setIsAdmin(false);
+      }
     });
     return () => unsubscribe();
   }, []);
@@ -137,6 +145,17 @@ export default function Navigation({ side }: NavigationProps) {
                 </Link>
               </DropdownMenuItem>
             ))}
+            {isAdmin && (
+              <>
+                <DropdownMenuSeparator />
+                 <DropdownMenuItem asChild className="cursor-pointer">
+                  <Link href="/admin">
+                    <Shield className="mr-2 h-4 w-4" />
+                    <span>Admin Panel</span>
+                  </Link>
+                </DropdownMenuItem>
+              </>
+            )}
             {currentUser && (
               <>
                 <DropdownMenuSeparator />
