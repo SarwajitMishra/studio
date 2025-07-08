@@ -3,6 +3,7 @@
 
 import type { ReactNode } from 'react';
 import { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import Header from './header';
 import FloatingChatButton from './floating-chat-button';
 import FloatingActionButtons from './floating-action-buttons';
@@ -16,10 +17,13 @@ interface MainLayoutProps {
 
 export default function MainLayout({ children }: MainLayoutProps) {
   const [isMounted, setIsMounted] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
+  
+  const showSideButtons = pathname === '/dashboard';
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -44,7 +48,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
       
       {isMounted && (
         <>
-          <FloatingGameButtons />
+          {showSideButtons && <FloatingGameButtons />}
           <FloatingActionButtons />
           <FloatingChatButton />
         </>
