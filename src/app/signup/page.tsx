@@ -16,6 +16,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import {
   auth,
@@ -25,7 +34,8 @@ import {
   updateProfile,
   RecaptchaVerifier,
   signInWithPhoneNumber,
-  type User
+  type User,
+  getAdditionalUserInfo
 } from '@/lib/firebase';
 import { COUNTRIES, COUNTRY_CODES } from '@/lib/constants';
 import { CalendarIcon, Loader2 } from 'lucide-react';
@@ -61,6 +71,14 @@ export default function SignupPage() {
   const router = useRouter();
   const { toast } = useToast();
 
+  const [isPhoneDialogOpen, setIsPhoneDialogOpen] = useState(false);
+  const [phoneStep, setPhoneStep] = useState<'enterPhone' | 'enterOtp'>('enterPhone');
+  const [phoneDialogNumber, setPhoneDialogNumber] = useState('');
+  const [phoneDialogCountryCode, setPhoneDialogCountryCode] = useState('+91');
+  const [otp, setOtp] = useState('');
+  const [phoneLoading, setPhoneLoading] = useState(false);
+  const [confirmationResult, setConfirmationResult] = useState<any>(null);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -76,21 +94,64 @@ export default function SignupPage() {
     },
   });
 
-  // Setup reCAPTCHA for phone sign-in
-  // Note: The full phone sign-in UI flow (like showing an OTP input) is more complex and can be a next step.
-  // This sets up the verifier needed by Firebase.
   useEffect(() => {
-    // IMPORTANT: To use phone sign-in, you MUST:
-    // 1. Enable "Phone" as a sign-in provider in your Firebase Authentication console.
-    // 2. Add your app's domain (e.g., localhost, your-deployed-url.com) to the "Authorized domains" list under Authentication -> Settings.
-    window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-      'size': 'invisible',
-      'callback': (response: any) => {
-        // reCAPTCHA solved, allow signInWithPhoneNumber.
-        console.log("reCAPTCHA solved");
-      }
-    });
+    if (!window.recaptchaVerifier) {
+      window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        'size': 'invisible',
+        'callback': (response: any) => {
+          console.log("reCAPTCHA solved");
+        }
+      });
+    }
   }, []);
+
+  const handleSendOtp = async () => {
+    if (!phoneDialogNumber) {
+        toast({ variant: "destructive", title: "Phone number required" });
+        return;
+    }
+    setPhoneLoading(true);
+    try {
+        const fullPhoneNumber = `${phoneDialogCountryCode}${phoneDialogNumber}`;
+        const verifier = window.recaptchaVerifier!;
+        const result = await signInWithPhoneNumber(auth, fullPhoneNumber, verifier);
+        setConfirmationResult(result);
+        setPhoneStep('enterOtp');
+        toast({ title: "OTP Sent!", description: `An OTP has been sent to ${fullPhoneNumber}` });
+    } catch (error: any) {
+        console.error("Error sending OTP:", error);
+        toast({ variant: "destructive", title: "Failed to Send OTP", description: error.message || "Please check the number and try again." });
+    } finally {
+        setPhoneLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (!otp || !confirmationResult) {
+        toast({ variant: "destructive", title: "OTP Required" });
+        return;
+    }
+    setPhoneLoading(true);
+    try {
+        const userCredential = await confirmationResult.confirm(otp);
+        const additionalUserInfo = getAdditionalUserInfo(userCredential);
+
+        if (additionalUserInfo?.isNewUser) {
+            await createUserProfile(userCredential.user, {
+                phoneNumber: userCredential.user.phoneNumber,
+            });
+        }
+        
+        toast({ title: "Phone Verified!", description: "Welcome to Shravya Playhouse!" });
+        setIsPhoneDialogOpen(false);
+        router.push('/dashboard');
+    } catch (error: any) {
+        console.error("Error verifying OTP:", error);
+        toast({ variant: "destructive", title: "OTP Verification Failed", description: error.message || "Please check the OTP and try again." });
+    } finally {
+        setPhoneLoading(false);
+    }
+  };
 
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
@@ -98,10 +159,8 @@ export default function SignupPage() {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       
-      // Update Firebase Auth profile (for display name)
       await updateProfile(userCredential.user, { displayName: values.name });
 
-      // Create a detailed user profile document in Firestore
       const additionalData = {
           username: values.username,
           phoneNumber: `${values.countryCode}${values.phoneNumber}`,
@@ -132,10 +191,15 @@ export default function SignupPage() {
   const handleGoogleLogin = async () => {
     setIsLoading(true);
     try {
-      await signInWithPopup(auth, googleProvider);
+      const result = await signInWithPopup(auth, googleProvider);
+      const additionalInfo = getAdditionalUserInfo(result);
+      if (additionalInfo?.isNewUser) {
+          await createUserProfile(result.user, {
+            displayName: result.user.displayName,
+            email: result.user.email
+          });
+      }
       toast({ title: "Sign Up Successful!", description: "Welcome!" });
-      // TODO: After Google sign-in, check if a username exists in Firestore.
-      // If not, redirect to a "complete profile" page to create one.
       router.push('/dashboard');
     } catch (error: any) {
       console.error("Error signing up with Google", error);
@@ -165,9 +229,45 @@ export default function SignupPage() {
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2"><path d="M15.3 18.09C14.54 18.89 13.56 19.5 12.45 19.83C11.34 20.16 10.17 20.26 9 20.12C5.79 19.43 3.51 16.68 3.12 13.4C3.03 12.51 3.15 11.61 3.48 10.77C3.81 9.93 4.32 9.18 4.98 8.57C6.26 7.36 7.97 6.66 9.78 6.54C11.72 6.42 13.66 6.93 15.24 7.99L16.99 6.28C15.01 4.88 12.73 4.08 10.36 4.01C8.05 3.91 5.81 4.62 3.98 5.99C2.15 7.36 0.810001 9.32 0.200001 11.58C-0.419999 13.84 0.0300012 16.24 1.13 18.25C2.23 20.26 3.92 21.77 5.99 22.56C8.06 23.35 10.36 23.37 12.48 22.62C14.6 21.87 16.44 20.41 17.67 18.51L15.3 18.09Z"/><path d="M22.94 12.14C22.98 11.74 23 11.33 23 10.91C23 10.32 22.92 9.73 22.77 9.16H12V12.83H18.24C18.03 13.71 17.55 14.5 16.86 15.08L16.82 15.11L19.28 16.91L19.45 17.06C21.58 15.22 22.94 12.14 22.94 12.14Z"/><path d="M12 23C14.47 23 16.56 22.19 18.05 20.96L15.24 17.99C14.48 18.59 13.53 18.98 12.52 18.98C10.92 18.98 9.48001 18.13 8.82001 16.76L8.78001 16.72L6.21001 18.58L6.15001 18.7C7.02001 20.39 8.68001 21.83 10.62 22.48C11.09 22.64 11.56 22.77 12 22.81V23Z"/><path d="M12.01 3.00997C13.37 2.94997 14.7 3.43997 15.73 4.40997L17.97 2.21997C16.31 0.799971 14.21 -0.0600291 12.01 0.0099709C7.37001 0.0099709 3.44001 3.36997 2.02001 7.49997L4.98001 8.56997C5.60001 6.33997 7.72001 4.00997 10.22 4.00997C10.86 3.99997 11.49 4.12997 12.01 4.36997V3.00997Z"/></svg>
                 Continue with Google
               </Button>
-               <Button variant="outline" className="w-full" disabled>
-                Sign up with Phone
-              </Button>
+               <Dialog open={isPhoneDialogOpen} onOpenChange={setIsPhoneDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="w-full" disabled={isLoading}>Sign up with Phone</Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Sign Up with Phone</DialogTitle>
+                    <DialogDescription>
+                      {phoneStep === 'enterPhone' ? 'Enter your phone number to receive a verification code.' : 'Enter the OTP sent to your phone.'}
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                  {phoneStep === 'enterPhone' ? (
+                    <div className="flex items-start gap-2">
+                       <Select onValueChange={setPhoneDialogCountryCode} defaultValue={phoneDialogCountryCode}>
+                          <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                              {COUNTRY_CODES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                        <Input type="tel" placeholder="123 456 7890" value={phoneDialogNumber} onChange={e => setPhoneDialogNumber(e.target.value)} />
+                    </div>
+                  ) : (
+                    <Input type="text" placeholder="Enter 6-digit OTP" value={otp} onChange={e => setOtp(e.target.value)} />
+                  )}
+                  </div>
+                  <DialogFooter>
+                    {phoneStep === 'enterPhone' ? (
+                       <Button onClick={handleSendOtp} disabled={phoneLoading}>
+                        {phoneLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Send OTP
+                       </Button>
+                    ) : (
+                       <Button onClick={handleVerifyOtp} disabled={phoneLoading}>
+                        {phoneLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Verify & Sign Up
+                       </Button>
+                    )}
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
            </div>
           <div className="relative">
             <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
