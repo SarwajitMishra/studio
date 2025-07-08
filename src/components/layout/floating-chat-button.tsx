@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -29,12 +30,11 @@ export default function FloatingChatButton() {
                   size="icon"
                   className={cn(
                     "h-14 w-14 rounded-full shadow-lg bg-accent hover:bg-accent/90 text-accent-foreground animate-gentle-bounce",
-                    "p-1", 
                     "transition-transform duration-200 ease-in-out hover:scale-110"
                   )}
                   aria-label="Chat with Shravya AI"
                 >
-                  <CustomChatIcon size={36} />
+                  <CustomChatIcon size={56} />
                 </Button>
               </DialogTrigger>
             </TooltipTrigger>
