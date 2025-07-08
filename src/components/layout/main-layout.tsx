@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import Header from './header';
 import FloatingChatButton from './floating-chat-button';
 import FloatingActionButtons from './floating-action-buttons';
+import FloatingGameButtons from './FloatingGameButtons';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -19,6 +20,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
         <p>&copy; {new Date().getFullYear()} Shravya Playhouse. All rights reserved.</p>
       </footer>
       
+      <FloatingGameButtons />
       <FloatingActionButtons />
       <FloatingChatButton />
     </div>
