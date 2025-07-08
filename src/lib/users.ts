@@ -1,7 +1,19 @@
+
 'use client';
 
 import { db, type User } from './firebase';
 import { doc, setDoc, getDocs, collection, query, where, serverTimestamp, getDoc } from 'firebase/firestore';
+
+export interface UserProfile {
+    uid: string;
+    displayName: string;
+    email: string;
+    username: string;
+    country: string;
+    phoneNumber?: string;
+    createdAt?: { seconds: number; toDate: () => Date }; // Firestore timestamp
+}
+
 
 /**
  * Checks if a username is unique by querying the 'users' collection.
@@ -63,4 +75,17 @@ export async function isUserAdmin(userId: string): Promise<boolean> {
     console.error("Error checking admin status:", error);
     return false;
   }
+}
+
+
+/**
+ * Fetches all user profiles from the 'users' collection.
+ * This function should only be callable by an admin, enforced by Firestore rules.
+ * @returns {Promise<UserProfile[]>} A list of user profiles.
+ */
+export async function getAllUsers(): Promise<UserProfile[]> {
+    const usersCol = collection(db, 'users');
+    const userSnapshot = await getDocs(usersCol);
+    const userList = userSnapshot.docs.map(doc => doc.data() as UserProfile);
+    return userList;
 }
