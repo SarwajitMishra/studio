@@ -1,14 +1,14 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import ShravyaChatModalContent from "@/components/ai/shravya-chat-modal-content";
+import CustomChatIcon from '../icons/custom-chat-icon';
 import { cn } from '@/lib/utils';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCommentDots } from '@fortawesome/free-solid-svg-icons';
+import { faRobot } from '@fortawesome/free-solid-svg-icons';
 
 export default function FloatingChatButton() {
   const [isOpen, setIsOpen] = useState(false);
@@ -34,7 +34,7 @@ export default function FloatingChatButton() {
                   )}
                   aria-label="Chat with Shravya AI"
                 >
-                  <FontAwesomeIcon icon={faCommentDots} size="2x" />
+                  <CustomChatIcon size={36} />
                 </Button>
               </DialogTrigger>
             </TooltipTrigger>
@@ -46,7 +46,7 @@ export default function FloatingChatButton() {
         <DialogContent className="sm:max-w-xl md:max-w-2xl p-0 max-h-[85vh] flex flex-col">
           <DialogHeader className="p-4 sm:p-6 border-b bg-primary/10">
             <DialogTitle className="text-xl sm:text-2xl font-bold text-primary flex items-center">
-              <FontAwesomeIcon icon={faCommentDots} className="mr-3" />
+              <CustomChatIcon size={24} className="mr-3" />
               Chat with Shravya AI
             </DialogTitle>
             <DialogDescription className="text-sm sm:text-base text-foreground/80">
