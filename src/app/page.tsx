@@ -32,10 +32,10 @@ export default function WelcomePage() {
           </div>
 
           <div className="w-full animate-in fade-in slide-in-from-bottom-5 duration-700 space-y-3">
-             <Button asChild size="lg" className="w-full text-lg bg-accent text-accent-foreground hover:bg-accent/90">
+             <Button asChild size="lg" className="w-full text-lg bg-pink-500 text-white hover:bg-pink-600">
                 <Link href="/profile">Sign Up</Link>
               </Button>
-               <Button asChild size="lg" className="w-full text-lg">
+               <Button asChild size="lg" className="w-full text-lg bg-purple-600 text-white hover:bg-purple-700">
                 <Link href="/profile">Log In</Link>
               </Button>
               <Button asChild size="lg" variant="outline" className="w-full text-lg bg-white/20 text-white border-white hover:bg-white/30">
