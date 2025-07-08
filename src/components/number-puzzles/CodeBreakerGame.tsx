@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -62,9 +61,6 @@ export default function CodeBreakerGame({ onBack, difficulty }: CodeBreakerGameP
   }, [difficulty]);
 
   const resetGame = useCallback(() => {
-    if (guesses.length > 0 && !isGameOver) {
-        updateGameStats({ gameId: 'codeBreaker', didWin: false, score: 0 });
-    }
     const newConfig = DIFFICULTY_CONFIG[difficulty];
     setConfig(newConfig);
     setCurrentGuess(Array(newConfig.codeLength).fill(null));
@@ -72,11 +68,18 @@ export default function CodeBreakerGame({ onBack, difficulty }: CodeBreakerGameP
     setIsGameOver(false);
     setIsWin(false);
     generateSecretCode();
-  }, [difficulty, generateSecretCode, guesses, isGameOver]);
+  }, [difficulty, generateSecretCode]);
 
   useEffect(() => {
     resetGame();
   }, [resetGame]);
+
+  const handleBackClick = () => {
+    if (guesses.length > 0 && !isGameOver) {
+      updateGameStats({ gameId: 'codeBreaker', didWin: false, score: 0 });
+    }
+    onBack();
+  };
 
   const handleColorSelect = (color: Color) => {
     if (isGameOver) return;
@@ -153,7 +156,7 @@ export default function CodeBreakerGame({ onBack, difficulty }: CodeBreakerGameP
                     <KeyRound size={28} className="text-primary" />
                     <CardTitle className="text-2xl font-bold text-primary">Code Breaker</CardTitle>
                 </div>
-                <Button variant="outline" size="sm" onClick={onBack}>
+                <Button variant="outline" size="sm" onClick={handleBackClick}>
                     <ArrowLeft size={16} className="mr-1" /> Back
                 </Button>
             </div>
