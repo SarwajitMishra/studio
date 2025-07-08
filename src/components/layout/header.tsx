@@ -11,7 +11,7 @@ export default function Header() {
             <PlaySquare size={32} className="text-accent" />
             <div className="hidden sm:flex flex-col font-bold leading-tight">
                 <span className="text-lg">Shravya</span>
-                <span className="text-sm">Playhouse</span>
+                <span className="text-lg">Playhouse</span>
             </div>
           </Link>
           <Navigation side="left" />
