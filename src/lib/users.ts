@@ -18,18 +18,34 @@ export interface UserProfile {
 /**
  * Checks if a username is unique by querying the 'users' collection.
  * @param username The username to check.
+ * @param userIdToExclude Optional UID of the current user to exclude from the check, allowing them to keep their own name.
  * @returns {Promise<boolean>} True if the username is unique, false otherwise.
  */
-export async function checkUsernameUnique(username: string): Promise<boolean> {
+export async function checkUsernameUnique(username: string, userIdToExclude?: string): Promise<boolean> {
   if (!username) return false;
   try {
     const usersRef = collection(db, 'users');
     const q = query(usersRef, where("username", "==", username.toLowerCase()));
     const querySnapshot = await getDocs(q);
-    return querySnapshot.empty;
+    
+    if (querySnapshot.empty) {
+      return true; // No one has this username, it's unique.
+    }
+
+    // If a user was found...
+    // and we've provided a userIdToExclude...
+    // and there's only one user with that name...
+    // and that user's ID matches the one we want to exclude...
+    // then it's still considered "unique" for our purposes (the user can keep their name).
+    if (userIdToExclude && querySnapshot.docs.length === 1 && querySnapshot.docs[0].id === userIdToExclude) {
+      return true;
+    }
+
+    // Otherwise, the username is taken by someone else.
+    return false;
   } catch (error) {
     console.error("Error checking username uniqueness:", error);
-    // In case of an error, prevent signup to be safe
+    // Fail safely
     return false;
   }
 }

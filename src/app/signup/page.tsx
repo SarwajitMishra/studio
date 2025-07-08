@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
@@ -22,8 +22,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
-  DialogFooter
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -66,18 +64,6 @@ const emailFormSchema = z.object({
   path: ["confirmPassword"],
 });
 
-const profileFormSchema = z.object({
-  username: z.string()
-    .min(3, "Username must be at least 3 characters.")
-    .max(20, "Username must be 20 characters or less.")
-    .regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores.")
-    .refine(async (username) => await checkUsernameUnique(username), "This username is already taken."),
-  name: z.string().min(2, "Name must be at least 2 characters."),
-  country: z.string().min(1, "Please select a country."),
-  birthday: z.date({ required_error: "A date of birth is required." })
-    .refine((date) => date <= subYears(new Date(), 3), "You must be at least 3 years old."),
-  gender: z.enum(["male", "female", "other", "prefer_not_to_say"]),
-});
 
 export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -91,6 +77,7 @@ export default function SignupPage() {
   const [otp, setOtp] = useState('');
   const [phoneLoading, setPhoneLoading] = useState(false);
   const confirmationResultRef = useRef<any>(null);
+  const recaptchaContainerRef = useRef<HTMLDivElement>(null);
 
   const [completingUser, setCompletingUser] = useState<User | null>(null);
 
@@ -109,9 +96,30 @@ export default function SignupPage() {
     },
   });
 
+  const profileFormSchema = useMemo(() => z.object({
+    username: z.string()
+      .min(3, "Username must be at least 3 characters.")
+      .max(20, "Username must be 20 characters or less.")
+      .regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores.")
+      .refine(
+          async (username) => {
+              // Pass the current user's ID to exclude it from the check
+              return await checkUsernameUnique(username, completingUser?.uid);
+          },
+          "This username is already taken."
+      ),
+    name: z.string().min(2, "Name must be at least 2 characters."),
+    country: z.string().min(1, "Please select a country."),
+    birthday: z.date({ required_error: "A date of birth is required." })
+      .refine((date) => date <= subYears(new Date(), 3), "You must be at least 3 years old."),
+    gender: z.enum(["male", "female", "other", "prefer_not_to_say"]),
+  }), [completingUser]);
+
   const profileForm = useForm<z.infer<typeof profileFormSchema>>({
     resolver: zodResolver(profileFormSchema),
+    mode: 'onChange', // Validate on change to give real-time feedback for username
   });
+
 
   useEffect(() => {
     if (completingUser) {
@@ -205,23 +213,23 @@ export default function SignupPage() {
   
   const handleSendOtp = async () => {
     if (!phoneDialogNumber) { toast({ variant: "destructive", title: "Phone number required" }); return; }
+    if (!recaptchaContainerRef.current) {
+        toast({ variant: 'destructive', title: 'reCAPTCHA Error', description: 'reCAPTCHA container not found.' });
+        return;
+    }
     setPhoneLoading(true);
     try {
       const fullPhoneNumber = `${phoneDialogCountryCode}${phoneDialogNumber}`;
-      window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', { 'size': 'invisible' });
-      const confirmationResult = await signInWithPhoneNumber(auth, fullPhoneNumber, window.recaptchaVerifier);
+       // Create a new verifier each time to avoid stale state issues
+      const recaptchaVerifier = new RecaptchaVerifier(auth, recaptchaContainerRef.current, { 'size': 'invisible' });
+      const confirmationResult = await signInWithPhoneNumber(auth, fullPhoneNumber, recaptchaVerifier);
+      
       confirmationResultRef.current = confirmationResult;
       setPhoneStep('enterOtp');
       toast({ title: "OTP Sent!", description: `An OTP has been sent to ${fullPhoneNumber}` });
     } catch (error: any) {
       console.error("Error sending OTP:", error);
       toast({ variant: "destructive", title: "Failed to Send OTP", description: error.message });
-      if (window.recaptchaVerifier) {
-        window.recaptchaVerifier.render().then((widgetId) => {
-          // @ts-ignore
-          grecaptcha.reset(widgetId);
-        });
-      }
     } finally { setPhoneLoading(false); }
   };
 
@@ -359,7 +367,7 @@ export default function SignupPage() {
                        </Button>
                     )}
                   </DialogFooter>
-                  <div id="recaptcha-container"></div>
+                   <div ref={recaptchaContainerRef}></div>
                 </DialogContent>
               </Dialog>
            </div>
