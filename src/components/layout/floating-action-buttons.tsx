@@ -58,7 +58,7 @@ export default function FloatingActionButtons() {
                             <TooltipTrigger asChild>
                                 <Button asChild variant="secondary" size="icon" className="h-12 w-12 rounded-full shadow-lg">
                                     <Link href={item.href}>
-                                        <Image src={item.iconSrc} alt={item.label} width={24} height={24} data-ai-hint={item.hint} />
+                                        <div><Image src={item.iconSrc} alt={item.label} width={24} height={24} data-ai-hint={item.hint} /></div>
                                     </Link>
                                 </Button>
                             </TooltipTrigger>

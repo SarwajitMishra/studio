@@ -28,7 +28,7 @@ const FloatingSideButton = ({ side, href, tooltip, iconSrc, hint, isLink = false
                 <TooltipTrigger asChild>
                     {isLink ? (
                         <Button {...commonButtonProps} asChild>
-                           <Link href={href}><Image src={iconSrc} alt={tooltip} width={32} height={32} data-ai-hint={hint} /></Link>
+                           <Link href={href}><div><Image src={iconSrc} alt={tooltip} width={32} height={32} data-ai-hint={hint} /></div></Link>
                         </Button>
                     ) : (
                         <DialogTrigger asChild>
