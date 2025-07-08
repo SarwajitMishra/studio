@@ -38,9 +38,7 @@ export default function FloatingChatButton() {
                   )}
                   aria-label="Chat with Shravya AI"
                 >
-                  <div>
-                    <CustomChatIcon src="/images/custom-chat-icon.png" alt="Shravya AI Chat" size={48} />
-                  </div>
+                  <CustomChatIcon src="/images/custom-chat-icon.png" alt="Shravya AI Chat" size={48} />
                 </Button>
               </DialogTrigger>
             </TooltipTrigger>

@@ -44,10 +44,8 @@ export default function FloatingActionButtons() {
                             aria-expanded={isOpen}
                             aria-label={isOpen ? "Close support menu" : "Open support menu"}
                         >
-                            <div>
-                                <Image src="/images/icons/zap.png" alt="Open Menu" width={28} height={28} data-ai-hint="action menu" className={cn("absolute transition-all duration-300", isOpen ? "rotate-45 scale-0 opacity-0" : "rotate-0 scale-100 opacity-100")} />
-                                <Image src="/images/icons/close.png" alt="Close Menu" width={28} height={28} data-ai-hint="close" className={cn("absolute transition-all duration-300", isOpen ? "rotate-0 scale-100 opacity-100" : "-rotate-45 scale-0 opacity-0")} />
-                            </div>
+                            <Image src="/images/icons/zap.png" alt="Open Menu" width={28} height={28} data-ai-hint="action menu" className={cn("absolute transition-all duration-300", isOpen ? "rotate-45 scale-0 opacity-0" : "rotate-0 scale-100 opacity-100")} />
+                            <Image src="/images/icons/close.png" alt="Close Menu" width={28} height={28} data-ai-hint="close" className={cn("absolute transition-all duration-300", isOpen ? "rotate-0 scale-100 opacity-100" : "-rotate-45 scale-0 opacity-0")} />
                         </Button>
                     </TooltipTrigger>
                     <TooltipContent side="right" className="ml-2">
@@ -67,7 +65,7 @@ export default function FloatingActionButtons() {
                             <TooltipTrigger asChild>
                                 <Button asChild variant="secondary" size="icon" className="h-12 w-12 rounded-full shadow-lg">
                                     <Link href={item.href}>
-                                        <div><Image src={item.iconSrc} alt={item.label} width={24} height={24} data-ai-hint={item.hint} /></div>
+                                        <Image src={item.iconSrc} alt={item.label} width={24} height={24} data-ai-hint={item.hint} />
                                     </Link>
                                 </Button>
                             </TooltipTrigger>
