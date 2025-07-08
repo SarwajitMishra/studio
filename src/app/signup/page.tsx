@@ -208,14 +208,20 @@ export default function SignupPage() {
     setPhoneLoading(true);
     try {
       const fullPhoneNumber = `${phoneDialogCountryCode}${phoneDialogNumber}`;
-      const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', { 'size': 'invisible' });
-      const result = await signInWithPhoneNumber(auth, fullPhoneNumber, verifier);
-      confirmationResultRef.current = result;
+      window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', { 'size': 'invisible' });
+      const confirmationResult = await signInWithPhoneNumber(auth, fullPhoneNumber, window.recaptchaVerifier);
+      confirmationResultRef.current = confirmationResult;
       setPhoneStep('enterOtp');
       toast({ title: "OTP Sent!", description: `An OTP has been sent to ${fullPhoneNumber}` });
     } catch (error: any) {
       console.error("Error sending OTP:", error);
       toast({ variant: "destructive", title: "Failed to Send OTP", description: error.message });
+      if (window.recaptchaVerifier) {
+        window.recaptchaVerifier.render().then((widgetId) => {
+          // @ts-ignore
+          grecaptcha.reset(widgetId);
+        });
+      }
     } finally { setPhoneLoading(false); }
   };
 
@@ -342,7 +348,6 @@ export default function SignupPage() {
                     <Input type="text" placeholder="Enter 6-digit OTP" value={otp} onChange={e => setOtp(e.target.value)} />
                   )}
                   </div>
-                  <div id="recaptcha-container"></div>
                   <DialogFooter>
                     {phoneStep === 'enterPhone' ? (
                        <Button onClick={handleSendOtp} disabled={phoneLoading}>
@@ -354,6 +359,7 @@ export default function SignupPage() {
                        </Button>
                     )}
                   </DialogFooter>
+                  <div id="recaptcha-container"></div>
                 </DialogContent>
               </Dialog>
            </div>
@@ -456,5 +462,3 @@ export default function SignupPage() {
     </div>
   );
 }
-
-    
