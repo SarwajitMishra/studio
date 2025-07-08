@@ -73,8 +73,8 @@ const addRewardToHistory = (event: Omit<RewardEvent, 'id' | 'timestamp'>) => {
 /**
  * Applies the given S-Points and S-Coins to the user's balance, handles S-Point to S-Coin conversion,
  * and notifies the app of the update. This function should only be called on the client.
- * @param pointsToAdd The number of S-Points to add.
- * @param coinsFromGame The number of S-Coins earned directly from the game.
+ * @param pointsToAdd The number of S-Points to add (can be negative).
+ * @param coinsFromGame The number of S-Coins earned directly from the game (can be negative).
  * @param description A description of how the reward was earned for the history log.
  * @returns The total number of points and coins earned in this transaction (including conversions and caps).
  */
@@ -88,17 +88,27 @@ export function applyRewards(pointsToAdd: number, coinsFromGame: number, descrip
   let newPoints = currentPoints + pointsToAdd;
   let coinsAfterConversion = 0;
 
-  // Handle S-Point to S-Coin conversion
-  if (newPoints >= S_POINTS_TO_S_COIN_CONVERSION_THRESHOLD) {
+  // Handle S-Point to S-Coin conversion (only for positive point additions)
+  if (pointsToAdd > 0 && newPoints >= S_POINTS_TO_S_COIN_CONVERSION_THRESHOLD) {
       const conversions = Math.floor(newPoints / S_POINTS_TO_S_COIN_CONVERSION_THRESHOLD);
       coinsAfterConversion = conversions;
       newPoints %= S_POINTS_TO_S_COIN_CONVERSION_THRESHOLD;
   }
 
+  // Handle debits directly without applying daily cap logic
+  if (coinsFromGame < 0) {
+    const newCoins = currentCoins + coinsFromGame;
+    setStoredGameCurrency(LOCAL_STORAGE_S_COINS_KEY, newCoins);
+    setStoredGameCurrency(LOCAL_STORAGE_S_POINTS_KEY, newPoints); // Save points too
+    addRewardToHistory({ description, points: pointsToAdd, coins: coinsFromGame });
+    window.dispatchEvent(new CustomEvent('storageUpdated'));
+    return { points: pointsToAdd, coins: coinsFromGame };
+  }
+
   const totalPotentialCoins = coinsFromGame + coinsAfterConversion;
   let finalCoinsToAdd = totalPotentialCoins;
 
-  // --- Daily S-Coin Cap Logic ---
+  // --- Daily S-Coin Cap Logic for CREDITS only ---
   const today = new Date().toISOString().split('T')[0]; // Get 'YYYY-MM-DD'
   let coinTally: DailyTally = { date: today, total: 0 };
   
@@ -128,16 +138,18 @@ export function applyRewards(pointsToAdd: number, coinsFromGame: number, descrip
   setStoredGameCurrency(LOCAL_STORAGE_S_POINTS_KEY, newPoints);
   setStoredGameCurrency(LOCAL_STORAGE_S_COINS_KEY, newCoins);
 
-  // Update and save the daily tally
-  coinTally.total += finalCoinsToAdd;
-  try {
-      localStorage.setItem(LOCAL_STORAGE_S_COIN_TALLY_KEY, JSON.stringify(coinTally));
-  } catch (e) {
-      console.error("Error writing S-Coin tally to localStorage", e);
+  // Update and save the daily tally for credits
+  if (finalCoinsToAdd > 0) {
+    coinTally.total += finalCoinsToAdd;
+    try {
+        localStorage.setItem(LOCAL_STORAGE_S_COIN_TALLY_KEY, JSON.stringify(coinTally));
+    } catch (e) {
+        console.error("Error writing S-Coin tally to localStorage", e);
+    }
   }
 
-  // Log the event to history
-  if(pointsToAdd > 0 || finalCoinsToAdd > 0) {
+  // Log the event to history if there was any change
+  if(pointsToAdd !== 0 || finalCoinsToAdd !== 0) {
       addRewardToHistory({
           description,
           points: pointsToAdd,
@@ -145,7 +157,7 @@ export function applyRewards(pointsToAdd: number, coinsFromGame: number, descrip
       });
   }
 
-  // Dispatch a custom event to notify other parts of the app (like the profile page)
+  // Dispatch a custom event to notify other parts of the app
   window.dispatchEvent(new CustomEvent('storageUpdated'));
   
   console.log(`Rewards applied. Points: +${pointsToAdd}, Coins: +${finalCoinsToAdd}. Daily tally: ${coinTally.total}/${DAILY_S_COIN_CAP}.`);

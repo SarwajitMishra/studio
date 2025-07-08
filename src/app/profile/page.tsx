@@ -445,6 +445,7 @@ export default function ProfilePage() {
                         <TableRow>
                         <TableHead className="w-[50px]">Sl.No</TableHead>
                         <TableHead>Description</TableHead>
+                        <TableHead className="text-right">Debit</TableHead>
                         <TableHead className="text-right">Credit</TableHead>
                         <TableHead className="text-right">Balance</TableHead>
                         </TableRow>
@@ -468,6 +469,18 @@ export default function ProfilePage() {
                                 <div className="text-xs text-muted-foreground">
                                 {formatDistanceToNow(new Date(event.timestamp), { addSuffix: true })}
                                 </div>
+                            </TableCell>
+                            <TableCell className="text-right">
+                                {event.points < 0 && (
+                                <div className="font-semibold flex items-center justify-end text-red-600">
+                                    {event.points} <SPointsIcon className="ml-1.5 h-4 w-4" />
+                                </div>
+                                )}
+                                {event.coins < 0 && (
+                                <div className="font-semibold flex items-center justify-end text-red-600">
+                                    {event.coins} <SCoinsIcon className="ml-1.5 h-4 w-4" />
+                                </div>
+                                )}
                             </TableCell>
                             <TableCell className="text-right">
                                 {event.points > 0 && (
@@ -750,6 +763,7 @@ export default function ProfilePage() {
     
 
     
+
 
 
 

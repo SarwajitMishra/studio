@@ -7,6 +7,8 @@ import { Ticket, Coins, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useState, useEffect } from "react";
 import { LOCAL_STORAGE_S_COINS_KEY } from "@/lib/constants";
+import { applyRewards } from "@/lib/rewards";
+import { useToast } from "@/hooks/use-toast";
 
 const getStoredSCoins = (): number => {
     if (typeof window === 'undefined') return 0;
@@ -17,11 +19,39 @@ const getStoredSCoins = (): number => {
 export default function ContestPage() {
   const [userCoins, setUserCoins] = useState(0);
   const entryCost = 1000;
+  const { toast } = useToast();
 
   useEffect(() => {
     // This will only run on the client
     setUserCoins(getStoredSCoins());
+
+    const handleStorageUpdate = () => {
+        setUserCoins(getStoredSCoins());
+    };
+
+    window.addEventListener('storageUpdated', handleStorageUpdate);
+    return () => {
+        window.removeEventListener('storageUpdated', handleStorageUpdate);
+    };
   }, []);
+  
+  const handleJoinContest = () => {
+    if (userCoins >= entryCost) {
+      applyRewards(0, -entryCost, "Monthly Contest Entry");
+      
+      toast({
+        title: "Contest Joined!",
+        description: `You've entered the contest. ${entryCost} S-Coins have been deducted. Good luck!`,
+        className: "bg-green-500 text-white",
+      });
+    } else {
+        toast({
+            variant: 'destructive',
+            title: "Not Enough S-Coins",
+            description: "You need more S-Coins to enter the contest.",
+        });
+    }
+  };
 
   return (
     <div className="flex items-center justify-center min-h-[calc(100vh-200px)] p-4">
@@ -43,7 +73,7 @@ export default function ContestPage() {
             <p className="font-semibold text-lg">Entry Cost: <span className="text-accent font-bold flex items-center justify-center gap-1">{entryCost} <Coins size={20} /></span></p>
             <p className="text-muted-foreground">You have: <span className="font-bold flex items-center justify-center gap-1">{userCoins} <Coins size={16} /></span></p>
           </div>
-          <Button size="lg" className="w-full text-lg" disabled={userCoins < entryCost}>
+          <Button size="lg" className="w-full text-lg" disabled={userCoins < entryCost} onClick={handleJoinContest}>
             {userCoins < entryCost ? "Not Enough S-Coins" : `Join Contest - Spend ${entryCost} S-Coins`}
           </Button>
         </CardContent>
