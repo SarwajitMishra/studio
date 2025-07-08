@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDistanceToNow } from 'date-fns';
 import { 
   AVATARS, 
@@ -27,7 +28,7 @@ import {
   LOCAL_STORAGE_S_POINTS_KEY,
   LOCAL_STORAGE_S_COINS_KEY
 } from "@/lib/constants";
-import { UserCircle, BarChart3, Settings, CheckCircle, LogIn, LogOut, UploadCloud, Edit3, User as UserIcon, Palette, Sun, Moon, Trophy, Gamepad2, Star, Coins, AlertTriangle, Loader2, History } from 'lucide-react';
+import { UserCircle, BarChart3, Settings, CheckCircle, LogIn, LogOut, UploadCloud, Edit3, User as UserIcon, Palette, Sun, Moon, Trophy, Gamepad2, Star, Coins, AlertTriangle, Loader2, History, Bookmark } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -430,36 +431,70 @@ export default function ProfilePage() {
                     <History className="mr-2 h-4 w-4" /> View Reward History
                 </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="sm:max-w-2xl">
                 <DialogHeader>
-                    <DialogTitle>Recent Rewards</DialogTitle>
-                    <DialogDescription>Your latest S-Point and S-Coin earnings.</DialogDescription>
+                    <DialogTitle>Reward History</DialogTitle>
+                    <DialogDescription>
+                        A passbook-style view of your S-Point and S-Coin transactions.
+                    </DialogDescription>
                 </DialogHeader>
                 {rewardHistory.length > 0 ? (
-                    <ScrollArea className="h-96 w-full pr-4 mt-4">
-                        <div className="space-y-4">
-                            {rewardHistory.map(event => (
-                                <div key={event.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                                    <div>
-                                        <p className="font-semibold text-foreground">{event.description}</p>
-                                        <p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(event.timestamp), { addSuffix: true })}</p>
-                                    </div>
-                                    <div className="flex flex-col items-end text-sm">
-                                        {event.points > 0 && (
-                                            <span className="font-semibold flex items-center text-yellow-600 dark:text-yellow-400">
-                                                +{event.points} <SPointsIcon className="ml-1.5 h-4 w-4" />
-                                            </span>
-                                        )}
-                                        {event.coins > 0 && (
-                                             <span className="font-semibold flex items-center text-amber-600 dark:text-amber-500">
-                                                +{event.coins} <SCoinsIcon className="ml-1.5 h-4 w-4" />
-                                            </span>
-                                        )}
-                                    </div>
+                <ScrollArea className="h-96 w-full mt-4">
+                    <Table>
+                    <TableHeader>
+                        <TableRow>
+                        <TableHead className="w-[50px]">Sl.No</TableHead>
+                        <TableHead>Description</TableHead>
+                        <TableHead className="text-right">Credit</TableHead>
+                        <TableHead className="text-right">Balance</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {rewardHistory.map((event, index) => {
+                        // Calculate running balance after this transaction
+                        // To get the balance *after* this transaction, we subtract all newer transactions
+                        let balancePoints = sPoints;
+                        let balanceCoins = sCoins;
+                        for (let i = 0; i < index; i++) {
+                            balancePoints -= rewardHistory[i].points;
+                            balanceCoins -= rewardHistory[i].coins;
+                        }
+
+                        return (
+                            <TableRow key={event.id}>
+                            <TableCell className="font-medium">{index + 1}</TableCell>
+                            <TableCell>
+                                <div className="font-medium text-foreground">{event.description}</div>
+                                <div className="text-xs text-muted-foreground">
+                                {formatDistanceToNow(new Date(event.timestamp), { addSuffix: true })}
                                 </div>
-                            ))}
-                        </div>
-                    </ScrollArea>
+                            </TableCell>
+                            <TableCell className="text-right">
+                                {event.points > 0 && (
+                                <div className="font-semibold flex items-center justify-end text-green-600">
+                                    +{event.points} <SPointsIcon className="ml-1.5 h-4 w-4" />
+                                </div>
+                                )}
+                                {event.coins > 0 && (
+                                <div className="font-semibold flex items-center justify-end text-green-600">
+                                    +{event.coins} <SCoinsIcon className="ml-1.5 h-4 w-4" />
+                                </div>
+                                )}
+                            </TableCell>
+                            <TableCell className="text-right">
+                                <div className="font-semibold flex items-center justify-end">
+                                {balancePoints} <SPointsIcon className="ml-1.5 h-4 w-4 text-yellow-400" />
+                                </div>
+                                <div className="font-semibold flex items-center justify-end text-sm text-muted-foreground">
+                                {balanceCoins} <SCoinsIcon className="ml-1.5 h-4 w-4 text-amber-500" />
+                                </div>
+                            </TableCell>
+                            </TableRow>
+                        );
+                        })}
+                    </TableBody>
+                    </Table>
+                </ScrollArea>
                 ) : (
                     <div className="text-center py-10">
                         <History size={48} className="mx-auto text-primary/30 mb-3" />
@@ -600,7 +635,7 @@ export default function ProfilePage() {
                               <AccordionTrigger className="px-4 py-3 hover:no-underline">
                                  <div className="flex items-center gap-3">
                                   <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-full">
-                                      <BookMarked className="h-6 w-6 text-indigo-500" />
+                                      <Bookmark className="h-6 w-6 text-indigo-500" />
                                   </div>
                                   <div>
                                     <h3 className="text-lg font-semibold text-left">Easy English Fun</h3>
@@ -715,6 +750,7 @@ export default function ProfilePage() {
     
 
     
+
 
 
 
