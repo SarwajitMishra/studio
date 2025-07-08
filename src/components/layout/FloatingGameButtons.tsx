@@ -32,7 +32,9 @@ const FloatingSideButton = ({ side, href, tooltip, iconSrc, hint, isLink = false
                         </Button>
                     ) : (
                         <DialogTrigger asChild>
-                           <Button {...commonButtonProps}><Image src={iconSrc} alt={tooltip} width={32} height={32} data-ai-hint={hint} /></Button>
+                           <Button {...commonButtonProps}>
+                                <div><Image src={iconSrc} alt={tooltip} width={32} height={32} data-ai-hint={hint} /></div>
+                           </Button>
                         </DialogTrigger>
                     )}
                 </TooltipTrigger>
