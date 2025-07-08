@@ -45,7 +45,7 @@ import { checkUsernameUnique, createUserProfile } from '@/lib/users';
 
 const passwordRegex = new RegExp("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$");
 
-const formSchema = z.object({
+const emailFormSchema = z.object({
   username: z.string()
     .min(3, "Username must be at least 3 characters.")
     .max(20, "Username must be 20 characters or less.")
@@ -66,6 +66,19 @@ const formSchema = z.object({
   path: ["confirmPassword"],
 });
 
+const profileFormSchema = z.object({
+  username: z.string()
+    .min(3, "Username must be at least 3 characters.")
+    .max(20, "Username must be 20 characters or less.")
+    .regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores.")
+    .refine(async (username) => await checkUsernameUnique(username), "This username is already taken."),
+  name: z.string().min(2, "Name must be at least 2 characters."),
+  country: z.string().min(1, "Please select a country."),
+  birthday: z.date({ required_error: "A date of birth is required." })
+    .refine((date) => date <= subYears(new Date(), 3), "You must be at least 3 years old."),
+  gender: z.enum(["male", "female", "other", "prefer_not_to_say"]),
+});
+
 export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
@@ -79,8 +92,10 @@ export default function SignupPage() {
   const [phoneLoading, setPhoneLoading] = useState(false);
   const confirmationResultRef = useRef<any>(null);
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const [completingUser, setCompletingUser] = useState<User | null>(null);
+
+  const emailForm = useForm<z.infer<typeof emailFormSchema>>({
+    resolver: zodResolver(emailFormSchema),
     defaultValues: {
       username: "",
       name: "",
@@ -94,62 +109,23 @@ export default function SignupPage() {
     },
   });
 
-  const handleSendOtp = async () => {
-    if (!phoneDialogNumber) {
-        toast({ variant: "destructive", title: "Phone number required" });
-        return;
-    }
-    setPhoneLoading(true);
-    try {
-        const fullPhoneNumber = `${phoneDialogCountryCode}${phoneDialogNumber}`;
-        // Create a new verifier each time to avoid stale verifier issues
-        const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-            'size': 'invisible',
-            'callback': (response: any) => {
-              // reCAPTCHA solved, allow signInWithPhoneNumber.
-            }
-        });
-        const result = await signInWithPhoneNumber(auth, fullPhoneNumber, verifier);
-        confirmationResultRef.current = result;
-        setPhoneStep('enterOtp');
-        toast({ title: "OTP Sent!", description: `An OTP has been sent to ${fullPhoneNumber}` });
-    } catch (error: any) {
-        console.error("Error sending OTP:", error);
-        toast({ variant: "destructive", title: "Failed to Send OTP", description: error.message || "Please check the number and try again." });
-    } finally {
-        setPhoneLoading(false);
-    }
-  };
+  const profileForm = useForm<z.infer<typeof profileFormSchema>>({
+    resolver: zodResolver(profileFormSchema),
+  });
 
-  const handleVerifyOtp = async () => {
-    if (!otp || !confirmationResultRef.current) {
-        toast({ variant: "destructive", title: "OTP Required" });
-        return;
+  useEffect(() => {
+    if (completingUser) {
+      profileForm.reset({
+        username: completingUser.displayName?.replace(/\s/g, '').toLowerCase() || 
+                  (completingUser.phoneNumber ? `user_${completingUser.phoneNumber.slice(-4)}` : ''),
+        name: completingUser.displayName || '',
+        country: 'India',
+        gender: 'prefer_not_to_say',
+      });
     }
-    setPhoneLoading(true);
-    try {
-        const userCredential = await confirmationResultRef.current.confirm(otp);
-        const additionalUserInfo = getAdditionalUserInfo(userCredential);
+  }, [completingUser, profileForm]);
 
-        if (additionalUserInfo?.isNewUser) {
-            await createUserProfile(userCredential.user, {
-                phoneNumber: userCredential.user.phoneNumber,
-            });
-        }
-        
-        toast({ title: "Phone Verified!", description: "Welcome to Shravya Playhouse!" });
-        setIsPhoneDialogOpen(false);
-        router.push('/dashboard');
-    } catch (error: any) {
-        console.error("Error verifying OTP:", error);
-        toast({ variant: "destructive", title: "OTP Verification Failed", description: error.message || "Please check the OTP and try again." });
-    } finally {
-        setPhoneLoading(false);
-    }
-  };
-
-
-  async function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onEmailSubmit(values: z.infer<typeof emailFormSchema>) {
     setIsLoading(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
@@ -173,14 +149,37 @@ export default function SignupPage() {
       if (error.code === 'auth/operation-not-allowed') {
         description = "Email/Password sign-up is not enabled. Please enable it in the Firebase console.";
       }
-      toast({
-        variant: "destructive",
-        title: "Sign Up Failed",
-        description: description,
-      });
+      toast({ variant: "destructive", title: "Sign Up Failed", description });
     } finally {
       setIsLoading(false);
     }
+  }
+
+  async function onProfileSubmit(values: z.infer<typeof profileFormSchema>) {
+      if (!completingUser) return;
+      setIsLoading(true);
+      try {
+        await updateProfile(completingUser, { displayName: values.name });
+
+        const additionalData = {
+          username: values.username,
+          country: values.country,
+          birthday: values.birthday.toISOString(),
+          gender: values.gender,
+          // Other details like email/phone are already on the user object
+        };
+        await createUserProfile(completingUser, additionalData);
+        
+        toast({ title: "Profile Complete!", description: "Welcome to Shravya Playhouse!" });
+        setCompletingUser(null);
+        router.push('/dashboard');
+
+      } catch (error: any) {
+        console.error("Error completing profile:", error);
+        toast({ variant: "destructive", title: "Update Failed", description: error.message });
+      } finally {
+        setIsLoading(false);
+      }
   }
 
   const handleGoogleLogin = async () => {
@@ -189,30 +188,123 @@ export default function SignupPage() {
       const result = await signInWithPopup(auth, googleProvider);
       const additionalInfo = getAdditionalUserInfo(result);
       if (additionalInfo?.isNewUser) {
-          await createUserProfile(result.user, {
-            displayName: result.user.displayName,
-            email: result.user.email
-          });
+          setCompletingUser(result.user);
+      } else {
+        toast({ title: "Welcome Back!", description: "You've been successfully logged in." });
+        router.push('/dashboard');
       }
-      toast({ title: "Sign Up Successful!", description: "Welcome!" });
-      router.push('/dashboard');
     } catch (error: any) {
-      console.error("Error signing up with Google", error);
+      console.error("Error signing in with Google", error);
        if (error.code !== 'auth/popup-closed-by-user') {
-        toast({
-          variant: "destructive",
-          title: "Google Sign Up Failed",
-          description: error.message || "Could not sign up with Google. Please try again.",
-        });
+        toast({ variant: "destructive", title: "Google Sign In Failed", description: error.message });
       }
     } finally {
       setIsLoading(false);
     }
   };
+  
+  const handleSendOtp = async () => {
+    if (!phoneDialogNumber) { toast({ variant: "destructive", title: "Phone number required" }); return; }
+    setPhoneLoading(true);
+    try {
+      const fullPhoneNumber = `${phoneDialogCountryCode}${phoneDialogNumber}`;
+      const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', { 'size': 'invisible' });
+      const result = await signInWithPhoneNumber(auth, fullPhoneNumber, verifier);
+      confirmationResultRef.current = result;
+      setPhoneStep('enterOtp');
+      toast({ title: "OTP Sent!", description: `An OTP has been sent to ${fullPhoneNumber}` });
+    } catch (error: any) {
+      console.error("Error sending OTP:", error);
+      toast({ variant: "destructive", title: "Failed to Send OTP", description: error.message });
+    } finally { setPhoneLoading(false); }
+  };
 
+  const handleVerifyOtp = async () => {
+    if (!otp || !confirmationResultRef.current) { toast({ variant: "destructive", title: "OTP Required" }); return; }
+    setPhoneLoading(true);
+    try {
+      const userCredential = await confirmationResultRef.current.confirm(otp);
+      const additionalInfo = getAdditionalUserInfo(userCredential);
+      
+      setIsPhoneDialogOpen(false); // Close phone dialog
+
+      if (additionalInfo?.isNewUser) {
+        setCompletingUser(userCredential.user);
+      } else {
+        toast({ title: "Welcome Back!", description: "You've been successfully logged in." });
+        router.push('/dashboard');
+      }
+    } catch (error: any) {
+      console.error("Error verifying OTP:", error);
+      toast({ variant: "destructive", title: "OTP Verification Failed", description: error.message });
+    } finally { setPhoneLoading(false); }
+  };
 
   return (
     <div className="flex items-center justify-center min-h-screen py-12">
+      {/* Complete Profile Dialog */}
+      <Dialog open={!!completingUser} onOpenChange={(open) => !open && setCompletingUser(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Complete Your Profile</DialogTitle>
+            <DialogDescription>
+              Just a few more details to get you started on your adventure!
+            </DialogDescription>
+          </DialogHeader>
+           <Form {...profileForm}>
+            <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-4 py-4">
+              <FormField control={profileForm.control} name="username" render={({ field }) => (
+                <FormItem><FormLabel>Username</FormLabel><FormControl><Input placeholder="Your unique username" {...field} /></FormControl><FormMessage /></FormItem>
+              )} />
+              <FormField control={profileForm.control} name="name" render={({ field }) => (
+                <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input placeholder="Your Name" {...field} /></FormControl><FormMessage /></FormItem>
+              )} />
+              <FormField control={profileForm.control} name="country" render={({ field }) => (
+                <FormItem><FormLabel>Country</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl><SelectTrigger><SelectValue placeholder="Select a country" /></SelectTrigger></FormControl>
+                  <SelectContent>
+                    {COUNTRIES.map(c => <SelectItem key={c.value} value={c.label}>{c.label}</SelectItem>)}
+                  </SelectContent>
+                </Select><FormMessage /></FormItem>
+              )} />
+               <FormField control={profileForm.control} name="birthday" render={({ field }) => (
+                <FormItem className="flex flex-col"><FormLabel>Date of birth</FormLabel><Popover>
+                  <PopoverTrigger asChild><FormControl>
+                    <Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                      {field.value ? (format(field.value, "PPP")) : (<span>Pick a date</span>)}
+                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                    </Button>
+                  </FormControl></PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single" captionLayout="dropdown-buttons"
+                      fromYear={1920} toYear={subYears(new Date(), 3).getFullYear()}
+                      selected={field.value} onSelect={field.onChange}
+                      disabled={(date) => date > subYears(new Date(), 3) || date < new Date("1900-01-01")}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover><FormMessage /></FormItem>
+              )} />
+               <FormField control={profileForm.control} name="gender" render={({ field }) => (
+                <FormItem><FormLabel>Gender</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl><SelectTrigger><SelectValue placeholder="Select a gender" /></SelectTrigger></FormControl>
+                    <SelectContent>
+                      <SelectItem value="male">Male</SelectItem><SelectItem value="female">Female</SelectItem><SelectItem value="other">Other</SelectItem><SelectItem value="prefer_not_to_say">Prefer not to say</SelectItem>
+                    </SelectContent>
+                  </Select><FormMessage /></FormItem>
+              )} />
+              <DialogFooter>
+                <Button type="submit" disabled={isLoading}>
+                  {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Save & Continue"}
+                </Button>
+              </DialogFooter>
+            </form>
+           </Form>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Main Signup Card */}
       <Card className="w-full max-w-2xl">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">Create Your Account</CardTitle>
@@ -250,7 +342,6 @@ export default function SignupPage() {
                     <Input type="text" placeholder="Enter 6-digit OTP" value={otp} onChange={e => setOtp(e.target.value)} />
                   )}
                   </div>
-                  {/* Container for the invisible reCAPTCHA */}
                   <div id="recaptcha-container"></div>
                   <DialogFooter>
                     {phoneStep === 'enterPhone' ? (
@@ -270,21 +361,21 @@ export default function SignupPage() {
             <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
             <div className="relative flex justify-center text-xs uppercase"><span className="bg-background px-2 text-muted-foreground">Or fill out the form</span></div>
           </div>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Form {...emailForm}>
+            <form onSubmit={emailForm.handleSubmit(onEmailSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-4">
               
-              <FormField control={form.control} name="username" render={({ field }) => (
+              <FormField control={emailForm.control} name="username" render={({ field }) => (
                 <FormItem><FormLabel>Username</FormLabel><FormControl><Input placeholder="Your unique username" {...field} /></FormControl><FormMessage /></FormItem>
               )} />
-              <FormField control={form.control} name="name" render={({ field }) => (
+              <FormField control={emailForm.control} name="name" render={({ field }) => (
                 <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input placeholder="Your Name" {...field} /></FormControl><FormMessage /></FormItem>
               )} />
 
-              <FormField control={form.control} name="phoneNumber" render={({ field }) => (
+              <FormField control={emailForm.control} name="phoneNumber" render={({ field }) => (
                   <FormItem className="md:col-span-2">
                     <FormLabel>Phone Number</FormLabel>
                     <div className="flex items-start gap-2">
-                        <FormField control={form.control} name="countryCode" render={({ field: codeField }) => (
+                        <FormField control={emailForm.control} name="countryCode" render={({ field: codeField }) => (
                             <FormItem>
                                 <Select onValueChange={codeField.onChange} defaultValue={codeField.value}>
                                 <FormControl><SelectTrigger className="w-28"><SelectValue /></SelectTrigger></FormControl>
@@ -302,16 +393,16 @@ export default function SignupPage() {
                   </FormItem>
               )} />
               
-              <FormField control={form.control} name="email" render={({ field }) => (
+              <FormField control={emailForm.control} name="email" render={({ field }) => (
                 <FormItem className="md:col-span-2"><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="you@example.com" {...field} /></FormControl><FormMessage /></FormItem>
               )} />
-              <FormField control={form.control} name="password" render={({ field }) => (
+              <FormField control={emailForm.control} name="password" render={({ field }) => (
                 <FormItem><FormLabel>Password</FormLabel><FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl><FormDescription className="text-xs">8+ characters, with uppercase, lowercase, number, and special character.</FormDescription><FormMessage /></FormItem>
               )} />
-              <FormField control={form.control} name="confirmPassword" render={({ field }) => (
+              <FormField control={emailForm.control} name="confirmPassword" render={({ field }) => (
                 <FormItem><FormLabel>Confirm Password</FormLabel><FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl><FormMessage /></FormItem>
               )} />
-              <FormField control={form.control} name="country" render={({ field }) => (
+              <FormField control={emailForm.control} name="country" render={({ field }) => (
                 <FormItem><FormLabel>Country</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}>
                   <FormControl><SelectTrigger><SelectValue placeholder="Select a country" /></SelectTrigger></FormControl>
                   <SelectContent>
@@ -319,7 +410,7 @@ export default function SignupPage() {
                   </SelectContent>
                 </Select><FormMessage /></FormItem>
               )} />
-               <FormField control={form.control} name="birthday" render={({ field }) => (
+               <FormField control={emailForm.control} name="birthday" render={({ field }) => (
                 <FormItem className="flex flex-col pt-2"><FormLabel>Date of birth</FormLabel><Popover>
                   <PopoverTrigger asChild><FormControl>
                     <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
@@ -341,7 +432,7 @@ export default function SignupPage() {
                   </PopoverContent>
                 </Popover><FormMessage /></FormItem>
               )} />
-               <FormField control={form.control} name="gender" render={({ field }) => (
+               <FormField control={emailForm.control} name="gender" render={({ field }) => (
                 <FormItem className="md:col-span-2"><FormLabel>Gender</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl><SelectTrigger><SelectValue placeholder="Select a gender" /></SelectTrigger></FormControl>
                     <SelectContent>
@@ -365,3 +456,5 @@ export default function SignupPage() {
     </div>
   );
 }
+
+    
