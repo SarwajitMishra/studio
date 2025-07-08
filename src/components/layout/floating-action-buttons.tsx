@@ -1,21 +1,27 @@
 
 "use client";
 
-import { useState } from 'react';
-import Image from 'next/image';
+import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faBolt, faXmark, faLightbulb, faEnvelope, faHeart } from '@fortawesome/free-solid-svg-icons';
+import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 
 export default function FloatingActionButtons() {
     const [isOpen, setIsOpen] = useState(false);
+    const [isMounted, setIsMounted] = useState(false);
+    useEffect(() => setIsMounted(true), []);
 
-    const menuItems = [
-        { href: '#', label: 'Request New Feature', iconSrc: '/images/icons/lightbulb.png', hint: 'idea lightbulb' },
-        { href: '#', label: 'Contact Us', iconSrc: '/images/icons/mail.png', hint: 'envelope mail' },
-        { href: '#', label: 'Donate / Support', iconSrc: '/images/icons/heart.png', hint: 'support heart' },
+    const menuItems: { href: string; label: string; icon: IconDefinition }[] = [
+        { href: '#', label: 'Request New Feature', icon: faLightbulb },
+        { href: '#', label: 'Contact Us', icon: faEnvelope },
+        { href: '#', label: 'Donate / Support', icon: faHeart },
     ];
+
+    if (!isMounted) return null;
 
     return (
         <TooltipProvider>
@@ -35,8 +41,8 @@ export default function FloatingActionButtons() {
                             aria-expanded={isOpen}
                             aria-label={isOpen ? "Close support menu" : "Open support menu"}
                         >
-                            <Image src="/images/icons/zap.png" alt="Open Menu" width={28} height={28} data-ai-hint="action menu" className={cn("absolute transition-all duration-300", isOpen ? "rotate-45 scale-0 opacity-0" : "rotate-0 scale-100 opacity-100")} />
-                            <Image src="/images/icons/close.png" alt="Close Menu" width={28} height={28} data-ai-hint="close" className={cn("absolute transition-all duration-300", isOpen ? "rotate-0 scale-100 opacity-100" : "-rotate-45 scale-0 opacity-0")} />
+                            <FontAwesomeIcon icon={faBolt} size="lg" className={cn("absolute transition-all duration-300", isOpen ? "rotate-45 scale-0 opacity-0" : "rotate-0 scale-100 opacity-100")} />
+                            <FontAwesomeIcon icon={faXmark} size="lg" className={cn("absolute transition-all duration-300", isOpen ? "rotate-0 scale-100 opacity-100" : "-rotate-45 scale-0 opacity-0")} />
                         </Button>
                     </TooltipTrigger>
                     <TooltipContent side="right" className="ml-2">
@@ -56,7 +62,7 @@ export default function FloatingActionButtons() {
                             <TooltipTrigger asChild>
                                 <Button asChild variant="secondary" size="icon" className="h-12 w-12 rounded-full shadow-lg">
                                     <Link href={item.href}>
-                                        <Image src={item.iconSrc} alt={item.label} width={24} height={24} data-ai-hint={item.hint} />
+                                        <FontAwesomeIcon icon={item.icon} size="lg" />
                                     </Link>
                                 </Button>
                             </TooltipTrigger>

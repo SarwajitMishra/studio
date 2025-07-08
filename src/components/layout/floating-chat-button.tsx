@@ -1,16 +1,21 @@
 
 "use client";
 
+import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import CustomChatIcon from '../icons/custom-chat-icon';
 import ShravyaChatModalContent from "@/components/ai/shravya-chat-modal-content";
-import { useState } from "react";
 import { cn } from '@/lib/utils';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faCommentDots } from '@fortawesome/free-solid-svg-icons';
 
 export default function FloatingChatButton() {
   const [isOpen, setIsOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => setIsMounted(true), []);
+
+  if (!isMounted) return null;
 
   return (
     <div className="fixed bottom-6 right-6 flex flex-col items-center z-50">
@@ -29,7 +34,7 @@ export default function FloatingChatButton() {
                   )}
                   aria-label="Chat with Shravya AI"
                 >
-                  <CustomChatIcon src="/images/custom-chat-icon.png" alt="Shravya AI Chat" size={48} />
+                  <FontAwesomeIcon icon={faCommentDots} size="2x" />
                 </Button>
               </DialogTrigger>
             </TooltipTrigger>
@@ -41,7 +46,7 @@ export default function FloatingChatButton() {
         <DialogContent className="sm:max-w-xl md:max-w-2xl p-0 max-h-[85vh] flex flex-col">
           <DialogHeader className="p-4 sm:p-6 border-b bg-primary/10">
             <DialogTitle className="text-xl sm:text-2xl font-bold text-primary flex items-center">
-              <CustomChatIcon src="/images/custom-chat-icon.png" alt="" size={28} className="mr-2" />
+              <FontAwesomeIcon icon={faCommentDots} className="mr-3" />
               Chat with Shravya AI
             </DialogTitle>
             <DialogDescription className="text-sm sm:text-base text-foreground/80">

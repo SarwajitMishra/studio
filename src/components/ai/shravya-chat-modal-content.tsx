@@ -6,10 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { User, Send, Loader2, Mic, MicOff, AlertTriangle, PlayCircle, PauseCircle } from 'lucide-react';
-import CustomChatIcon from '../icons/custom-chat-icon'; // Updated to use CustomChatIcon
 import { shravyaAIChat, type ShravyaAIChatInput, type ShravyaAIChatOutput } from '@/ai/flows/shravya-ai-chat-flow';
 import { cn } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faRobot } from '@fortawesome/free-solid-svg-icons';
 
 interface ChatMessage {
   id: string;
@@ -441,8 +442,8 @@ export default function ShravyaChatModalContent() {
               )}
             >
               {message.role === 'assistant' && (
-                <span className="flex-shrink-0 p-2 bg-accent rounded-full text-accent-foreground shadow">
-                  <CustomChatIcon src="/images/custom-chat-icon.png" alt="Shravya AI Icon" size={20} />
+                <span className="flex-shrink-0 p-2 bg-accent rounded-full text-accent-foreground shadow h-9 w-9 flex items-center justify-center">
+                  <FontAwesomeIcon icon={faRobot} />
                 </span>
               )}
               <div
@@ -464,8 +465,8 @@ export default function ShravyaChatModalContent() {
           ))}
           {isLoading && !isListening && (!messages[messages.length - 1]?.isStreaming || messages[messages.length - 1]?.role !== 'assistant') && (
             <div className="flex items-start space-x-3">
-              <span className="flex-shrink-0 p-2 bg-accent rounded-full text-accent-foreground shadow">
-                 <CustomChatIcon src="/images/custom-chat-icon.png" alt="Shravya AI Icon" size={20} />
+              <span className="flex-shrink-0 p-2 bg-accent rounded-full text-accent-foreground shadow h-9 w-9 flex items-center justify-center">
+                 <FontAwesomeIcon icon={faRobot} />
               </span>
               <div className="p-3 rounded-lg shadow bg-card border flex items-center space-x-2">
                 <Loader2 size={18} className="animate-spin text-muted-foreground" />
