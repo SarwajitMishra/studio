@@ -4,7 +4,8 @@ import Link from 'next/link';
 
 export default function WelcomePage() {
   return (
-    <div className="relative flex items-center justify-center min-h-screen w-full h-full overflow-hidden">
+    // Updated container for better cross-device consistency
+    <div className="relative flex items-center justify-center w-screen h-screen overflow-hidden">
       {/* Video Background */}
       <video
         autoPlay
@@ -27,7 +28,7 @@ export default function WelcomePage() {
           style={{ ..., backgroundColor: 'rgba(255,0,0,0.3)' }}
         */}
         
-        {/* Sign Up Button Overlay (Example: bottom left) */}
+        {/* Login Button Overlay */}
         <Link
           href="/login"
           aria-label="Login"
@@ -35,7 +36,7 @@ export default function WelcomePage() {
           style={{ top: '75%', left: '20%', width: '20%', height: '10%' }}
         />
 
-        {/* Login Button Overlay (Example: bottom center) */}
+        {/* Sign Up Button Overlay */}
         <Link
           href="/signup"
           aria-label="Sign Up"
@@ -43,7 +44,7 @@ export default function WelcomePage() {
           style={{ top: '75%', left: '40%', width: '20%', height: '10%' }}
         />
 
-        {/* Continue as Guest Button Overlay (Example: bottom right) */}
+        {/* Continue as Guest Button Overlay */}
         <Link
           href="/dashboard"
           aria-label="Continue as Guest"

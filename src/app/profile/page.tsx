@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -28,7 +29,7 @@ import {
   BADGES,
   type Badge,
 } from "@/lib/constants";
-import { UserCircle, BarChart3, Settings, CheckCircle, LogIn, LogOut, UploadCloud, Edit3, User as UserIcon, Palette, Sun, Moon, Trophy, Gamepad2, Star, Coins, AlertTriangle, Loader2, History, Bookmark, Lock, BookOpen } from 'lucide-react';
+import { UserCircle, BarChart3, Settings, CheckCircle, LogIn, LogOut, UploadCloud, Edit3, User as UserIcon, Palette, Sun, Moon, Trophy, Gamepad2, Star, Coins, AlertTriangle, Loader2, History, Bookmark, Lock, BookOpen, X } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -101,6 +102,7 @@ export default function ProfilePage() {
   const [gameStats, setGameStats] = useState<GameStat[]>([]);
 
   const [isConfigMissing, setIsConfigMissing] = useState(false);
+  const [showGuestWarning, setShowGuestWarning] = useState(true);
   
   const updateLocalData = useCallback(() => {
     setSPoints(getStoredGameCurrency(LOCAL_STORAGE_S_POINTS_KEY));
@@ -296,6 +298,8 @@ export default function ProfilePage() {
   const englishPuzzleIds = new Set(ENGLISH_PUZZLE_TYPES.map(p => p.id));
   const englishPuzzleStats = playedGameStats.filter(s => englishPuzzleIds.has(s.gameId));
   
+  const isGuest = authChecked && !currentUser;
+
   if (!authChecked) {
     return (
       <div className="flex justify-center items-center min-h-[50vh]">
@@ -304,47 +308,46 @@ export default function ProfilePage() {
     );
   }
 
-  if (!currentUser) {
-    return (
-      <Card className="w-full max-w-lg mx-auto text-center">
-        <CardHeader>
-          <CardTitle>View Your Profile</CardTitle>
-          <CardDescription>Log in or sign up to see your progress, achievements, and customize your profile.</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Button asChild><Link href="/login">Log In</Link></Button>
-          <Button asChild variant="outline"><Link href="/signup">Sign Up</Link></Button>
-        </CardContent>
-      </Card>
-    );
-  }
-
-
   return (
     <div className="max-w-4xl mx-auto space-y-8">
-      <Card className="shadow-lg">
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold">Account Information</CardTitle>
-          <CardDescription>Manage your display name. Changes are auto-saved to your online profile.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center gap-3">
-            <Label htmlFor="username" className="text-base">Display Name:</Label>
-            <Input
-              id="username"
-              type="text"
-              value={editingUserName}
-              onChange={(e) => setEditingUserName(e.target.value)}
-              className="max-w-xs text-base"
-              aria-label="Edit display name"
-              placeholder="Enter your display name"
-            />
-          </div>
-          <div className="space-y-3">
-              <p className="text-foreground">Logged in as: <span className="font-semibold">{currentUser.email}</span></p>
-          </div>
-        </CardContent>
-      </Card>
+      {isGuest && showGuestWarning && (
+        <Alert variant="default" className="relative bg-accent/20 border-accent/50">
+           <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-6 w-6" onClick={() => setShowGuestWarning(false)}>
+              <X className="h-4 w-4" />
+              <span className="sr-only">Dismiss</span>
+           </Button>
+          <UserIcon className="h-4 w-4" />
+          <AlertTitle>Viewing as Guest!</AlertTitle>
+          <AlertDescription>
+            Your progress and profile changes are saved locally to this device. <Link href="/signup" className="font-bold underline">Sign up</Link> or <Link href="/login" className="font-bold underline">log in</Link> to save your data permanently.
+          </AlertDescription>
+        </Alert>
+      )}
+      {currentUser && (
+        <Card className="shadow-lg">
+            <CardHeader>
+            <CardTitle className="text-2xl font-bold">Account Information</CardTitle>
+            <CardDescription>Manage your display name. Changes are auto-saved to your online profile.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+            <div className="flex items-center gap-3">
+                <Label htmlFor="username" className="text-base">Display Name:</Label>
+                <Input
+                id="username"
+                type="text"
+                value={editingUserName}
+                onChange={(e) => setEditingUserName(e.target.value)}
+                className="max-w-xs text-base"
+                aria-label="Edit display name"
+                placeholder="Enter your display name"
+                />
+            </div>
+            <div className="space-y-3">
+                <p className="text-foreground">Logged in as: <span className="font-semibold">{currentUser.email}</span></p>
+            </div>
+            </CardContent>
+        </Card>
+      )}
 
       <header className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-6 p-6 bg-primary/10 rounded-lg shadow">
         {isUploading ? (
