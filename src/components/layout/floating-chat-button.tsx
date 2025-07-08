@@ -6,11 +6,20 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import CustomChatIcon from '../icons/custom-chat-icon';
 import ShravyaChatModalContent from "@/components/ai/shravya-chat-modal-content";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from '@/lib/utils';
 
 export default function FloatingChatButton() {
   const [isOpen, setIsOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+      setIsMounted(true);
+  }, []);
+
+  if (!isMounted) {
+      return null;
+  }
 
   return (
     <div className="fixed bottom-6 right-6 flex flex-col items-center z-50">
