@@ -1,12 +1,13 @@
+
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { format } from "date-fns";
+import { subYears, format } from "date-fns";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,22 +17,39 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { auth, googleProvider, signInWithPopup, createUserWithEmailAndPassword, updateProfile } from '@/lib/firebase';
-import { COUNTRIES } from '@/lib/constants';
+import {
+  auth,
+  googleProvider,
+  signInWithPopup,
+  createUserWithEmailAndPassword,
+  updateProfile,
+  RecaptchaVerifier,
+  signInWithPhoneNumber,
+  type User
+} from '@/lib/firebase';
+import { COUNTRIES, COUNTRY_CODES } from '@/lib/constants';
 import { CalendarIcon, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { checkUsernameUnique, createUserProfile } from '@/lib/users';
 
 
 const passwordRegex = new RegExp("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$");
 
 const formSchema = z.object({
+  username: z.string()
+    .min(3, "Username must be at least 3 characters.")
+    .max(20, "Username must be 20 characters or less.")
+    .regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores.")
+    .refine(async (username) => await checkUsernameUnique(username), "This username is already taken."),
   name: z.string().min(2, "Name must be at least 2 characters."),
+  countryCode: z.string(),
   phoneNumber: z.string().min(10, "Please enter a valid phone number."),
   email: z.string().email("Please enter a valid email address."),
   password: z.string().regex(passwordRegex, "Password must be 8+ characters and include an uppercase letter, a lowercase letter, a number, and a special character."),
   confirmPassword: z.string(),
   country: z.string().min(1, "Please select a country."),
-  birthday: z.date({ required_error: "A date of birth is required." }),
+  birthday: z.date({ required_error: "A date of birth is required." })
+    .refine((date) => date <= subYears(new Date(), 3), "You must be at least 3 years old."),
   gender: z.enum(["male", "female", "other", "prefer_not_to_say"]),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
@@ -46,39 +64,65 @@ export default function SignupPage() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      username: "",
       name: "",
       phoneNumber: "",
       email: "",
       password: "",
       confirmPassword: "",
-      country: "",
+      country: "India",
+      countryCode: "+91",
       gender: "prefer_not_to_say",
     },
   });
+
+  // Setup reCAPTCHA for phone sign-in
+  // Note: The full phone sign-in UI flow (like showing an OTP input) is more complex and can be a next step.
+  // This sets up the verifier needed by Firebase.
+  useEffect(() => {
+    // IMPORTANT: To use phone sign-in, you MUST:
+    // 1. Enable "Phone" as a sign-in provider in your Firebase Authentication console.
+    // 2. Add your app's domain (e.g., localhost, your-deployed-url.com) to the "Authorized domains" list under Authentication -> Settings.
+    window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+      'size': 'invisible',
+      'callback': (response: any) => {
+        // reCAPTCHA solved, allow signInWithPhoneNumber.
+        console.log("reCAPTCHA solved");
+      }
+    });
+  }, []);
+
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+      
+      // Update Firebase Auth profile (for display name)
       await updateProfile(userCredential.user, { displayName: values.name });
 
-      // Store additional details in localStorage
-      const profileData = {
-          phoneNumber: values.phoneNumber,
+      // Create a detailed user profile document in Firestore
+      const additionalData = {
+          username: values.username,
+          phoneNumber: `${values.countryCode}${values.phoneNumber}`,
           country: values.country,
           birthday: values.birthday.toISOString(),
           gender: values.gender,
       };
-      localStorage.setItem(`userProfile_${userCredential.user.uid}`, JSON.stringify(profileData));
+      await createUserProfile(userCredential.user, additionalData);
       
       toast({ title: "Account Created!", description: "Welcome to Shravya Playhouse!" });
       router.push('/dashboard');
     } catch (error: any) {
       console.error("Error signing up:", error);
+      let description = error.message || "An unexpected error occurred.";
+      if (error.code === 'auth/operation-not-allowed') {
+        description = "Email/Password sign-up is not enabled. Please enable it in the Firebase console.";
+      }
       toast({
         variant: "destructive",
         title: "Sign Up Failed",
-        description: error.message || "An unexpected error occurred.",
+        description: description,
       });
     } finally {
       setIsLoading(false);
@@ -90,6 +134,8 @@ export default function SignupPage() {
     try {
       await signInWithPopup(auth, googleProvider);
       toast({ title: "Sign Up Successful!", description: "Welcome!" });
+      // TODO: After Google sign-in, check if a username exists in Firestore.
+      // If not, redirect to a "complete profile" page to create one.
       router.push('/dashboard');
     } catch (error: any) {
       console.error("Error signing up with Google", error);
@@ -114,22 +160,51 @@ export default function SignupPage() {
           <CardDescription>Join Shravya Playhouse today!</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-           <Button variant="outline" className="w-full" onClick={handleGoogleLogin} disabled={isLoading}>
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2"><path d="M15.3 18.09C14.54 18.89 13.56 19.5 12.45 19.83C11.34 20.16 10.17 20.26 9 20.12C5.79 19.43 3.51 16.68 3.12 13.4C3.03 12.51 3.15 11.61 3.48 10.77C3.81 9.93 4.32 9.18 4.98 8.57C6.26 7.36 7.97 6.66 9.78 6.54C11.72 6.42 13.66 6.93 15.24 7.99L16.99 6.28C15.01 4.88 12.73 4.08 10.36 4.01C8.05 3.91 5.81 4.62 3.98 5.99C2.15 7.36 0.810001 9.32 0.200001 11.58C-0.419999 13.84 0.0300012 16.24 1.13 18.25C2.23 20.26 3.92 21.77 5.99 22.56C8.06 23.35 10.36 23.37 12.48 22.62C14.6 21.87 16.44 20.41 17.67 18.51L15.3 18.09Z"/><path d="M22.94 12.14C22.98 11.74 23 11.33 23 10.91C23 10.32 22.92 9.73 22.77 9.16H12V12.83H18.24C18.03 13.71 17.55 14.5 16.86 15.08L16.82 15.11L19.28 16.91L19.45 17.06C21.58 15.22 22.94 12.14 22.94 12.14Z"/><path d="M12 23C14.47 23 16.56 22.19 18.05 20.96L15.24 17.99C14.48 18.59 13.53 18.98 12.52 18.98C10.92 18.98 9.48001 18.13 8.82001 16.76L8.78001 16.72L6.21001 18.58L6.15001 18.7C7.02001 20.39 8.68001 21.83 10.62 22.48C11.09 22.64 11.56 22.77 12 22.81V23Z"/><path d="M12.01 3.00997C13.37 2.94997 14.7 3.43997 15.73 4.40997L17.97 2.21997C16.31 0.799971 14.21 -0.0600291 12.01 0.0099709C7.37001 0.0099709 3.44001 3.36997 2.02001 7.49997L4.98001 8.56997C5.60001 6.33997 7.72001 4.00997 10.22 4.00997C10.86 3.99997 11.49 4.12997 12.01 4.36997V3.00997Z"/></svg>
-            Continue with Google
-          </Button>
+           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <Button variant="outline" className="w-full" onClick={handleGoogleLogin} disabled={isLoading}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2"><path d="M15.3 18.09C14.54 18.89 13.56 19.5 12.45 19.83C11.34 20.16 10.17 20.26 9 20.12C5.79 19.43 3.51 16.68 3.12 13.4C3.03 12.51 3.15 11.61 3.48 10.77C3.81 9.93 4.32 9.18 4.98 8.57C6.26 7.36 7.97 6.66 9.78 6.54C11.72 6.42 13.66 6.93 15.24 7.99L16.99 6.28C15.01 4.88 12.73 4.08 10.36 4.01C8.05 3.91 5.81 4.62 3.98 5.99C2.15 7.36 0.810001 9.32 0.200001 11.58C-0.419999 13.84 0.0300012 16.24 1.13 18.25C2.23 20.26 3.92 21.77 5.99 22.56C8.06 23.35 10.36 23.37 12.48 22.62C14.6 21.87 16.44 20.41 17.67 18.51L15.3 18.09Z"/><path d="M22.94 12.14C22.98 11.74 23 11.33 23 10.91C23 10.32 22.92 9.73 22.77 9.16H12V12.83H18.24C18.03 13.71 17.55 14.5 16.86 15.08L16.82 15.11L19.28 16.91L19.45 17.06C21.58 15.22 22.94 12.14 22.94 12.14Z"/><path d="M12 23C14.47 23 16.56 22.19 18.05 20.96L15.24 17.99C14.48 18.59 13.53 18.98 12.52 18.98C10.92 18.98 9.48001 18.13 8.82001 16.76L8.78001 16.72L6.21001 18.58L6.15001 18.7C7.02001 20.39 8.68001 21.83 10.62 22.48C11.09 22.64 11.56 22.77 12 22.81V23Z"/><path d="M12.01 3.00997C13.37 2.94997 14.7 3.43997 15.73 4.40997L17.97 2.21997C16.31 0.799971 14.21 -0.0600291 12.01 0.0099709C7.37001 0.0099709 3.44001 3.36997 2.02001 7.49997L4.98001 8.56997C5.60001 6.33997 7.72001 4.00997 10.22 4.00997C10.86 3.99997 11.49 4.12997 12.01 4.36997V3.00997Z"/></svg>
+                Continue with Google
+              </Button>
+               <Button variant="outline" className="w-full" disabled>
+                Sign up with Phone
+              </Button>
+           </div>
           <div className="relative">
             <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
             <div className="relative flex justify-center text-xs uppercase"><span className="bg-background px-2 text-muted-foreground">Or fill out the form</span></div>
           </div>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              
+              <FormField control={form.control} name="username" render={({ field }) => (
+                <FormItem><FormLabel>Username</FormLabel><FormControl><Input placeholder="Your unique username" {...field} /></FormControl><FormMessage /></FormItem>
+              )} />
               <FormField control={form.control} name="name" render={({ field }) => (
                 <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input placeholder="Your Name" {...field} /></FormControl><FormMessage /></FormItem>
               )} />
+
               <FormField control={form.control} name="phoneNumber" render={({ field }) => (
-                <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input type="tel" placeholder="+1 234 567 890" {...field} /></FormControl><FormMessage /></FormItem>
+                  <FormItem className="md:col-span-2">
+                    <FormLabel>Phone Number</FormLabel>
+                    <div className="flex items-start gap-2">
+                        <FormField control={form.control} name="countryCode" render={({ field: codeField }) => (
+                            <FormItem>
+                                <Select onValueChange={codeField.onChange} defaultValue={codeField.value}>
+                                <FormControl><SelectTrigger className="w-28"><SelectValue /></SelectTrigger></FormControl>
+                                <SelectContent>
+                                    {COUNTRY_CODES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                                </SelectContent>
+                                </Select>
+                            </FormItem>
+                        )} />
+                        <div className="w-full">
+                            <FormControl><Input type="tel" placeholder="123 456 7890" {...field} /></FormControl>
+                            <FormMessage className="mt-2" />
+                        </div>
+                    </div>
+                  </FormItem>
               )} />
+              
               <FormField control={form.control} name="email" render={({ field }) => (
                 <FormItem className="md:col-span-2"><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="you@example.com" {...field} /></FormControl><FormMessage /></FormItem>
               )} />
@@ -156,7 +231,16 @@ export default function SignupPage() {
                     </Button>
                   </FormControl></PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date > new Date() || date < new Date("1900-01-01")} initialFocus />
+                    <Calendar
+                      mode="single"
+                      captionLayout="dropdown-buttons"
+                      fromYear={1920}
+                      toYear={subYears(new Date(), 3).getFullYear()}
+                      selected={field.value}
+                      onSelect={field.onChange}
+                      disabled={(date) => date > subYears(new Date(), 3) || date < new Date("1900-01-01")}
+                      initialFocus
+                    />
                   </PopoverContent>
                 </Popover><FormMessage /></FormItem>
               )} />
@@ -175,6 +259,7 @@ export default function SignupPage() {
           </Form>
         </CardContent>
         <CardFooter className="text-center text-sm">
+          <div id="recaptcha-container"></div>
           Already have an account?&nbsp;
           <Link href="/login" className="underline">
             Log in

@@ -3,13 +3,15 @@ import { initializeApp, getApp, getApps, type FirebaseOptions } from 'firebase/a
 import {
   getAuth,
   GoogleAuthProvider,
-  signInWithPopup, // Changed from signInWithRedirect
+  signInWithPopup,
   signOut,
   onAuthStateChanged,
   updateProfile,
   type User,
   signInWithEmailAndPassword,
-  createUserWithEmailAndPassword
+  createUserWithEmailAndPassword,
+  RecaptchaVerifier,
+  signInWithPhoneNumber
 } from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
 import { getFirestore } from 'firebase/firestore';
@@ -24,14 +26,10 @@ const firebaseConfigValues = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-console.log("DIAGNOSTIC: Firebase Config Being Used by App:");
-console.log("API Key:", firebaseConfigValues.apiKey ? "Loaded" : "MISSING or UNDEFINED");
-console.log("Auth Domain:", firebaseConfigValues.authDomain);
-console.log("Project ID:", firebaseConfigValues.projectId);
-console.log("Storage Bucket:", firebaseConfigValues.storageBucket);
-console.log("Messaging Sender ID:", firebaseConfigValues.messagingSenderId);
-console.log("App ID:", firebaseConfigValues.appId);
-console.log("Measurement ID:", firebaseConfigValues.measurementId ? "Loaded" : "Optional, may be MISSING");
+// Add a diagnostic check to the console
+if (typeof window !== 'undefined' && (!firebaseConfigValues.apiKey || !firebaseConfigValues.projectId)) {
+    console.warn("Firebase config is missing or incomplete. Please check your .env.local file and ensure NEXT_PUBLIC_FIREBASE_* variables are set correctly.");
+}
 
 
 const firebaseConfig: FirebaseOptions = firebaseConfigValues;
@@ -45,21 +43,30 @@ if (!getApps().length) {
 }
 
 const auth = getAuth(app);
-const storage = getStorage(app); // Initialize Firebase Storage
-const db = getFirestore(app); // Initialize Firestore
+const storage = getStorage(app); 
+const db = getFirestore(app); 
 const googleProvider = new GoogleAuthProvider();
+
+// Add a global declaration for the reCAPTCHA verifier
+declare global {
+  interface Window {
+    recaptchaVerifier?: RecaptchaVerifier;
+  }
+}
 
 export {
   app,
   auth,
   storage,
-  db, // Export db
+  db,
   googleProvider,
-  signInWithPopup, // Changed from signInWithRedirect
+  signInWithPopup,
   signOut,
   onAuthStateChanged,
   updateProfile,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  RecaptchaVerifier,
+  signInWithPhoneNumber
 };
 export type { User };

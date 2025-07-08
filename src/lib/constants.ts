@@ -132,6 +132,15 @@ export const COUNTRIES = [
   { value: 'JP', label: 'Japan' },
 ];
 
+export const COUNTRY_CODES = [
+  { value: '+91', label: 'IN +91' },
+  { value: '+1', label: 'US +1' },
+  { value: '+44', label: 'GB +44' },
+  { value: '+61', label: 'AU +61' },
+  { value: '+49', label: 'DE +49' },
+  { value: '+81', label: 'JP +81' },
+];
+
 // Icons for Memory Match game
 export const MEMORY_ICONS: LucideIcon[] = [
   Apple, Banana, Cherry, Grape, Carrot, Pizza, CakeSlice, IceCream2, ToyBrick, Gamepad2
