@@ -29,7 +29,7 @@ export const REWARD_LOGIC = {
   numberSequence: { base: { sPoints: "50–100", sCoins: "0–10" } },
   missingNumber: { base: { sPoints: "50–100", sCoins: "0–10" } },
   countTheObjects: { base: { sPoints: "10 per correct" }, bonus: { description: "Getting all answers correct", sCoins: 5 } },
-  codeBreaker: { base: { sPoints: 100, sCoins: 10 } },
+  codeBreaker: { base: { sPoints: "50-150 based on difficulty and number of guesses", sCoins: "5-20" }, bonus: { description: "Cracking the code in half the guesses or less", sCoins: 10 } },
   fastMath: { base: { sPoints: "Speed based XP" }, bonus: { description: "Scoring high in <10s", sCoins: 5 } },
   
   // English Puzzles (sub-games)

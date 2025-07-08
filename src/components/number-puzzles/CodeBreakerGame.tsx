@@ -7,11 +7,15 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { KeyRound, ArrowLeft, RotateCw, Check, Award, XCircle, HelpCircle } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { KeyRound, ArrowLeft, RotateCw, Check, Award, XCircle, HelpCircle, Star as StarIcon, Loader2 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import type { Difficulty } from "@/lib/constants";
 import { useToast } from "@/hooks/use-toast";
 import { updateGameStats } from "@/lib/progress";
+import { applyRewards, calculateRewards } from "@/lib/rewards";
+import { S_POINTS_ICON as SPointsIcon, S_COINS_ICON as SCoinsIcon } from "@/lib/constants";
+
 
 type Color = 'red' | 'blue' | 'green' | 'yellow' | 'purple' | 'orange';
 const COLORS: Color[] = ['red', 'blue', 'green', 'yellow', 'purple', 'orange'];
@@ -49,6 +53,25 @@ export default function CodeBreakerGame({ onBack, difficulty }: CodeBreakerGameP
   const [isWin, setIsWin] = useState(false);
   const { toast } = useToast();
 
+  const [isCalculatingReward, setIsCalculatingReward] = useState(false);
+  const [lastReward, setLastReward] = useState<{points: number, coins: number, stars: number} | null>(null);
+
+  const StarRating = ({ rating }: { rating: number }) => (
+    <div className="flex justify-center">
+        {[...Array(3)].map((_, i) => (
+            <StarIcon key={i} className={cn("h-10 w-10", i < rating ? "text-yellow-400 fill-yellow-400" : "text-gray-300")} />
+        ))}
+    </div>
+  );
+
+  const calculateStars = useCallback((numGuesses: number): number => {
+      const { maxGuesses } = config;
+      if (numGuesses <= maxGuesses / 2) return 3;
+      if (numGuesses <= maxGuesses * 0.75) return 2;
+      return 1;
+  }, [config]);
+
+
   const generateSecretCode = useCallback(() => {
     const localConfig = DIFFICULTY_CONFIG[difficulty]; // Use fresh config
     const availableColors = COLORS.slice(0, localConfig.numColors);
@@ -63,6 +86,38 @@ export default function CodeBreakerGame({ onBack, difficulty }: CodeBreakerGameP
     setSecretCode(newSecret);
   }, [difficulty]);
 
+  const handleGameOver = useCallback(async (win: boolean, finalGuesses: number) => {
+    setIsGameOver(true);
+    setIsWin(win);
+    
+    if (win) {
+        setIsCalculatingReward(true);
+        updateGameStats({ gameId: 'codeBreaker', didWin: true, score: config.maxGuesses - finalGuesses });
+        
+        try {
+            const rewards = await calculateRewards({ 
+                gameId: 'codeBreaker', 
+                difficulty,
+                performanceMetrics: {
+                    guesses: finalGuesses,
+                    maxGuesses: config.maxGuesses,
+                }
+            });
+            const earned = applyRewards(rewards.sPoints, rewards.sCoins, `Cracked the code in ${finalGuesses} guesses!`);
+            const stars = calculateStars(finalGuesses);
+            setLastReward({ points: earned.points, coins: earned.coins, stars });
+        } catch(e) {
+            console.error("Error calculating rewards:", e);
+            toast({ variant: 'destructive', title: 'Reward Error', description: 'Could not calculate rewards.' });
+        } finally {
+            setIsCalculatingReward(false);
+        }
+    } else {
+        updateGameStats({ gameId: 'codeBreaker', didWin: false, score: 0 });
+        toast({ variant: 'destructive', title: "Game Over", description: "You've run out of guesses." });
+    }
+  }, [difficulty, config, calculateStars, toast]);
+
   const resetGame = useCallback(() => {
     const newConfig = DIFFICULTY_CONFIG[difficulty];
     setConfig(newConfig);
@@ -70,6 +125,8 @@ export default function CodeBreakerGame({ onBack, difficulty }: CodeBreakerGameP
     setGuesses([]);
     setIsGameOver(false);
     setIsWin(false);
+    setLastReward(null);
+    setIsCalculatingReward(false);
     generateSecretCode();
   }, [difficulty, generateSecretCode]);
 
@@ -138,21 +195,52 @@ export default function CodeBreakerGame({ onBack, difficulty }: CodeBreakerGameP
     setCurrentGuess(Array(config.codeLength).fill(null));
 
     if (correctPosition === config.codeLength) {
-      setIsGameOver(true);
-      setIsWin(true);
-      updateGameStats({ gameId: 'codeBreaker', didWin: true, score: config.maxGuesses - newGuesses.length });
-      toast({ title: "You Won!", description: `You cracked the code in ${newGuesses.length} guesses!`, className: "bg-green-500 text-white" });
+        handleGameOver(true, newGuesses.length);
     } else if (newGuesses.length >= config.maxGuesses) {
-      setIsGameOver(true);
-      setIsWin(false);
-      updateGameStats({ gameId: 'codeBreaker', didWin: false, score: 0 });
-      toast({ variant: 'destructive', title: "Game Over", description: "You've run out of guesses." });
+        handleGameOver(false, newGuesses.length);
     }
   };
 
 
   return (
     <Card className="w-full max-w-md shadow-xl">
+        <AlertDialog open={isGameOver && isWin}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle className="text-2xl text-green-600 flex items-center justify-center gap-2">
+                       <Award size={28} /> You Cracked The Code!
+                    </AlertDialogTitle>
+                </AlertDialogHeader>
+                 <div className="py-4 text-center">
+                    {isCalculatingReward ? (
+                        <div className="flex flex-col items-center justify-center gap-2 pt-4">
+                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                            <p className="text-sm text-muted-foreground">Calculating your rewards...</p>
+                        </div>
+                    ) : lastReward ? (
+                        <div className="flex flex-col items-center gap-3 text-center">
+                            <StarRating rating={lastReward.stars} />
+                            <AlertDialogDescription className="text-center text-base pt-2">
+                                Great job! You solved it in {guesses.length} guesses.
+                            </AlertDialogDescription>
+                            <div className="flex items-center gap-6 mt-2">
+                                <span className="flex items-center font-bold text-2xl">
+                                    +{lastReward.points} <SPointsIcon className="ml-2 h-7 w-7 text-yellow-400" />
+                                </span>
+                                <span className="flex items-center font-bold text-2xl">
+                                    +{lastReward.coins} <SCoinsIcon className="ml-2 h-7 w-7 text-amber-500" />
+                                </span>
+                            </div>
+                        </div>
+                    ) : null}
+                </div>
+                <AlertDialogFooter>
+                    <AlertDialogAction onClick={resetGame} disabled={isCalculatingReward}>Play Again</AlertDialogAction>
+                    <AlertDialogCancel onClick={onBack} disabled={isCalculatingReward}>Back to Menu</AlertDialogCancel>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+
         <CardHeader className="bg-primary/10">
             <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
@@ -238,17 +326,17 @@ export default function CodeBreakerGame({ onBack, difficulty }: CodeBreakerGameP
                 </ScrollArea>
             </div>
             
-            {isGameOver ? (
+            {isGameOver && !isWin ? (
                  <div className="text-center p-4 bg-muted rounded-lg space-y-3">
-                    {isWin ? <Award size={48} className="mx-auto text-yellow-500" /> : <XCircle size={48} className="mx-auto text-destructive" />}
-                    <h3 className={cn("text-2xl font-bold", isWin ? "text-green-700" : "text-destructive")}>{isWin ? "You cracked the code!" : "Game Over"}</h3>
+                    <XCircle size={48} className="mx-auto text-destructive" />
+                    <h3 className="text-2xl font-bold text-destructive">Game Over</h3>
                     <div className="flex items-center justify-center gap-2">
                       <p>The code was:</p>
                       <div className="flex gap-2">{secretCode.map((c, i) => <div key={i} className={cn("w-6 h-6 rounded-full shadow-inner", COLOR_MAP[c])} />)}</div>
                     </div>
                     <Button onClick={resetGame} className="mt-4"><RotateCw className="mr-2" /> Play Again</Button>
                 </div>
-            ): (
+            ): !isGameOver ? (
                  <>
                 {/* Current Guess Input */}
                 <div className="p-2 border-2 border-primary/20 border-dashed rounded-lg space-y-2">
@@ -276,7 +364,7 @@ export default function CodeBreakerGame({ onBack, difficulty }: CodeBreakerGameP
 
                 <Button onClick={submitGuess} disabled={currentGuess.some(c => c === null)} className="w-full bg-accent text-accent-foreground"><Check className="mr-2"/>Submit Guess</Button>
                 </>
-            )}
+            ) : null}
         </CardContent>
     </Card>
   );
