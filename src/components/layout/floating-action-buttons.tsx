@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Image from 'next/image';
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -10,21 +10,12 @@ import Link from 'next/link';
 
 export default function FloatingActionButtons() {
     const [isOpen, setIsOpen] = useState(false);
-    const [isMounted, setIsMounted] = useState(false);
-
-    useEffect(() => {
-        setIsMounted(true);
-    }, []);
 
     const menuItems = [
         { href: '#', label: 'Request New Feature', iconSrc: '/images/icons/lightbulb.png', hint: 'idea lightbulb' },
         { href: '#', label: 'Contact Us', iconSrc: '/images/icons/mail.png', hint: 'envelope mail' },
         { href: '#', label: 'Donate / Support', iconSrc: '/images/icons/heart.png', hint: 'support heart' },
     ];
-
-    if (!isMounted) {
-        return null;
-    }
 
     return (
         <TooltipProvider>

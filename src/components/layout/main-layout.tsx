@@ -1,5 +1,8 @@
 
+'use client';
+
 import type { ReactNode } from 'react';
+import { useState, useEffect } from 'react';
 import Header from './header';
 import FloatingChatButton from './floating-chat-button';
 import FloatingActionButtons from './floating-action-buttons';
@@ -12,6 +15,12 @@ interface MainLayoutProps {
 }
 
 export default function MainLayout({ children }: MainLayoutProps) {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Header />
@@ -33,9 +42,13 @@ export default function MainLayout({ children }: MainLayoutProps) {
         </div>
       </footer>
       
-      <FloatingGameButtons />
-      <FloatingActionButtons />
-      <FloatingChatButton />
+      {isMounted && (
+        <>
+          <FloatingGameButtons />
+          <FloatingActionButtons />
+          <FloatingChatButton />
+        </>
+      )}
     </div>
   );
 }
