@@ -1,9 +1,10 @@
+
 "use client";
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Zap, X, Lightbulb, Mail, Heart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 
@@ -11,9 +12,9 @@ export default function FloatingActionButtons() {
     const [isOpen, setIsOpen] = useState(false);
 
     const menuItems = [
-        { href: '#', label: 'Request New Feature', Icon: Lightbulb },
-        { href: '#', label: 'Contact Us', Icon: Mail },
-        { href: '#', label: 'Donate / Support', Icon: Heart },
+        { href: '#', label: 'Request New Feature', iconSrc: '/images/icons/lightbulb.png', hint: 'idea lightbulb' },
+        { href: '#', label: 'Contact Us', iconSrc: '/images/icons/mail.png', hint: 'envelope mail' },
+        { href: '#', label: 'Donate / Support', iconSrc: '/images/icons/heart.png', hint: 'support heart' },
     ];
 
     return (
@@ -34,8 +35,8 @@ export default function FloatingActionButtons() {
                             aria-expanded={isOpen}
                             aria-label={isOpen ? "Close support menu" : "Open support menu"}
                         >
-                           <Zap className={cn("absolute transition-all duration-300", isOpen ? "rotate-45 scale-0 opacity-0" : "rotate-0 scale-100 opacity-100")} size={28} />
-                           <X className={cn("absolute transition-all duration-300", isOpen ? "rotate-0 scale-100 opacity-100" : "-rotate-45 scale-0 opacity-0")} size={28} />
+                           <Image src="/images/icons/zap.png" alt="Open Menu" width={28} height={28} data-ai-hint="action menu" className={cn("absolute transition-all duration-300", isOpen ? "rotate-45 scale-0 opacity-0" : "rotate-0 scale-100 opacity-100")} />
+                           <Image src="/images/icons/close.png" alt="Close Menu" width={28} height={28} data-ai-hint="close" className={cn("absolute transition-all duration-300", isOpen ? "rotate-0 scale-100 opacity-100" : "-rotate-45 scale-0 opacity-0")} />
                         </Button>
                     </TooltipTrigger>
                     <TooltipContent side="right" className="ml-2">
@@ -54,7 +55,9 @@ export default function FloatingActionButtons() {
                          <Tooltip key={item.label}>
                             <TooltipTrigger asChild>
                                 <Button asChild variant="secondary" size="icon" className="h-12 w-12 rounded-full shadow-lg">
-                                    <Link href={item.href}><item.Icon size={24} /></Link>
+                                    <Link href={item.href}>
+                                        <Image src={item.iconSrc} alt={item.label} width={24} height={24} data-ai-hint={item.hint} />
+                                    </Link>
                                 </Button>
                             </TooltipTrigger>
                             <TooltipContent side="right" className="ml-2">

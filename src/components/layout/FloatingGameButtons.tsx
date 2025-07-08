@@ -1,16 +1,18 @@
+
 "use client";
 
+import Image from 'next/image';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Gift, Orbit, Calendar, Ticket } from 'lucide-react';
 import Link from 'next/link';
 
-const FloatingSideButton = ({ side, href, tooltip, Icon, isLink = false, children }: {
+const FloatingSideButton = ({ side, href, tooltip, iconSrc, hint, isLink = false, children }: {
     side: 'left' | 'right';
     href: string;
     tooltip: string;
-    Icon: React.ElementType;
+    iconSrc: string;
+    hint: string;
     isLink?: boolean;
     children: React.ReactNode;
 }) => {
@@ -26,11 +28,11 @@ const FloatingSideButton = ({ side, href, tooltip, Icon, isLink = false, childre
                 <TooltipTrigger asChild>
                     {isLink ? (
                         <Button {...commonButtonProps} asChild>
-                           <Link href={href}><Icon size={32} /></Link>
+                           <Link href={href}><Image src={iconSrc} alt={tooltip} width={32} height={32} data-ai-hint={hint} /></Link>
                         </Button>
                     ) : (
                         <DialogTrigger asChild>
-                           <Button {...commonButtonProps}><Icon size={32} /></Button>
+                           <Button {...commonButtonProps}><Image src={iconSrc} alt={tooltip} width={32} height={32} data-ai-hint={hint} /></Button>
                         </DialogTrigger>
                     )}
                 </TooltipTrigger>
@@ -68,23 +70,23 @@ export default function FloatingGameButtons() {
         <>
             {/* Left side buttons */}
             <div className="fixed top-1/3 left-6 z-40 flex flex-col items-center space-y-4">
-                <FloatingSideButton side="left" href="#" tooltip="Daily Rewards" Icon={Gift}>
-                    <Gift size={64} className="mx-auto text-primary/30" />
+                <FloatingSideButton side="left" href="#" tooltip="Daily Rewards" iconSrc="/images/icons/gift.png" hint="gift box" >
+                    <Image src="/images/icons/gift.png" alt="Gift Icon" width={64} height={64} className="mx-auto opacity-30" data-ai-hint="gift box" />
                     <p className="mt-4">Claim your daily rewards right here!</p>
                 </FloatingSideButton>
-                <FloatingSideButton side="left" href="#" tooltip="Spin the Wheel" Icon={Orbit}>
-                     <Orbit size={64} className="mx-auto text-primary/30" />
+                <FloatingSideButton side="left" href="#" tooltip="Spin the Wheel" iconSrc="/images/icons/orbit.png" hint="spin wheel" >
+                     <Image src="/images/icons/orbit.png" alt="Orbit Icon" width={64} height={64} className="mx-auto opacity-30" data-ai-hint="spin wheel" />
                      <p className="mt-4">Spin the wheel for a chance to win exciting prizes!</p>
                 </FloatingSideButton>
             </div>
 
             {/* Right side buttons */}
             <div className="fixed top-1/3 right-6 z-40 flex flex-col items-center space-y-4">
-                <FloatingSideButton side="right" href="#" tooltip="Live Events" Icon={Calendar}>
-                     <Calendar size={64} className="mx-auto text-primary/30" />
+                <FloatingSideButton side="right" href="#" tooltip="Live Events" iconSrc="/images/icons/calendar.png" hint="event calendar" >
+                     <Image src="/images/icons/calendar.png" alt="Calendar Icon" width={64} height={64} className="mx-auto opacity-30" data-ai-hint="event calendar" />
                      <p className="mt-4">Join special events, tournaments, and seasonal celebrations.</p>
                 </FloatingSideButton>
-                <FloatingSideButton side="right" href="/contest" tooltip="Monthly Contest" Icon={Ticket} isLink>
+                <FloatingSideButton side="right" href="/contest" tooltip="Monthly Contest" iconSrc="/images/icons/ticket.png" hint="contest ticket" isLink>
                     {/* Content is not needed for a link button */}
                     <div />
                 </FloatingSideButton>

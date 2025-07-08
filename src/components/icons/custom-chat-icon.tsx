@@ -16,7 +16,7 @@ interface CustomChatIconProps {
    */
   src?: string;
   alt?: string;
-  ['data-ai-hint']?: string; // Added to allow data-ai-hint
+  ['data-ai-hint']?: string;
 }
 
 const CustomChatIcon = ({
@@ -26,7 +26,7 @@ const CustomChatIcon = ({
   // Ensure `public/images/custom-chat-icon.png` exists.
   src = '/images/custom-chat-icon.png',
   alt = 'Chat Icon',
-  'data-ai-hint': dataAiHint = 'chatbot avatar', // Default hint
+  'data-ai-hint': dataAiHint = 'chatbot avatar',
   ...props
 }: CustomChatIconProps) => {
   const numericSize = typeof size === 'string' ? parseInt(size, 10) : size;
@@ -39,7 +39,6 @@ const CustomChatIcon = ({
       height={numericSize}
       className={cn(className)}
       data-ai-hint={dataAiHint}
-      // For local PNGs in /public, default optimization is usually what you want.
       {...props}
     />
   );
