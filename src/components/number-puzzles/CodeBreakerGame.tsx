@@ -1,10 +1,13 @@
+
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { KeyRound, ArrowLeft, RotateCw, Check, Award, XCircle } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { KeyRound, ArrowLeft, RotateCw, Check, Award, XCircle, HelpCircle } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import type { Difficulty } from "@/lib/constants";
 import { useToast } from "@/hooks/use-toast";
@@ -156,9 +159,42 @@ export default function CodeBreakerGame({ onBack, difficulty }: CodeBreakerGameP
                     <KeyRound size={28} className="text-primary" />
                     <CardTitle className="text-2xl font-bold text-primary">Code Breaker</CardTitle>
                 </div>
-                <Button variant="outline" size="sm" onClick={handleBackClick}>
-                    <ArrowLeft size={16} className="mr-1" /> Back
-                </Button>
+                <div className="flex items-center space-x-1">
+                    <Dialog>
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <DialogTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8"><HelpCircle size={20} /></Button>
+                                    </DialogTrigger>
+                                </TooltipTrigger>
+                                <TooltipContent><p>How to Play</p></TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>How to Play Code Breaker</DialogTitle>
+                                <DialogDescription>
+                                    Your goal is to guess the secret code of colors.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4 py-4 text-sm">
+                                <p>1. Select colors from the palette to fill your guess row.</p>
+                                <p>2. Once the row is full, press "Submit Guess".</p>
+                                <p>3. You will get feedback pegs for each guess:</p>
+                                <ul className="list-disc pl-5 space-y-2">
+                                    <li><strong className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-black border-2 border-white/50" /> = Correct Color & Correct Position</strong></li>
+                                    <li><strong className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-white border-2 border-black/50" /> = Correct Color, Wrong Position</strong></li>
+                                </ul>
+                                <p>4. Use the feedback to deduce the secret code before you run out of guesses!</p>
+                                <p>Note: On Medium/Hard, colors can be repeated in the secret code.</p>
+                            </div>
+                        </DialogContent>
+                    </Dialog>
+                    <Button variant="outline" size="sm" onClick={handleBackClick}>
+                        <ArrowLeft size={16} className="mr-1" /> Back
+                    </Button>
+                </div>
             </div>
             <CardDescription className="text-center text-md text-foreground/80 pt-2">
                {isGameOver ? (isWin ? "You cracked it!" : "Better luck next time!") : `Guess ${guesses.length + 1} of ${config.maxGuesses}`} | Difficulty: <span className="capitalize">{difficulty}</span>
@@ -173,18 +209,30 @@ export default function CodeBreakerGame({ onBack, difficulty }: CodeBreakerGameP
                 </div>
                  <ScrollArea className="h-64 pr-2">
                     <div className="space-y-2 py-1">
-                        {guesses.map((guess, index) => (
-                            <div key={index} className="flex items-center justify-between p-1 bg-background rounded shadow-sm">
-                                <div className="flex items-center gap-1.5">
-                                    <span className="text-xs font-mono text-muted-foreground w-4">{index + 1}.</span>
-                                    {guess.code.map((color, i) => <div key={i} className={cn("w-5 h-5 rounded-full border", color ? COLOR_MAP[color] : 'bg-muted')} />)}
+                        <TooltipProvider>
+                            {guesses.map((guess, index) => (
+                                <div key={index} className="flex items-center justify-between p-1 bg-background rounded shadow-sm">
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="text-xs font-mono text-muted-foreground w-4">{index + 1}.</span>
+                                        {guess.code.map((color, i) => <div key={i} className={cn("w-5 h-5 rounded-full border", color ? COLOR_MAP[color] : 'bg-muted')} />)}
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-0.5 w-12">
+                                        {Array(guess.feedback.correctPosition).fill(0).map((_, i) => (
+                                            <Tooltip key={`cp-${i}`}>
+                                                <TooltipTrigger><div className="w-3 h-3 rounded-full bg-black border border-white/50" /></TooltipTrigger>
+                                                <TooltipContent><p>Correct Color & Position</p></TooltipContent>
+                                            </Tooltip>
+                                        ))}
+                                        {Array(guess.feedback.correctColor).fill(0).map((_, i) => (
+                                            <Tooltip key={`cc-${i}`}>
+                                                <TooltipTrigger><div className="w-3 h-3 rounded-full bg-white border border-black/50" /></TooltipTrigger>
+                                                <TooltipContent><p>Correct Color, Wrong Position</p></TooltipContent>
+                                            </Tooltip>
+                                        ))}
+                                    </div>
                                 </div>
-                                <div className="grid grid-cols-3 gap-0.5 w-10">
-                                    {Array(guess.feedback.correctPosition).fill(0).map((_, i) => <div key={`cp-${i}`} title="Correct Color & Position" className="w-2.5 h-2.5 rounded-full bg-black border border-white/50" />)}
-                                    {Array(guess.feedback.correctColor).fill(0).map((_, i) => <div key={`cc-${i}`} title="Correct Color, Wrong Position" className="w-2.5 h-2.5 rounded-full bg-white border border-black/50" />)}
-                                </div>
-                            </div>
-                        ))}
+                            ))}
+                        </TooltipProvider>
                         {guesses.length === 0 && <p className="text-center text-muted-foreground pt-24">Guess history appears here.</p>}
                     </div>
                 </ScrollArea>
