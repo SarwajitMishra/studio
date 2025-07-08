@@ -15,7 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 
 type Towers = number[][];
 type Difficulty = 3 | 4 | 5 | 6;
-type GameState = 'setup' | 'howToPlay' | 'playing';
+type GameState = 'setup' | 'playing';
 
 const DISK_COLORS = [
     "bg-red-500", "bg-orange-500", "bg-yellow-400",
@@ -25,79 +25,6 @@ const DISK_COLORS = [
 const MINIMUM_MOVES: Record<Difficulty, number> = {
     3: 7, 4: 15, 5: 31, 6: 63
 };
-
-const HowToPlayDisk = ({ size, color }: { size: number; color: string; }) => (
-    <div
-        className={cn("h-5 rounded-md shadow-md mx-auto", color)}
-        style={{ width: `${30 + size * 10}%` }}
-    />
-);
-
-const HowToPlayHanoi = ({ onStartGame, onBack }: { onStartGame: () => void; onBack: () => void; }) => {
-    const [step, setStep] = useState(0);
-
-    const steps = [
-        { text: "1. Goal: Move the entire stack of disks to another rod." },
-        { text: "2. Rule 1: Only move one disk at a time (the top-most one)." },
-        { text: "3. Rule 2: A larger disk cannot be placed on a smaller disk." },
-    ];
-
-    useEffect(() => {
-        const timer = setInterval(() => {
-            setStep(prev => (prev + 1) % steps.length);
-        }, 3000);
-        return () => clearInterval(timer);
-    }, [steps.length]);
-
-    const currentStep = steps[step];
-
-    const getRodContent = (rodIndex: number) => {
-        let disks: JSX.Element[] = [];
-        if (rodIndex === 0) {
-            if (step === 0) disks = [<HowToPlayDisk key={1} size={1} color={DISK_COLORS[0]} />, <HowToPlayDisk key={2} size={2} color={DISK_COLORS[1]} />, <HowToPlayDisk key={3} size={3} color={DISK_COLORS[2]} />];
-            if (step === 1) disks = [<HowToPlayDisk key={2} size={2} color={DISK_COLORS[1]} />, <HowToPlayDisk key={3} size={3} color={DISK_COLORS[2]} />];
-            if (step === 2) disks = [<HowToPlayDisk key={3} size={3} color={DISK_COLORS[2]} />];
-        } else if (rodIndex === 1) {
-            if (step === 2) disks = [<HowToPlayDisk key={1} size={1} color={DISK_COLORS[0]} />];
-        } else if (rodIndex === 2) {
-            if (step === 1) disks = [<HowToPlayDisk key={1} size={1} color={DISK_COLORS[0]} />];
-            if (step === 2) disks = [<div key="anim" className="animate-pulse"><HowToPlayDisk size={2} color={DISK_COLORS[1]} /></div>];
-        }
-        
-        return (
-             <div className="w-1/3 flex flex-col-reverse items-center space-y-1 h-full justify-end">
-                {disks}
-                <div className="w-2 h-24 bg-neutral-600 rounded-t-sm"></div>
-                <div className="w-full h-2 bg-neutral-700 rounded-sm"></div>
-            </div>
-        )
-    }
-
-    return (
-        <Card className="w-full max-w-md text-center shadow-xl">
-            <CardHeader>
-                <CardTitle className="text-2xl font-bold">How to Play</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <div className="flex justify-around items-end h-32 bg-muted p-2 rounded-lg">
-                    {getRodContent(0)}
-                    {getRodContent(1)}
-                    {getRodContent(2)}
-                </div>
-                <p className="min-h-[40px] font-medium text-foreground/90">{currentStep.text}</p>
-                <div className="flex flex-col sm:flex-row gap-2">
-                    <Button onClick={onBack} variant="outline" className="w-full">
-                        <ArrowLeft className="mr-2"/> Back
-                    </Button>
-                    <Button onClick={onStartGame} className="w-full text-lg bg-accent text-accent-foreground">
-                        Start Game! <ArrowRight className="ml-2" />
-                    </Button>
-                </div>
-            </CardContent>
-        </Card>
-    );
-};
-
 
 const Rod = ({ disks, rodIndex, onClick, onDragOver, onDrop, onDiskDragStart, isSelected, isWon }: { 
     disks: number[], 
@@ -204,28 +131,26 @@ export default function TowerOfHanoiPage() {
         }
     }, [difficulty, moves, minMoves, toast]);
     
-    const handleDifficultySelect = (numDisks: Difficulty) => {
-        setDifficulty(numDisks);
-        setGameState('howToPlay');
-    };
-    
-    const startGame = useCallback(() => {
-        if (!difficulty) return;
+    const startGame = useCallback((numDisks: Difficulty) => {
         if (moves > 0 && !isWon) {
             updateGameStats({ gameId: 'tower-of-hanoi', didWin: false });
         }
         const initialTowers: Towers = [[], [], []];
-        for (let i = difficulty; i > 0; i--) {
+        for (let i = numDisks; i > 0; i--) {
             initialTowers[0].push(i);
         }
+        setDifficulty(numDisks);
         setTowers(initialTowers);
         setSelectedRod(null);
         setMoves(0);
         setIsWon(false);
         setLastReward(null);
         setGameState('playing');
-    }, [difficulty, moves, isWon]);
+    }, [moves, isWon]);
 
+    const handleDifficultySelect = (numDisks: Difficulty) => {
+        startGame(numDisks);
+    };
 
     const moveDisk = useCallback((fromIndex: number, toIndex: number) => {
         if (isWon || fromIndex === toIndex) return;
@@ -308,14 +233,6 @@ export default function TowerOfHanoiPage() {
         )
     }
 
-     if (gameState === 'howToPlay') {
-        return (
-            <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
-               <HowToPlayHanoi onStartGame={startGame} onBack={() => setGameState('setup')} />
-            </div>
-        );
-    }
-
     return (
         <div className="flex flex-col items-center p-4">
             <AlertDialog open={isWon}>
@@ -351,7 +268,7 @@ export default function TowerOfHanoiPage() {
                         ) : null}
                     </div>
                     <AlertDialogFooter>
-                        <AlertDialogAction onClick={startGame} disabled={isCalculatingReward}>Play Again</AlertDialogAction>
+                        <AlertDialogAction onClick={() => startGame(difficulty!)} disabled={isCalculatingReward}>Play Again</AlertDialogAction>
                         <AlertDialogCancel onClick={() => setGameState('setup')} disabled={isCalculatingReward}>Back to Menu</AlertDialogCancel>
                     </AlertDialogFooter>
                 </AlertDialogContent>
@@ -380,7 +297,7 @@ export default function TowerOfHanoiPage() {
                         ))}
                     </div>
                      <div className="mt-6 flex gap-4">
-                        <Button onClick={startGame} className="w-full"><RotateCw className="mr-2"/> Reset</Button>
+                        <Button onClick={() => startGame(difficulty!)} className="w-full"><RotateCw className="mr-2"/> Reset</Button>
                         <Button onClick={() => setGameState('setup')} variant="outline" className="w-full"><ArrowLeft className="mr-2"/> Change Difficulty</Button>
                     </div>
                 </CardContent>
