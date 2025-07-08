@@ -7,7 +7,9 @@ import {
   signOut,
   onAuthStateChanged,
   updateProfile,
-  type User
+  type User,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword
 } from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
 import { getFirestore } from 'firebase/firestore';
@@ -57,8 +59,7 @@ export {
   signOut,
   onAuthStateChanged,
   updateProfile,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
 };
 export type { User };
-
-
-

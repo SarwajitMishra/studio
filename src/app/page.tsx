@@ -29,16 +29,16 @@ export default function WelcomePage() {
         
         {/* Sign Up Button Overlay (Example: bottom left) */}
         <Link
-          href="/signup"
-          aria-label="Sign Up"
+          href="/login"
+          aria-label="Login"
           className="absolute"
           style={{ top: '75%', left: '20%', width: '20%', height: '10%' }}
         />
 
         {/* Login Button Overlay (Example: bottom center) */}
         <Link
-          href="/login"
-          aria-label="Login"
+          href="/signup"
+          aria-label="Sign Up"
           className="absolute"
           style={{ top: '75%', left: '40%', width: '20%', height: '10%' }}
         />
@@ -48,7 +48,7 @@ export default function WelcomePage() {
           href="/dashboard"
           aria-label="Continue as Guest"
           className="absolute"
-          style={{ top: '75%', left: '60%', width: '20%', height: '10%' }}
+          style={{ top: '75%', left: '60%', width: '40%', height: '10%' }}
         />
       </div>
     </div>
