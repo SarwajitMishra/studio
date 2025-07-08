@@ -29,7 +29,7 @@ import {
   BADGES,
   type Badge,
 } from "@/lib/constants";
-import { UserCircle, BarChart3, Settings, CheckCircle, LogIn, LogOut, UploadCloud, Edit3, User as UserIcon, Palette, Sun, Moon, Trophy, Gamepad2, Star, Coins, AlertTriangle, Loader2, History, Bookmark, Lock } from 'lucide-react';
+import { UserCircle, BarChart3, Settings, CheckCircle, LogIn, LogOut, UploadCloud, Edit3, User as UserIcon, Palette, Sun, Moon, Trophy, Gamepad2, Star, Coins, AlertTriangle, Loader2, History, Bookmark, Lock, BookOpen } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -139,6 +139,22 @@ export default function ProfilePage() {
   }, [sPoints, gameStats]);
 
   const primaryBadge = unlockedBadges.length > 0 ? unlockedBadges[unlockedBadges.length - 1] : null;
+
+  // -- Achievement Stats Calculation --
+  const totalGamesPlayed = useMemo(() => gameStats.reduce((acc, stat) => acc + stat.gamesPlayed, 0), [gameStats]);
+  const totalWins = useMemo(() => gameStats.reduce((acc, stat) => acc + stat.wins, 0), [gameStats]);
+  const highestScoreInfo = useMemo(() => {
+    if (gameStats.length === 0 || !gameStats.some(s => s.highScore > 0)) {
+        return { score: 0, gameName: 'N/A' };
+    }
+    const statWithHighestScore = gameStats.reduce((max, stat) => stat.highScore > max.highScore ? stat : max, { highScore: 0 } as GameStat);
+    const gameDef = gameDefsMap.get(statWithHighestScore.gameId);
+    return {
+        score: statWithHighestScore.highScore,
+        gameName: gameDef?.title || gameDef?.name || 'a game'
+    };
+  }, [gameStats]);
+  const blogsWritten = 0; // Placeholder
 
   // Effect to listen for currency and stats updates from other components
   useEffect(() => {
@@ -533,8 +549,8 @@ export default function ProfilePage() {
           <TabsTrigger value="progress" className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
             <BarChart3 className="mr-2 h-5 w-5" /> Progress
           </TabsTrigger>
-           <TabsTrigger value="badges" className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
-            <Trophy className="mr-2 h-5 w-5" /> Badges
+           <TabsTrigger value="achievements" className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
+            <Trophy className="mr-2 h-5 w-5" /> Achievements
           </TabsTrigger>
           <TabsTrigger value="leaderboard" className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
             <BarChart3 className="mr-2 h-5 w-5" /> Leaderboard
@@ -604,46 +620,103 @@ export default function ProfilePage() {
           </Card>
         </TabsContent>
         
-        <TabsContent value="badges">
+        <TabsContent value="achievements">
             <Card className="shadow-lg">
-                 <CardHeader>
+                <CardHeader>
                     <div className="flex items-center space-x-3">
                         <Trophy size={28} className="text-primary" />
-                        <CardTitle className="text-2xl">Your Badges & Achievements</CardTitle>
+                        <CardTitle className="text-2xl">Your Achievements</CardTitle>
                     </div>
                     <CardDescription>
-                        Unlock new titles and badges by playing games and reaching milestones.
+                        A summary of your stats, badges, and titles earned in the Playhouse.
                     </CardDescription>
                 </CardHeader>
-                <CardContent>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                        {BADGES.map(badge => {
-                            const isUnlocked = unlockedBadges.some(ub => ub.id === badge.id);
-                            return (
-                                <TooltipProvider key={badge.id}>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Card className={cn(
-                                                "p-4 text-center transition-all",
-                                                isUnlocked ? `border-2 ${badge.color.replace('text-', 'border-')}` : 'bg-muted/50'
-                                            )}>
-                                                <badge.Icon size={40} className={cn("mx-auto", isUnlocked ? badge.color : 'text-muted-foreground')} />
-                                                <p className="font-bold mt-2 text-sm">{badge.title}</p>
-                                                {!isUnlocked && <Lock size={16} className="mx-auto mt-1 text-muted-foreground" />}
-                                            </Card>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                            <p className="font-semibold">{badge.title}</p>
-                                            <p className="text-xs">{badge.description}</p>
-                                        </TooltipContent>
-                                    </Tooltip>
-                                </TooltipProvider>
-                            );
-                        })}
+                <CardContent className="space-y-8">
+                    {/* Mini Stats Review */}
+                    <div>
+                        <h3 className="text-lg font-semibold mb-4">Quick Stats</h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="flex items-center p-3 bg-muted/50 rounded-lg">
+                                <Gamepad2 className="mr-3 h-6 w-6 text-primary" />
+                                <div>
+                                <p className="font-semibold">Games Played</p>
+                                <p className="text-2xl font-bold">{totalGamesPlayed}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center p-3 bg-muted/50 rounded-lg">
+                                <BarChart3 className="mr-3 h-6 w-6 text-primary" />
+                                <div>
+                                <p className="font-semibold">Highest Score</p>
+                                <p className="text-2xl font-bold">{highestScoreInfo.score}</p>
+                                <p className="text-xs text-muted-foreground">in {highestScoreInfo.gameName}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center p-3 bg-muted/50 rounded-lg">
+                                <BookOpen className="mr-3 h-6 w-6 text-primary" />
+                                <div>
+                                <p className="font-semibold">Blogs Written</p>
+                                <p className="text-2xl font-bold">{blogsWritten}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center p-3 bg-muted/50 rounded-lg">
+                                <Trophy className="mr-3 h-6 w-6 text-primary" />
+                                <div>
+                                <p className="font-semibold">Challenges Completed</p>
+                                <p className="text-2xl font-bold">{totalWins}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Titles Earned */}
+                    {primaryBadge && (
+                        <div>
+                        <h3 className="text-lg font-semibold mb-4">Title Earned</h3>
+                        <div className={cn("p-4 rounded-lg border-2", primaryBadge.color.replace('text-', 'border-'))}>
+                            <div className="flex items-center gap-3">
+                                <primaryBadge.Icon size={32} className={cn(primaryBadge.color)} />
+                                <div>
+                                    <p className="text-xl font-bold">{primaryBadge.title}</p>
+                                    <p className="text-sm text-muted-foreground">{primaryBadge.description}</p>
+                                </div>
+                            </div>
+                        </div>
+                        </div>
+                    )}
+
+                    {/* Badges Section */}
+                    <div>
+                        <h3 className="text-lg font-semibold mb-4">Badges Collection</h3>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                            {BADGES.map(badge => {
+                                const isUnlocked = unlockedBadges.some(ub => ub.id === badge.id);
+                                return (
+                                    <TooltipProvider key={badge.id}>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Card className={cn(
+                                                    "p-4 text-center transition-all",
+                                                    isUnlocked ? `border-2 ${badge.color.replace('text-', 'border-')}` : 'bg-muted/50'
+                                                )}>
+                                                    <badge.Icon size={40} className={cn("mx-auto", isUnlocked ? badge.color : 'text-muted-foreground')} />
+                                                    <p className="font-bold mt-2 text-sm">{badge.title}</p>
+                                                    {!isUnlocked && <Lock size={16} className="mx-auto mt-1 text-muted-foreground" />}
+                                                </Card>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                                <p className="font-semibold">{badge.title}</p>
+                                                <p className="text-xs">{badge.description}</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+                                );
+                            })}
+                        </div>
                     </div>
                 </CardContent>
             </Card>
         </TabsContent>
+
 
         <TabsContent value="progress">
           <Card className="shadow-lg">
@@ -774,20 +847,4 @@ export default function ProfilePage() {
 
     
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    
