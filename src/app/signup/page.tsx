@@ -77,7 +77,7 @@ export default function SignupPage() {
   const [phoneDialogCountryCode, setPhoneDialogCountryCode] = useState('+91');
   const [otp, setOtp] = useState('');
   const [phoneLoading, setPhoneLoading] = useState(false);
-  const [confirmationResult, setConfirmationResult] = useState<any>(null);
+  const confirmationResultRef = useRef<any>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -94,17 +94,6 @@ export default function SignupPage() {
     },
   });
 
-  useEffect(() => {
-    if (!window.recaptchaVerifier) {
-      window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-        'size': 'invisible',
-        'callback': (response: any) => {
-          console.log("reCAPTCHA solved");
-        }
-      });
-    }
-  }, []);
-
   const handleSendOtp = async () => {
     if (!phoneDialogNumber) {
         toast({ variant: "destructive", title: "Phone number required" });
@@ -113,9 +102,15 @@ export default function SignupPage() {
     setPhoneLoading(true);
     try {
         const fullPhoneNumber = `${phoneDialogCountryCode}${phoneDialogNumber}`;
-        const verifier = window.recaptchaVerifier!;
+        // Create a new verifier each time to avoid stale verifier issues
+        const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+            'size': 'invisible',
+            'callback': (response: any) => {
+              // reCAPTCHA solved, allow signInWithPhoneNumber.
+            }
+        });
         const result = await signInWithPhoneNumber(auth, fullPhoneNumber, verifier);
-        setConfirmationResult(result);
+        confirmationResultRef.current = result;
         setPhoneStep('enterOtp');
         toast({ title: "OTP Sent!", description: `An OTP has been sent to ${fullPhoneNumber}` });
     } catch (error: any) {
@@ -127,13 +122,13 @@ export default function SignupPage() {
   };
 
   const handleVerifyOtp = async () => {
-    if (!otp || !confirmationResult) {
+    if (!otp || !confirmationResultRef.current) {
         toast({ variant: "destructive", title: "OTP Required" });
         return;
     }
     setPhoneLoading(true);
     try {
-        const userCredential = await confirmationResult.confirm(otp);
+        const userCredential = await confirmationResultRef.current.confirm(otp);
         const additionalUserInfo = getAdditionalUserInfo(userCredential);
 
         if (additionalUserInfo?.isNewUser) {
@@ -255,6 +250,8 @@ export default function SignupPage() {
                     <Input type="text" placeholder="Enter 6-digit OTP" value={otp} onChange={e => setOtp(e.target.value)} />
                   )}
                   </div>
+                  {/* Container for the invisible reCAPTCHA */}
+                  <div id="recaptcha-container"></div>
                   <DialogFooter>
                     {phoneStep === 'enterPhone' ? (
                        <Button onClick={handleSendOtp} disabled={phoneLoading}>
@@ -359,7 +356,6 @@ export default function SignupPage() {
           </Form>
         </CardContent>
         <CardFooter className="text-center text-sm">
-          <div id="recaptcha-container"></div>
           Already have an account?&nbsp;
           <Link href="/login" className="underline">
             Log in
