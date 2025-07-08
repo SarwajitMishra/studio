@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import Image from 'next/image';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -16,6 +16,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatDistanceToNow } from 'date-fns';
 import { 
   AVATARS, 
@@ -26,9 +27,11 @@ import {
   S_POINTS_ICON as SPointsIcon, 
   S_COINS_ICON as SCoinsIcon,
   LOCAL_STORAGE_S_POINTS_KEY,
-  LOCAL_STORAGE_S_COINS_KEY
+  LOCAL_STORAGE_S_COINS_KEY,
+  BADGES,
+  type Badge,
 } from "@/lib/constants";
-import { UserCircle, BarChart3, Settings, CheckCircle, LogIn, LogOut, UploadCloud, Edit3, User as UserIcon, Palette, Sun, Moon, Trophy, Gamepad2, Star, Coins, AlertTriangle, Loader2, History, Bookmark } from 'lucide-react';
+import { UserCircle, BarChart3, Settings, CheckCircle, LogIn, LogOut, UploadCloud, Edit3, User as UserIcon, Palette, Sun, Moon, Trophy, Gamepad2, Star, Coins, AlertTriangle, Loader2, History, Bookmark, Lock } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -128,6 +131,32 @@ export default function ProfilePage() {
     setRewardHistory(getRewardHistory());
     setGameStats(getGameStats());
   }, []);
+
+  const unlockedBadges = useMemo(() => {
+    const checkBadgeCriteria = (badge: Badge): boolean => {
+        switch (badge.id) {
+            case 'beginner-explorer':
+                return sPoints >= 100;
+            case 'star-starter':
+                return gameStats.some(stat => stat.wins > 0);
+            case 'puzzle-master':
+                const puzzleGames = new Set(GAMES.filter(g => g.category === 'Puzzles').map(g => g.id));
+                const puzzleWins = gameStats.filter(stat => puzzleGames.has(stat.gameId) && stat.wins > 0).length;
+                return puzzleWins >= 3;
+            case 'typing-titan':
+                const typingStat = gameStats.find(stat => stat.gameId === 'typingRush');
+                return (typingStat?.highScore || 0) >= 150;
+            case 'strategy-sovereign':
+                const chessStat = gameStats.find(stat => stat.gameId === 'chess');
+                return (chessStat?.wins || 0) >= 5;
+            default:
+                return false;
+        }
+    };
+    return BADGES.filter(checkBadgeCriteria);
+  }, [sPoints, gameStats]);
+
+  const primaryBadge = unlockedBadges.length > 0 ? unlockedBadges[unlockedBadges.length - 1] : null;
 
   // Effect to listen for currency and stats updates from other components
   useEffect(() => {
@@ -406,6 +435,23 @@ export default function ProfilePage() {
         <div className="text-center sm:text-left flex-grow">
           <h1 className="text-3xl font-bold text-foreground">My Profile</h1>
           <p className="text-lg text-muted-foreground">Welcome back, {editingUserName}!</p>
+           {primaryBadge && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="mt-1 flex items-center justify-center sm:justify-start gap-2 cursor-pointer">
+                    <span className={cn("font-extrabold", primaryBadge.color)}>●</span>
+                    <span className={cn("font-semibold text-sm", primaryBadge.color)}>
+                      {primaryBadge.title}
+                    </span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{primaryBadge.description}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
           <div className="mt-3 flex flex-col sm:flex-row sm:space-x-6 space-y-2 sm:space-y-0 items-center justify-center sm:justify-start">
             <div className="flex items-center text-foreground">
               <SPointsIcon className="mr-2 h-6 w-6 text-yellow-400" />
@@ -431,7 +477,7 @@ export default function ProfilePage() {
                     <History className="mr-2 h-4 w-4" /> View Reward History
                 </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-2xl">
+            <DialogContent className="sm:max-w-3xl">
                 <DialogHeader>
                     <DialogTitle>Reward History</DialogTitle>
                     <DialogDescription>
@@ -452,8 +498,6 @@ export default function ProfilePage() {
                     </TableHeader>
                     <TableBody>
                         {rewardHistory.map((event, index) => {
-                        // Calculate running balance after this transaction
-                        // To get the balance *after* this transaction, we subtract all newer transactions
                         let balancePoints = sPoints;
                         let balanceCoins = sCoins;
                         for (let i = 0; i < index; i++) {
@@ -520,12 +564,15 @@ export default function ProfilePage() {
       </header>
 
       <Tabs defaultValue="avatar" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 bg-primary/20">
+        <TabsList className="grid w-full grid-cols-4 bg-primary/20">
           <TabsTrigger value="avatar" className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
             <UserCircle className="mr-2 h-5 w-5" /> Avatar
           </TabsTrigger>
           <TabsTrigger value="progress" className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
             <BarChart3 className="mr-2 h-5 w-5" /> Progress
+          </TabsTrigger>
+           <TabsTrigger value="badges" className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
+            <Trophy className="mr-2 h-5 w-5" /> Badges
           </TabsTrigger>
           <TabsTrigger value="settings" className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
             <Settings className="mr-2 h-5 w-5" /> Preferences
@@ -593,6 +640,47 @@ export default function ProfilePage() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+        
+        <TabsContent value="badges">
+            <Card className="shadow-lg">
+                 <CardHeader>
+                    <div className="flex items-center space-x-3">
+                        <Trophy size={28} className="text-primary" />
+                        <CardTitle className="text-2xl">Your Badges & Achievements</CardTitle>
+                    </div>
+                    <CardDescription>
+                        Unlock new titles and badges by playing games and reaching milestones.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        {BADGES.map(badge => {
+                            const isUnlocked = unlockedBadges.some(ub => ub.id === badge.id);
+                            return (
+                                <TooltipProvider key={badge.id}>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Card className={cn(
+                                                "p-4 text-center transition-all",
+                                                isUnlocked ? `border-2 ${badge.color.replace('text-', 'border-')}` : 'bg-muted/50'
+                                            )}>
+                                                <badge.Icon size={40} className={cn("mx-auto", isUnlocked ? badge.color : 'text-muted-foreground')} />
+                                                <p className="font-bold mt-2 text-sm">{badge.title}</p>
+                                                {!isUnlocked && <Lock size={16} className="mx-auto mt-1 text-muted-foreground" />}
+                                            </Card>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <p className="font-semibold">{badge.title}</p>
+                                            <p className="text-xs">{badge.description}</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                            );
+                        })}
+                    </div>
+                </CardContent>
+            </Card>
         </TabsContent>
 
         <TabsContent value="progress">
@@ -763,6 +851,7 @@ export default function ProfilePage() {
     
 
     
+
 
 
 

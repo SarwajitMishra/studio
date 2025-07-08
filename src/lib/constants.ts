@@ -6,7 +6,8 @@ import {
     Sigma, Brain, ToyBrick, Star as StarIcon, Coins as CoinsIcon, BookMarked, 
     Target, Calculator, ListOrdered, SpellCheck, CaseLower, AlignJustify, Filter, 
     Keyboard, Gamepad2, Languages, Lightbulb, Mail, Calendar, Heart, Hash, CircleDot,
-    Grid3x3, Route, Blocks, KeyRound, LayoutGrid, XCircle, Ticket, Dice6, Users, FileText
+    Grid3x3, Route, Blocks, KeyRound, LayoutGrid, XCircle, Ticket, Dice6, Users, FileText,
+    Trophy, Award, Compass, BrainCircuit
 } from 'lucide-react';
 
 export type GameCategory = 'Strategy' | 'Puzzles' | 'Learning';
@@ -197,7 +198,7 @@ export const MATH_PUZZLE_TYPES: MathPuzzleType[] = [
     color: "text-gray-500",
   },
   {
-    id: "fastMath",
+    id: "mathDuel",
     name: "Fast Math",
     description: "Find the answer to the problem in a grid of numbers!",
     Icon: Swords,
@@ -314,4 +315,51 @@ export const AVATARS: { src: string; alt: string; hint: string }[] = [
   { src: '/images/avatars/indian_girl.png', alt: 'Indian girl avatar', hint: 'indian girl' },
   { src: '/images/avatars/indian_man.png', alt: 'Indian man avatar', hint: 'indian man' },
   { src: '/images/avatars/modern_girl.png', alt: 'Modern girl avatar', hint: 'modern girl' },
+];
+
+// Profile Badges & Achievements
+export interface Badge {
+  id: string;
+  title: string;
+  description: string;
+  Icon: LucideIcon;
+  color: string;
+}
+
+export const BADGES: Badge[] = [
+  {
+    id: 'beginner-explorer',
+    title: 'Beginner Explorer',
+    description: 'Earn your first 100 S-Points.',
+    Icon: Compass,
+    color: 'text-green-500',
+  },
+  {
+    id: 'star-starter',
+    title: 'Star Starter',
+    description: 'Win your very first game.',
+    Icon: Award,
+    color: 'text-yellow-500',
+  },
+  {
+    id: 'puzzle-master',
+    title: 'Puzzle Master',
+    description: 'Win at least 3 different puzzle games.',
+    Icon: BrainCircuit,
+    color: 'text-purple-500',
+  },
+  {
+    id: 'typing-titan',
+    title: 'Typing Titan',
+    description: 'Score 150 or more in Typing Rush.',
+    Icon: Keyboard,
+    color: 'text-red-500',
+  },
+  {
+    id: 'strategy-sovereign',
+    title: 'Strategy Sovereign',
+    description: 'Win 5 games of Chess.',
+    Icon: Crown,
+    color: 'text-blue-500',
+  },
 ];
