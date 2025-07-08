@@ -117,11 +117,8 @@ export interface SettingsMenuItem {
 }
 
 export const SETTINGS_MENU_ITEMS: SettingsMenuItem[] = [
-  { href: '/profile', label: 'My Profile', Icon: UserCircle },
-  { href: '/profile', label: 'Leaderboards', Icon: BarChart3 },
   { href: '#', label: 'Parental Controls', Icon: Shield },
   { href: '/profile', label: 'Theme & Preferences', Icon: Palette },
-  { href: '#', label: 'Language', Icon: Languages },
   { href: '#', label: 'Volume Control', Icon: Volume2 },
 ];
 
