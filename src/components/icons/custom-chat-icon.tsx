@@ -1,4 +1,3 @@
-
 // src/components/icons/custom-chat-icon.tsx
 import type React from 'react';
 import NextImage from 'next/image';
@@ -37,7 +36,7 @@ const CustomChatIcon = ({
       alt={alt}
       width={numericSize}
       height={numericSize}
-      className={cn(className)}
+      className={cn("rounded-full", className)}
       data-ai-hint={dataAiHint}
       {...props}
     />
