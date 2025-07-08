@@ -122,6 +122,16 @@ export const SETTINGS_MENU_ITEMS: SettingsMenuItem[] = [
   { href: '#', label: 'Volume Control', Icon: Volume2 },
 ];
 
+export const COUNTRIES = [
+  { value: 'IN', label: 'India' },
+  { value: 'US', label: 'United States' },
+  { value: 'GB', label: 'United Kingdom' },
+  { value: 'CA', label: 'Canada' },
+  { value: 'AU', label: 'Australia' },
+  { value: 'DE', label: 'Germany' },
+  { value: 'JP', label: 'Japan' },
+];
+
 // Icons for Memory Match game
 export const MEMORY_ICONS: LucideIcon[] = [
   Apple, Banana, Cherry, Grape, Carrot, Pizza, CakeSlice, IceCream2, ToyBrick, Gamepad2

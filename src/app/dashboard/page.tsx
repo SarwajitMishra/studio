@@ -13,6 +13,7 @@ import GameCard from '@/components/game-card';
 import { onAuthStateChanged, type User } from '@/lib/firebase';
 import { auth } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 
 const CATEGORIES_ORDER: GameCategory[] = ['Strategy', 'Puzzles', 'Learning'];
 
@@ -49,7 +50,7 @@ export default function DashboardPage() {
           <Terminal className="h-4 w-4" />
           <AlertTitle>Playing as Guest!</AlertTitle>
           <AlertDescription>
-            Your progress won't be saved permanently. Sign in anytime to sync your rewards and achievements.
+            Your progress won&apos;t be saved permanently. <Link href="/signup" className="font-bold underline">Sign up</Link> or <Link href="/login" className="font-bold underline">log in</Link> anytime to sync your rewards and achievements.
           </AlertDescription>
         </Alert>
       )}

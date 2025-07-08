@@ -1,8 +1,8 @@
-
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -10,7 +10,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -35,9 +34,6 @@ import { useToast } from "@/hooks/use-toast";
 import {
   auth,
   storage,
-  googleProvider,
-  signInWithPopup,
-  signOut as firebaseSignOut,
   onAuthStateChanged,
   updateProfile,
   type User
@@ -91,6 +87,7 @@ const GameStatRow = ({ stat, game }: { stat: GameStat, game: any }) => (
 
 export default function ProfilePage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const [editingUserName, setEditingUserName] = useState<string>(DEFAULT_USER_NAME);
   const [selectedAvatar, setSelectedAvatar] = useState<string>(DEFAULT_AVATAR_SRC);
   const avatarFileInputRef = useRef<HTMLInputElement>(null);
@@ -98,8 +95,6 @@ export default function ProfilePage() {
   const [isUploading, setIsUploading] = useState(false);
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
-  const [showLoginWarningDialog, setShowLoginWarningDialog] = useState(false);
-
   const [sPoints, setSPoints] = useState<number>(0);
   const [sCoins, setSCoins] = useState<number>(0);
   const [rewardHistory, setRewardHistory] = useState<RewardEvent[]>([]);
@@ -156,7 +151,6 @@ export default function ProfilePage() {
   }, [gameStats]);
   const blogsWritten = 0; // Placeholder
 
-  // Effect to listen for currency and stats updates from other components
   useEffect(() => {
     window.addEventListener('storageUpdated', updateLocalData);
     return () => {
@@ -165,33 +159,24 @@ export default function ProfilePage() {
   }, [updateLocalData]);
 
 
-  // Effect for loading local data on initial mount
   useEffect(() => {
-    updateLocalData(); // Load all local data on mount
+    updateLocalData();
   }, [updateLocalData]);
 
-  // Simplified, single effect for handling Firebase Auth state changes
   useEffect(() => {
     const authDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
     const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 
     if (!authDomain || !projectId) {
-      console.error("CRITICAL: Firebase configuration is missing from environment variables. Login will be disabled. Please set NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN and NEXT_PUBLIC_FIREBASE_PROJECT_ID.");
       setIsConfigMissing(true);
-      toast({
-        variant: "destructive",
-        title: "Firebase Config Missing",
-        description: "Login is disabled. See console for details.",
-        duration: 8000,
-      });
       return;
     }
     
     const unsubscribe = onAuthStateChanged(auth, (user) => {
         setCurrentUser(user);
+        setAuthChecked(true);
 
         if (user) { 
-            // User is logged in, sync state from Firebase profile or fall back to local storage/defaults
             const firebaseDisplayName = user.displayName ?? localStorage.getItem(LOCAL_STORAGE_USER_NAME_KEY) ?? DEFAULT_USER_NAME;
             setEditingUserName(firebaseDisplayName);
             localStorage.setItem(LOCAL_STORAGE_USER_NAME_KEY, firebaseDisplayName);
@@ -199,14 +184,10 @@ export default function ProfilePage() {
             const firebasePhotoURL = user.photoURL ?? localStorage.getItem(LOCAL_STORAGE_AVATAR_KEY) ?? DEFAULT_AVATAR_SRC;
             setSelectedAvatar(firebasePhotoURL);
             localStorage.setItem(LOCAL_STORAGE_AVATAR_KEY, firebasePhotoURL);
-
-            setSPoints(100); 
-            setSCoins(10);  
-            setRewardHistory([]); // Placeholder for online history
-            setGameStats(getGameStats()); // Always load stats, but cloud sync would go here
+            
+            updateLocalData();
             
         } else { 
-            // User is logged out, load all data from local storage
             setEditingUserName(localStorage.getItem(LOCAL_STORAGE_USER_NAME_KEY) || DEFAULT_USER_NAME);
             setSelectedAvatar(localStorage.getItem(LOCAL_STORAGE_AVATAR_KEY) || DEFAULT_AVATAR_SRC);
             updateLocalData();
@@ -287,38 +268,6 @@ export default function ProfilePage() {
       };
     }, [editingUserName, currentUser, toast]);
 
-
-  const actualSignInWithGoogle = async () => {
-    try {
-      const result = await signInWithPopup(auth, googleProvider);
-      toast({ title: "Logged In!", description: `Welcome back, ${result.user.displayName || 'User'}!` });
-    } catch (error: any) {
-      console.error("Error during Google sign-in with popup:", error);
-      if (error.code !== 'auth/popup-closed-by-user') {
-          toast({ variant: "destructive", title: "Login Failed", description: error.message || "Could not sign in with Google. Please try again." });
-      }
-    }
-  };
-
-  const handleGoogleLoginAttempt = async () => {
-    const localDataMayExist = !currentUser; 
-    if (localDataMayExist) {
-      setShowLoginWarningDialog(true);
-    } else {
-      await actualSignInWithGoogle();
-    }
-  };
-
-  const handleLogout = async () => {
-    try {
-      await firebaseSignOut(auth);
-      toast({ title: "Logged Out", description: "You have been successfully logged out." });
-    } catch (error: any)      {
-      console.error("Error during sign-out:", error);
-      toast({ variant: "destructive", title: "Logout Failed", description: error.message || "Could not sign out. Please try again." });
-    }
-  };
-
   const handleAvatarFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -346,6 +295,29 @@ export default function ProfilePage() {
   const numberPuzzleStats = playedGameStats.filter(s => numberPuzzleIds.has(s.gameId));
   const englishPuzzleIds = new Set(ENGLISH_PUZZLE_TYPES.map(p => p.id));
   const englishPuzzleStats = playedGameStats.filter(s => englishPuzzleIds.has(s.gameId));
+  
+  if (!authChecked) {
+    return (
+      <div className="flex justify-center items-center min-h-[50vh]">
+        <Loader2 className="h-16 w-16 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!currentUser) {
+    return (
+      <Card className="w-full max-w-lg mx-auto text-center">
+        <CardHeader>
+          <CardTitle>View Your Profile</CardTitle>
+          <CardDescription>Log in or sign up to see your progress, achievements, and customize your profile.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col sm:flex-row gap-4 justify-center">
+          <Button asChild><Link href="/login">Log In</Link></Button>
+          <Button asChild variant="outline"><Link href="/signup">Sign Up</Link></Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
 
   return (
@@ -353,7 +325,7 @@ export default function ProfilePage() {
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle className="text-2xl font-bold">Account Information</CardTitle>
-          <CardDescription>Manage your login status and username. Changes for logged-in users are auto-saved to your online profile.</CardDescription>
+          <CardDescription>Manage your display name. Changes are auto-saved to your online profile.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center gap-3">
@@ -368,33 +340,10 @@ export default function ProfilePage() {
               placeholder="Enter your display name"
             />
           </div>
-          {isConfigMissing ? (
-            <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-md text-destructive text-sm space-y-1">
-              <p className="font-bold flex items-center gap-2"><AlertTriangle size={16} /> Firebase Configuration Error</p>
-              <p>Google login is disabled because your Firebase configuration is incomplete. Please ensure `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` and `NEXT_PUBLIC_FIREBASE_PROJECT_ID` are set correctly in your environment.</p>
-            </div>
-          ) : currentUser ? (
-            <div className="space-y-3">
+          <div className="space-y-3">
               <p className="text-foreground">Logged in as: <span className="font-semibold">{currentUser.email}</span></p>
-              <Button onClick={handleLogout} variant="destructive" className="w-full sm:w-auto">
-                <LogOut className="mr-2 h-5 w-5" /> Logout
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-                <p className="text-xs text-muted-foreground">Log in to save your display name, avatar, and game progress to your online profile. Local S-Points and S-Coins will be replaced by online data upon login.</p>
-                <Button onClick={handleGoogleLoginAttempt} className="w-full sm:w-auto bg-accent text-accent-foreground hover:bg-accent/90">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2"><path d="M15.3 18.09C14.54 18.89 13.56 19.5 12.45 19.83C11.34 20.16 10.17 20.26 9 20.12C5.79 19.43 3.51 16.68 3.12 13.4C3.03 12.51 3.15 11.61 3.48 10.77C3.81 9.93 4.32 9.18 4.98 8.57C6.26 7.36 7.97 6.66 9.78 6.54C11.72 6.42 13.66 6.93 15.24 7.99L16.99 6.28C15.01 4.88 12.73 4.08 10.36 4.01C8.05 3.91 5.81 4.62 3.98 5.99C2.15 7.36 0.810001 9.32 0.200001 11.58C-0.419999 13.84 0.0300012 16.24 1.13 18.25C2.23 20.26 3.92 21.77 5.99 22.56C8.06 23.35 10.36 23.37 12.48 22.62C14.6 21.87 16.44 20.41 17.67 18.51L15.3 18.09Z"/><path d="M22.94 12.14C22.98 11.74 23 11.33 23 10.91C23 10.32 22.92 9.73 22.77 9.16H12V12.83H18.24C18.03 13.71 17.55 14.5 16.86 15.08L16.82 15.11L19.28 16.91L19.45 17.06C21.58 15.22 22.94 12.14 22.94 12.14Z"/><path d="M12 23C14.47 23 16.56 22.19 18.05 20.96L15.24 17.99C14.48 18.59 13.53 18.98 12.52 18.98C10.92 18.98 9.48001 18.13 8.82001 16.76L8.78001 16.72L6.21001 18.58L6.15001 18.7C7.02001 20.39 8.68001 21.83 10.62 22.48C11.09 22.64 11.56 22.77 12 22.81V23Z"/><path d="M12.01 3.00997C13.37 2.94997 14.7 3.43997 15.73 4.40997L17.97 2.21997C16.31 0.799971 14.21 -0.0600291 12.01 0.0099709C7.37001 0.0099709 3.44001 3.36997 2.02001 7.49997L4.98001 8.56997C5.60001 6.33997 7.72001 4.00997 10.22 4.00997C10.86 3.99997 11.49 4.12997 12.01 4.36997V3.00997Z"/></svg>
-                Sign In with Google
-                </Button>
-            </div>
-          )}
+          </div>
         </CardContent>
-        <CardFooter>
-            <p className="text-xs text-muted-foreground">
-                Your display name, avatar, and app preferences are saved in your browser. Game progress, S-Points, and S-Coins are displayed from your online profile when logged in.
-            </p>
-        </CardFooter>
       </Card>
 
       <header className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-6 p-6 bg-primary/10 rounded-lg shadow">
@@ -821,30 +770,6 @@ export default function ProfilePage() {
           </Card>
         </TabsContent>
       </Tabs>
-
-      <AlertDialog open={showLoginWarningDialog} onOpenChange={setShowLoginWarningDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Login Confirmation</AlertDialogTitle>
-            <AlertDialogDescription>
-              Logging in will sync your profile with our servers. Your online S-Points and S-Coins will be shown, replacing any locally stored values. Your local game progress will remain. Continue to login?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Stay Offline</AlertDialogCancel>
-            <AlertDialogAction onClick={async () => {
-              setShowLoginWarningDialog(false); 
-              await actualSignInWithGoogle();
-            }}>Continue to Login</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
     </div>
   );
 }
-    
-
-    
-
-    

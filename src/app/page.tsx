@@ -29,7 +29,7 @@ export default function WelcomePage() {
         
         {/* Sign Up Button Overlay (Example: bottom left) */}
         <Link
-          href="/profile"
+          href="/signup"
           aria-label="Sign Up"
           className="absolute"
           style={{ top: '75%', left: '20%', width: '20%', height: '10%' }}
@@ -37,7 +37,7 @@ export default function WelcomePage() {
 
         {/* Login Button Overlay (Example: bottom center) */}
         <Link
-          href="/profile"
+          href="/login"
           aria-label="Login"
           className="absolute"
           style={{ top: '75%', left: '40%', width: '20%', height: '10%' }}

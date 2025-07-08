@@ -1,7 +1,8 @@
 "use client";
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,8 +13,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Settings, UserCircle, Home, Store, BookOpen, Bell, BookText } from 'lucide-react';
+import { Settings, UserCircle, Home, Store, BookOpen, Bell, BookText, LogOut } from 'lucide-react';
 import { SETTINGS_MENU_ITEMS } from '@/lib/constants';
+import { auth, signOut as firebaseSignOut, onAuthStateChanged, type User } from '@/lib/firebase';
+import { useToast } from '@/hooks/use-toast';
 
 interface NavigationProps {
   side: 'left' | 'right';
@@ -21,17 +24,38 @@ interface NavigationProps {
 
 export default function Navigation({ side }: NavigationProps) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { toast } = useToast();
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await firebaseSignOut(auth);
+      toast({ title: "Logged Out", description: "You have been successfully logged out." });
+      router.push('/'); // Redirect to home after logout
+    } catch (error: any)      {
+      console.error("Error during sign-out:", error);
+      toast({ variant: "destructive", title: "Logout Failed", description: error.message || "Could not sign out. Please try again." });
+    }
+  };
 
   const commonButtonClasses = "text-primary-foreground hover:bg-primary-foreground/10";
   
   if (side === 'left') {
     return (
        <nav className="flex items-center space-x-1 sm:space-x-2">
-         <Link href="/" aria-label="Go to Homepage">
+         <Link href="/dashboard" aria-label="Go to Homepage">
            <Button
              variant="ghost"
              size="icon"
-             className={cn(commonButtonClasses, pathname === '/' && "bg-accent text-accent-foreground hover:bg-accent/90")}
+             className={cn(commonButtonClasses, pathname === '/dashboard' && "bg-accent text-accent-foreground hover:bg-accent/90")}
            >
              <Home size={24} />
            </Button>
@@ -113,6 +137,15 @@ export default function Navigation({ side }: NavigationProps) {
                 </Link>
               </DropdownMenuItem>
             ))}
+            {currentUser && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Logout</span>
+                </DropdownMenuItem>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </nav>
