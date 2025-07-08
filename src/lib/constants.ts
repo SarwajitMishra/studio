@@ -7,7 +7,7 @@ import {
     Target, Calculator, ListOrdered, SpellCheck, CaseLower, AlignJustify, Filter, 
     Keyboard, Gamepad2, Languages, Lightbulb, Mail, Calendar, Heart, Hash, CircleDot,
     Grid3x3, Route, Blocks, KeyRound, LayoutGrid, XCircle, Ticket, Dice6, Users, FileText,
-    Trophy, Award, Compass, BrainCircuit
+    Trophy, Award, Compass, BrainCircuit, Shield, Palette, Volume2
 } from 'lucide-react';
 
 export type GameCategory = 'Strategy' | 'Puzzles' | 'Learning';
@@ -117,13 +117,12 @@ export interface SettingsMenuItem {
 }
 
 export const SETTINGS_MENU_ITEMS: SettingsMenuItem[] = [
-  { href: '/contest', label: 'Monthly Contest', Icon: Ticket },
+  { href: '/profile', label: 'My Profile', Icon: UserCircle },
+  { href: '/profile', label: 'Leaderboards', Icon: BarChart3 },
+  { href: '#', label: 'Parental Controls', Icon: Shield },
+  { href: '/profile', label: 'Theme & Preferences', Icon: Palette },
   { href: '#', label: 'Language', Icon: Languages },
-  { href: '#', label: 'New Feature Requests', Icon: Lightbulb },
-  { href: '#', label: 'Contact Us', Icon: Mail },
-  { href: '#', label: 'Upcoming Features', Icon: Zap },
-  { href: '#', label: 'Live Events', Icon: Calendar },
-  { href: '#', label: 'Donation', Icon: Heart },
+  { href: '#', label: 'Volume Control', Icon: Volume2 },
 ];
 
 // Icons for Memory Match game

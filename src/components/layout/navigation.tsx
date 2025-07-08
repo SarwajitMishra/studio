@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Settings, UserCircle, Home } from 'lucide-react';
+import { Settings, UserCircle, Home, Store, BookOpen, Bell } from 'lucide-react';
 import { SETTINGS_MENU_ITEMS } from '@/lib/constants';
 
 export default function Navigation() {
@@ -32,6 +32,32 @@ export default function Navigation() {
           <Home size={24} />
         </Button>
       </Link>
+      
+      <Link href="/shop" aria-label="Go to Shop">
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn(
+            "text-primary-foreground hover:bg-primary-foreground/10",
+            pathname === '/shop' && "bg-accent text-accent-foreground hover:bg-accent/90"
+          )}
+        >
+          <Store size={24} />
+        </Button>
+      </Link>
+
+      <Link href="/blogs" aria-label="Go to Blogs">
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn(
+            "text-primary-foreground hover:bg-primary-foreground/10",
+            pathname === '/blogs' && "bg-accent text-accent-foreground hover:bg-accent/90"
+          )}
+        >
+          <BookOpen size={24} />
+        </Button>
+      </Link>
 
       <Link href="/profile" aria-label="View Profile">
         <Button
@@ -45,6 +71,19 @@ export default function Navigation() {
           <UserCircle size={24} />
         </Button>
       </Link>
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/10" aria-label="Notifications">
+            <Bell size={24} />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56 mt-2">
+          <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem>No new notifications</DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>

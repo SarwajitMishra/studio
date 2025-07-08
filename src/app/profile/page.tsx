@@ -564,7 +564,7 @@ export default function ProfilePage() {
       </header>
 
       <Tabs defaultValue="avatar" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 bg-primary/20">
+        <TabsList className="grid w-full grid-cols-5 bg-primary/20">
           <TabsTrigger value="avatar" className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
             <UserCircle className="mr-2 h-5 w-5" /> Avatar
           </TabsTrigger>
@@ -573,6 +573,9 @@ export default function ProfilePage() {
           </TabsTrigger>
            <TabsTrigger value="badges" className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
             <Trophy className="mr-2 h-5 w-5" /> Badges
+          </TabsTrigger>
+          <TabsTrigger value="leaderboard" className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
+            <BarChart3 className="mr-2 h-5 w-5" /> Leaderboard
           </TabsTrigger>
           <TabsTrigger value="settings" className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
             <Settings className="mr-2 h-5 w-5" /> Preferences
@@ -766,6 +769,26 @@ export default function ProfilePage() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="leaderboard">
+          <Card className="shadow-lg">
+            <CardHeader>
+              <CardTitle>Leaderboards</CardTitle>
+              <CardDescription>
+                See how you rank against other players! Coming soon.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="text-center py-10">
+              <BarChart3 size={48} className="mx-auto text-primary/30 mb-3" />
+              <p className="text-md text-foreground/90">
+                Leaderboards are under construction.
+              </p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Check back soon to see the top players!
+              </p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="settings">
           <Card className="shadow-lg">
             <CardHeader>
@@ -851,6 +874,7 @@ export default function ProfilePage() {
     
 
     
+
 
 
 
