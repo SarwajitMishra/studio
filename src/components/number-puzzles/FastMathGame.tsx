@@ -97,7 +97,7 @@ export default function FastMathGame({ onBack, difficulty }: FastMathGameProps) 
       return () => clearTimeout(timer);
     } else if (timeLeft <= 0 && !isGameOver) {
       setIsGameOver(true);
-      updateGameStats({ gameId: 'number-puzzles', didWin: score > 0, score });
+      updateGameStats({ gameId: 'mathDuel', didWin: score > 0, score });
     }
   }, [timeLeft, isGameOver, score]);
 

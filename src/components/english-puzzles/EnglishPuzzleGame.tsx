@@ -144,7 +144,7 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
     setIsRoundOver(true);
     setIsCalculatingReward(true);
     const didWin = finalScore === MAX_QUESTIONS;
-    updateGameStats({ gameId: 'easy-english', didWin, score: finalScore * 100 });
+    updateGameStats({ gameId: puzzleType, didWin, score: finalScore * 100 });
     
     // Clear the current puzzle to show the game over screen immediately
     setCurrentPuzzle(null);

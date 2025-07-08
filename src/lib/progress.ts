@@ -1,7 +1,8 @@
 
 'use client';
 
-import { GAMES } from './constants';
+// Import all game definitions
+import { GAMES, MATH_PUZZLE_TYPES, ENGLISH_PUZZLE_TYPES } from './constants';
 import { applyRewards } from './rewards';
 
 export const LOCAL_STORAGE_GAME_STATS_KEY = 'shravyaPlayhouse_gameStats';
@@ -13,17 +14,27 @@ export interface GameStat {
   highScore: number;
 }
 
+// Combine all games into a single source of truth for stats.
+const ALL_GAME_DEFINITIONS = [
+    // Main games, excluding the container categories
+    ...GAMES.filter(g => g.id !== 'number-puzzles' && g.id !== 'easy-english'),
+    // Sub-games from math puzzles
+    ...MATH_PUZZLE_TYPES,
+    // Sub-games from english puzzles
+    ...ENGLISH_PUZZLE_TYPES
+];
+
 export const getGameStats = (): GameStat[] => {
     if (typeof window === 'undefined') {
         // Return default structure during server-side rendering
-        return GAMES.map(game => ({ gameId: game.id, gamesPlayed: 0, wins: 0, highScore: 0 }));
+        return ALL_GAME_DEFINITIONS.map(game => ({ gameId: game.id, gamesPlayed: 0, wins: 0, highScore: 0 }));
     }
     try {
         const stored = localStorage.getItem(LOCAL_STORAGE_GAME_STATS_KEY);
         const stats = stored ? JSON.parse(stored) : [];
         
         // Ensure all games from constants are present in stats, and handle malformed data
-        const allGameStats = GAMES.map(game => {
+        const allGameStats = ALL_GAME_DEFINITIONS.map(game => {
             const foundStat = stats.find((s: any) => s && s.gameId === game.id);
             return {
                 gameId: game.id,
@@ -35,7 +46,7 @@ export const getGameStats = (): GameStat[] => {
         return allGameStats;
     } catch (e) {
         console.error("Error reading game stats from localStorage", e);
-        return GAMES.map(game => ({ gameId: game.id, gamesPlayed: 0, wins: 0, highScore: 0 }));
+        return ALL_GAME_DEFINITIONS.map(game => ({ gameId: game.id, gamesPlayed: 0, wins: 0, highScore: 0 }));
     }
 };
 

@@ -178,7 +178,7 @@ export default function TowerOfHanoiPage() {
         if (!difficulty) return;
         setIsWon(true);
         setIsCalculatingReward(true);
-        updateGameStats({ gameId: 'towerOfHanoi', didWin: true, score: minMoves * 100 - moves });
+        updateGameStats({ gameId: 'tower-of-hanoi', didWin: true, score: minMoves * 100 - moves });
 
         try {
             const rewards = await calculateRewards({
@@ -212,7 +212,7 @@ export default function TowerOfHanoiPage() {
     const startGame = useCallback(() => {
         if (!difficulty) return;
         if (moves > 0 && !isWon) {
-            updateGameStats({ gameId: 'towerOfHanoi', didWin: false });
+            updateGameStats({ gameId: 'tower-of-hanoi', didWin: false });
         }
         const initialTowers: Towers = [[], [], []];
         for (let i = difficulty; i > 0; i--) {

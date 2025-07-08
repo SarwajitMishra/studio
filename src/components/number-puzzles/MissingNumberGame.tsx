@@ -81,7 +81,7 @@ export default function MissingNumberGame({ onBack, difficulty }: MissingNumberG
 
   const resetGame = useCallback(() => {
     if (questionsAnswered > 0 && !isGameOver) {
-        updateGameStats({ gameId: 'number-puzzles', didWin: false, score: score * 100 });
+        updateGameStats({ gameId: 'missingNumber', didWin: false, score: score * 100 });
     }
     setScore(0);
     setQuestionsAnswered(0);
@@ -125,7 +125,7 @@ export default function MissingNumberGame({ onBack, difficulty }: MissingNumberG
         setIsGameOver(true);
         const finalScore = isCorrect ? score + 1 : score;
         const didWin = finalScore === QUESTIONS_PER_ROUND;
-        updateGameStats({ gameId: 'number-puzzles', didWin, score: finalScore * 100 });
+        updateGameStats({ gameId: 'missingNumber', didWin, score: finalScore * 100 });
         setFeedback(isCorrect ? `Correct! Final Score: ${finalScore}/${QUESTIONS_PER_ROUND}` : `Not quite. The missing number was ${currentProblem.answer}. ${currentProblem.description || ''} Final Score: ${finalScore}/${QUESTIONS_PER_ROUND}`);
       } else {
         loadNewProblem();

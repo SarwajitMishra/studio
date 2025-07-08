@@ -5,6 +5,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +19,9 @@ import { formatDistanceToNow } from 'date-fns';
 import { 
   AVATARS, 
   GAMES, 
-  type Game, 
+  type Game,
+  MATH_PUZZLE_TYPES,
+  ENGLISH_PUZZLE_TYPES,
   S_POINTS_ICON as SPointsIcon, 
   S_COINS_ICON as SCoinsIcon,
   LOCAL_STORAGE_S_POINTS_KEY,
@@ -72,6 +75,30 @@ const getStoredGameCurrency = (key: string): number => {
   }
   return 0;
 };
+
+// Create a map of all game definitions for easy lookup
+const allGameDefs = [
+  ...GAMES,
+  ...MATH_PUZZLE_TYPES,
+  ...ENGLISH_PUZZLE_TYPES,
+];
+const gameDefsMap = new Map(allGameDefs.map(g => [g.id, g]));
+
+const GameStatRow = ({ stat, game }: { stat: GameStat, game: any }) => (
+    <div key={stat.gameId} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+        <div className="flex items-center gap-3">
+            <game.Icon size={24} className={cn("text-primary", game.color)} />
+            <div>
+                <p className="font-semibold text-foreground">{game.title || game.name}</p>
+                <p className="text-xs text-muted-foreground">{stat.gamesPlayed} {stat.gamesPlayed === 1 ? 'play' : 'plays'}</p>
+            </div>
+        </div>
+        <div className="flex flex-col items-end text-sm">
+            <span className="font-semibold flex items-center">{stat.wins} {stat.wins === 1 ? 'win' : 'wins'}</span>
+            <span className="text-xs text-muted-foreground">High Score: {stat.highScore}</span>
+        </div>
+    </div>
+);
 
 
 export default function ProfilePage() {
@@ -150,7 +177,7 @@ export default function ProfilePage() {
             setSPoints(100); 
             setSCoins(10);  
             setRewardHistory([]); // Placeholder for online history
-            setGameStats(GAMES.map(game => ({ gameId: game.id, gamesPlayed: 0, wins: 0, highScore: 0 }))); // Placeholder for online stats
+            setGameStats(getGameStats()); // Always load stats, but cloud sync would go here
             
         } else { 
             // User is logged out, load all data from local storage
@@ -304,6 +331,14 @@ export default function ProfilePage() {
     toast({ title: "Favorite Color Set", description: `Your favorite color is now ${FAVORITE_COLOR_OPTIONS.find(c => c.value === newColor)?.label || newColor}.` });
   };
 
+  const playedGameStats = gameStats.filter(s => s.gamesPlayed > 0);
+  const strategyStats = playedGameStats.filter(s => gameDefsMap.get(s.gameId)?.category === 'Strategy');
+  const puzzleStats = playedGameStats.filter(s => gameDefsMap.get(s.gameId)?.category === 'Puzzles');
+  const numberPuzzleIds = new Set(MATH_PUZZLE_TYPES.map(p => p.id));
+  const numberPuzzleStats = playedGameStats.filter(s => numberPuzzleIds.has(s.gameId));
+  const englishPuzzleIds = new Set(ENGLISH_PUZZLE_TYPES.map(p => p.id));
+  const englishPuzzleStats = playedGameStats.filter(s => englishPuzzleIds.has(s.gameId));
+
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
@@ -339,7 +374,7 @@ export default function ProfilePage() {
             </div>
           ) : (
             <div className="space-y-3">
-                <p className="text-xs text-muted-foreground">Log in to save your display name, avatar, and game progress to your online profile. Local S-Points/S-Coins will be replaced by online data upon login.</p>
+                <p className="text-xs text-muted-foreground">Log in to save your display name, avatar, and game progress to your online profile. Local S-Points and S-Coins will be replaced by online data upon login.</p>
                 <Button onClick={handleGoogleLoginAttempt} className="w-full sm:w-auto bg-accent text-accent-foreground hover:bg-accent/90">
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2"><path d="M15.3 18.09C14.54 18.89 13.56 19.5 12.45 19.83C11.34 20.16 10.17 20.26 9 20.12C5.79 19.43 3.51 16.68 3.12 13.4C3.03 12.51 3.15 11.61 3.48 10.77C3.81 9.93 4.32 9.18 4.98 8.57C6.26 7.36 7.97 6.66 9.78 6.54C11.72 6.42 13.66 6.93 15.24 7.99L16.99 6.28C15.01 4.88 12.73 4.08 10.36 4.01C8.05 3.91 5.81 4.62 3.98 5.99C2.15 7.36 0.810001 9.32 0.200001 11.58C-0.419999 13.84 0.0300012 16.24 1.13 18.25C2.23 20.26 3.92 21.77 5.99 22.56C8.06 23.35 10.36 23.37 12.48 22.62C14.6 21.87 16.44 20.41 17.67 18.51L15.3 18.09Z"/><path d="M22.94 12.14C22.98 11.74 23 11.33 23 10.91C23 10.32 22.92 9.73 22.77 9.16H12V12.83H18.24C18.03 13.71 17.55 14.5 16.86 15.08L16.82 15.11L19.28 16.91L19.45 17.06C21.58 15.22 22.94 12.14 22.94 12.14Z"/><path d="M12 23C14.47 23 16.56 22.19 18.05 20.96L15.24 17.99C14.48 18.59 13.53 18.98 12.52 18.98C10.92 18.98 9.48001 18.13 8.82001 16.76L8.78001 16.72L6.21001 18.58L6.15001 18.7C7.02001 20.39 8.68001 21.83 10.62 22.48C11.09 22.64 11.56 22.77 12 22.81V23Z"/><path d="M12.01 3.00997C13.37 2.94997 14.7 3.43997 15.73 4.40997L17.97 2.21997C16.31 0.799971 14.21 -0.0600291 12.01 0.0099709C7.37001 0.0099709 3.44001 3.36997 2.02001 7.49997L4.98001 8.56997C5.60001 6.33997 7.72001 4.00997 10.22 4.00997C10.86 3.99997 11.49 4.12997 12.01 4.36997V3.00997Z"/></svg>
                 Sign In with Google
@@ -520,33 +555,69 @@ export default function ProfilePage() {
                 <CardTitle className="text-2xl">Game Progress</CardTitle>
               </div>
               <CardDescription>
-                Your performance across all games. Stats are stored locally in your browser.
+                Your performance across all games. Stats are stored locally in your browser. Only games you've played are shown.
               </CardDescription>
             </CardHeader>
             <CardContent>
-                {gameStats.length > 0 ? (
-                    <ScrollArea className="h-96 w-full pr-2">
-                        <div className="space-y-4">
-                            {gameStats.map(stat => {
-                                const game = GAMES.find(g => g.id === stat.gameId);
-                                if (!game) return null;
-                                return (
-                                    <div key={stat.gameId} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                                        <div className="flex items-center gap-3">
-                                            <game.Icon size={24} className={cn("text-primary", game.color)} />
-                                            <div>
-                                                <p className="font-semibold text-foreground">{game.title}</p>
-                                                <p className="text-xs text-muted-foreground">{stat.gamesPlayed} {stat.gamesPlayed === 1 ? 'play' : 'plays'}</p>
-                                            </div>
-                                        </div>
-                                        <div className="flex flex-col items-end text-sm">
-                                            <span className="font-semibold flex items-center">{stat.wins} {stat.wins === 1 ? 'win' : 'wins'}</span>
-                                            <span className="text-xs text-muted-foreground">High Score: {stat.highScore}</span>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
+                {playedGameStats.length > 0 ? (
+                    <ScrollArea className="h-[450px] w-full pr-2">
+                      <div className="space-y-4">
+                        {/* Render Strategy & Puzzle Games */}
+                        {[...strategyStats, ...puzzleStats].map(stat => {
+                            const game = gameDefsMap.get(stat.gameId);
+                            if (!game) return null;
+                            return <GameStatRow key={stat.gameId} stat={stat} game={game} />;
+                        })}
+                      </div>
+
+                      <Accordion type="multiple" className="w-full mt-4 space-y-2">
+                        {/* Number Puzzles Accordion */}
+                        {numberPuzzleStats.length > 0 && (
+                          <AccordionItem value="number-puzzles" className="border rounded-lg bg-muted/20">
+                              <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                                <div className="flex items-center gap-3">
+                                  <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-full">
+                                      <Gamepad2 className="h-6 w-6 text-green-600" />
+                                  </div>
+                                  <div>
+                                    <h3 className="text-lg font-semibold text-left">Number Puzzles</h3>
+                                    <p className="text-xs text-muted-foreground text-left">Click to see your stats for each number game.</p>
+                                  </div>
+                                </div>
+                              </AccordionTrigger>
+                              <AccordionContent className="px-4 pb-4 space-y-2">
+                                {numberPuzzleStats.map(stat => {
+                                  const game = gameDefsMap.get(stat.gameId);
+                                  if (!game) return null;
+                                  return <GameStatRow key={stat.gameId} stat={stat} game={game} />;
+                                })}
+                              </AccordionContent>
+                          </AccordionItem>
+                        )}
+                        {/* Easy English Accordion */}
+                         {englishPuzzleStats.length > 0 && (
+                          <AccordionItem value="easy-english" className="border rounded-lg bg-muted/20">
+                              <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                                 <div className="flex items-center gap-3">
+                                  <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-full">
+                                      <BookMarked className="h-6 w-6 text-indigo-500" />
+                                  </div>
+                                  <div>
+                                    <h3 className="text-lg font-semibold text-left">Easy English Fun</h3>
+                                    <p className="text-xs text-muted-foreground text-left">Click to see your stats for each English game.</p>
+                                  </div>
+                                </div>
+                              </AccordionTrigger>
+                              <AccordionContent className="px-4 pb-4 space-y-2">
+                                {englishPuzzleStats.map(stat => {
+                                  const game = gameDefsMap.get(stat.gameId);
+                                  if (!game) return null;
+                                  return <GameStatRow key={stat.gameId} stat={stat} game={game} />;
+                                })}
+                              </AccordionContent>
+                          </AccordionItem>
+                        )}
+                      </Accordion>
                     </ScrollArea>
                 ) : (
                     <div className="text-center py-10">
@@ -625,7 +696,7 @@ export default function ProfilePage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Login Confirmation</AlertDialogTitle>
             <AlertDialogDescription>
-              Logging in will sync your profile with our servers. Your online S-Points and S-Coins (currently mock data) will be shown, replacing any locally stored values for this session. Any unsaved local changes to your name or avatar preview might be overwritten by your online profile data. Continue to login?
+              Logging in will sync your profile with our servers. Your online S-Points and S-Coins will be shown, replacing any locally stored values. Your local game progress will remain. Continue to login?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -644,6 +715,7 @@ export default function ProfilePage() {
     
 
     
+
 
 
 

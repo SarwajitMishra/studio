@@ -62,7 +62,7 @@ export default function GuessTheNumberGame({ onBack, difficulty }: GuessTheNumbe
   const resetGame = useCallback(() => {
     // If a game was in progress and is being reset, count it as played (but not won)
     if (attempts > 0 && !isGameWon) {
-        updateGameStats({ gameId: 'number-puzzles', didWin: false });
+        updateGameStats({ gameId: 'guessTheNumber', didWin: false });
     }
     const newSecret = Math.floor(Math.random() * maxNumber) + 1;
     setSecretNumber(newSecret);
@@ -109,7 +109,7 @@ export default function GuessTheNumberGame({ onBack, difficulty }: GuessTheNumbe
       setIsCalculatingReward(true);
 
       const scoreForStat = Math.max(0, 1000 - newAttemptCount * 50);
-      updateGameStats({ gameId: 'number-puzzles', didWin: true, score: scoreForStat });
+      updateGameStats({ gameId: 'guessTheNumber', didWin: true, score: scoreForStat });
       
       try {
         const rewards = await calculateRewards({

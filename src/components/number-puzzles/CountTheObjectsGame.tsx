@@ -105,7 +105,7 @@ export default function CountTheObjectsGame({ onBack, difficulty }: CountTheObje
 
   const startNewRound = useCallback((clearHistory = false) => {
     if (questionsAnswered > 0 && !isRoundOver) {
-        updateGameStats({ gameId: 'number-puzzles', didWin: false, score: score * 100 });
+        updateGameStats({ gameId: 'countTheObjects', didWin: false, score: score * 100 });
     }
     if (clearHistory) {
       resetSessionHistory();
@@ -157,7 +157,7 @@ export default function CountTheObjectsGame({ onBack, difficulty }: CountTheObje
         setIsRoundOver(true);
         const finalScore = isCorrect ? newScore : score;
         const didWin = finalScore === QUESTIONS_PER_ROUND;
-        updateGameStats({ gameId: 'number-puzzles', didWin, score: finalScore * 100 });
+        updateGameStats({ gameId: 'countTheObjects', didWin, score: finalScore * 100 });
         setFeedback(isCorrect ? `Correct! Final Score: ${finalScore}/${QUESTIONS_PER_ROUND}` : `Not quite. There were ${currentProblem.count} ${currentProblem.iconName.toLowerCase()}s. Final Score: ${score}/${QUESTIONS_PER_ROUND}`);
         setCurrentProblem(null);
       } else {

@@ -104,7 +104,7 @@ export default function TypingRushGame({ onBack, difficulty }: TypingRushGamePro
     const handleWin = useCallback(async () => {
         setGameState("win");
         setIsCalculatingReward(true);
-        updateGameStats({ gameId: 'easy-english', didWin: true, score });
+        updateGameStats({ gameId: 'typingRush', didWin: true, score });
         
         try {
             const rewards = await calculateRewards({ gameId: 'typingRush', difficulty, performanceMetrics: { score }});
@@ -183,7 +183,7 @@ export default function TypingRushGame({ onBack, difficulty }: TypingRushGamePro
     useEffect(() => {
         if (lives <= 0 && gameState === 'playing') {
             setGameState("gameOver");
-            updateGameStats({ gameId: 'easy-english', didWin: false, score });
+            updateGameStats({ gameId: 'typingRush', didWin: false, score });
         }
     }, [lives, gameState, score]);
     

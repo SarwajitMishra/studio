@@ -67,7 +67,7 @@ export default function ArithmeticChallengeGame({ onBack, difficulty }: Arithmet
 
   const resetGame = useCallback(() => {
     if (questionsAnswered > 0 && !isGameOver) {
-        updateGameStats({ gameId: 'number-puzzles', didWin: false, score: score * 100 });
+        updateGameStats({ gameId: 'arithmeticChallenge', didWin: false, score: score * 100 });
     }
     setScore(0);
     setQuestionsAnswered(0);
@@ -108,7 +108,7 @@ export default function ArithmeticChallengeGame({ onBack, difficulty }: Arithmet
         setIsGameOver(true);
         const finalScore = isCorrect ? score + 1 : score;
         const didWin = finalScore === QUESTIONS_PER_ROUND;
-        updateGameStats({ gameId: 'number-puzzles', didWin, score: finalScore * 100 });
+        updateGameStats({ gameId: 'arithmeticChallenge', didWin, score: finalScore * 100 });
         setFeedback(isCorrect ? `Correct! Final Score: ${finalScore}/${QUESTIONS_PER_ROUND}` : `Not quite. The answer was ${currentProblem.answer}. Final Score: ${finalScore}/${QUESTIONS_PER_ROUND}`);
       } else {
         generateProblem();

@@ -89,7 +89,7 @@ export default function NumberSequenceGame({ onBack, difficulty }: NumberSequenc
 
   const resetGame = useCallback(() => {
     if (questionsAnswered > 0 && !isGameOver) {
-        updateGameStats({ gameId: 'number-puzzles', didWin: false, score: score * 100 });
+        updateGameStats({ gameId: 'numberSequence', didWin: false, score: score * 100 });
     }
     setScore(0);
     setQuestionsAnswered(0);
@@ -130,7 +130,7 @@ export default function NumberSequenceGame({ onBack, difficulty }: NumberSequenc
         setIsGameOver(true);
         const finalScore = isCorrect ? score + 1 : score;
         const didWin = finalScore === QUESTIONS_PER_ROUND;
-        updateGameStats({ gameId: 'number-puzzles', didWin, score: finalScore * 100 });
+        updateGameStats({ gameId: 'numberSequence', didWin, score: finalScore * 100 });
         setFeedback(isCorrect ? `Correct! Final Score: ${finalScore}/${QUESTIONS_PER_ROUND}` : `Not quite. The next number was ${currentSequence.nextNumber}. ${currentSequence.description || ''} Final Score: ${finalScore}/${QUESTIONS_PER_ROUND}`);
       } else {
         loadNewSequence();
