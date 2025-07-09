@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Navigation from './navigation';
 import { PlaySquare } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
@@ -12,6 +12,12 @@ import { SessionDialog } from '@/components/online/SessionDialog';
 
 export default function Header() {
   const [isOnlineMode, setIsOnlineMode] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
 
   return (
     <>
@@ -29,13 +35,17 @@ export default function Header() {
           </div>
           <div className="flex items-center gap-2 md:gap-4">
             <div className="flex items-center space-x-2">
-                <Switch
-                  id="online-mode"
-                  checked={isOnlineMode}
-                  onCheckedChange={setIsOnlineMode}
-                  aria-label="Toggle Online Mode"
-                  className="data-[state=unchecked]:bg-orange-500 data-[state=checked]:bg-green-500"
-                />
+                {isMounted ? (
+                  <Switch
+                    id="online-mode"
+                    checked={isOnlineMode}
+                    onCheckedChange={setIsOnlineMode}
+                    aria-label="Toggle Online Mode"
+                    className="data-[state=unchecked]:bg-orange-500 data-[state=checked]:bg-green-500"
+                  />
+                ) : (
+                  <div className="inline-flex h-6 w-11 shrink-0 items-center rounded-full border-2 border-transparent bg-input" />
+                )}
                 <Label htmlFor="online-mode" className="text-primary-foreground font-semibold cursor-pointer">Online</Label>
             </div>
             <Separator orientation="vertical" className="h-6 bg-primary-foreground/30" />
@@ -43,7 +53,7 @@ export default function Header() {
           </div>
         </div>
       </header>
-      <SessionDialog open={isOnlineMode} onOpenChange={setIsOnlineMode} />
+      {isMounted && <SessionDialog open={isOnlineMode} onOpenChange={setIsOnlineMode} />}
     </>
   );
 }
