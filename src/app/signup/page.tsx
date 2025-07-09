@@ -65,6 +65,7 @@ export default function SignupPage() {
   const [phoneLoading, setPhoneLoading] = useState(false);
   const confirmationResultRef = useRef<any>(null);
   const recaptchaContainerRef = useRef<HTMLDivElement>(null);
+  const hasInitializedProfileForm = useRef(false);
 
   const [completingUser, setCompletingUser] = useState<User | null>(null);
 
@@ -123,7 +124,7 @@ export default function SignupPage() {
 
 
   useEffect(() => {
-    if (completingUser) {
+    if (completingUser && !hasInitializedProfileForm.current) {
       profileForm.reset({
         username: `${completingUser.displayName?.replace(/\s/g, '').toLowerCase() || 
                   (completingUser.phoneNumber ? `user_${completingUser.phoneNumber.slice(-4)}` : 'user')}_${Math.floor(1000 + Math.random() * 9000)}`,
@@ -131,6 +132,10 @@ export default function SignupPage() {
         country: 'India',
         gender: 'prefer_not_to_say',
       });
+      hasInitializedProfileForm.current = true;
+    } else if (!completingUser) {
+      // Reset the guard when the dialog is closed/user is null
+      hasInitializedProfileForm.current = false;
     }
   }, [completingUser, profileForm]);
 
