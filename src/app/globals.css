@@ -2,11 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  /* Updated to use Quicksand as the primary font */
-  font-family: var(--font-quicksand), Arial, Helvetica, sans-serif;
-}
-
 @layer base {
   :root {
     /* Define default HSL components for the 'default' theme (light mode) */
