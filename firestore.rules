@@ -2,56 +2,61 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    function isAuth() {
-      return request.auth != null;
-    }
 
     function isAdmin() {
-      // Use exists() to safely check for the role document without causing an error if it's missing.
-      return isAuth() && 
+      // Safe check: Only attempt to read the doc if the user is authenticated.
+      // The rule on /roles/{userId} will determine if this get() is allowed.
+      return request.auth != null &&
              exists(/databases/$(database)/documents/roles/$(request.auth.uid)) &&
              get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.isAdmin == true;
     }
-    
+
     match /blogs/{blogId} {
-      // Admins have full read/write access. This rule is checked first.
-      allow read, write: if isAdmin();
-      
       // Allow anyone to read published blogs.
       allow read: if resource.data.status == 'published';
 
-      // Allow any logged-in user to create a PENDING blog post for themselves.
-      // This is the key fix: It's simple and doesn't rely on complex key checks.
-      allow create: if isAuth() &&
+      // Allow users to create their own pending posts.
+      allow create: if request.auth != null &&
                        request.resource.data.authorId == request.auth.uid &&
                        request.resource.data.status == 'pending';
+
+      // Admins can update/delete any blog. Users can update/delete their own drafts.
+      allow update, delete: if isAdmin() || (request.auth.uid == resource.data.authorId && resource.data.status == 'draft');
     }
-    
+
     match /users/{userId} {
-      // A user can read/write their own profile. Admins can access any.
-      allow read, write: if (isAuth() && request.auth.uid == userId) || isAdmin();
+      // Admins can read any user profile.
+      allow get, list: if isAdmin();
+      // Users can read/write their own profile.
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
-    
+
     match /usernames/{username} {
-        // Anyone can check if a username exists.
+        // Anyone can check if a username exists during signup.
         allow get: if true;
-        // Only the backend (via a transaction) can create a username doc.
-        // Users cannot create/update/delete them directly.
+        // Only the backend (or an admin) should create username documents. We lock this down.
+        // The transaction in createUserProfile handles this securely.
         allow list, create, update, delete: if false;
     }
 
     match /roles/{userId} {
-      // A user can read their own role document. This is crucial to prevent the isAdmin() check from failing.
-      allow get: if (isAuth() && request.auth.uid == userId) || isAdmin();
-      
-      // Nobody can list, create, update, or delete roles from the client.
+      // Allow a user to read ONLY THEIR OWN role document. This is crucial for isAdmin() to work.
+      // This breaks the recursive loop that was causing permission errors.
+      allow get: if request.auth != null && request.auth.uid == userId;
+
+      // No one can list, create, or modify roles from the client-side.
       allow list, create, update, delete: if false;
     }
 
     match /sessions/{sessionId} {
-      // Any authenticated user can create or join a session.
-      allow read, write: if isAuth();
+      // Allow any authenticated user to create a session
+      allow create: if request.auth != null && request.resource.data.hostUid == request.auth.uid;
+      
+      // Allow any authenticated user to read/join a session
+      allow read, update: if request.auth != null;
+
+      // Only the host can delete the session
+      allow delete: if request.auth != null && request.auth.uid == resource.data.hostUid;
     }
   }
 }
