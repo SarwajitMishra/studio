@@ -1,57 +1,55 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Function to check if the requesting user is an admin.
-    // get() does not re-evaluate rules, making this a safe check.
-    function isAdmin() {
-      return get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.isAdmin == true;
-    }
-    
-    match /blogs/{blogId} {
-      // READ: Anyone can read published posts. Admins can read any post for management.
-      allow read: if resource.data.status == 'published' || (request.auth != null && isAdmin());
 
-      // CREATE: Users must be logged in and the author. Status depends on role.
-      allow create: if request.auth.uid == request.resource.data.authorId &&
-                      (
-                        // Normal users can ONLY create 'pending' posts.
-                        request.resource.data.status == 'pending' ||
-                        // Admins can create 'published' posts directly.
-                        (request.resource.data.status == 'published' && isAdmin())
-                      );
-                       
-      // UPDATE & DELETE: Only admins can perform these actions (e.g., to publish a post).
-      allow update, delete: if request.auth != null && isAdmin();
+    // Helper function to safely check for admin role.
+    // It checks if the role document exists before trying to access its data.
+    function isAdmin() {
+      return exists(/databases/$(database)/documents/roles/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.isAdmin == true;
     }
-    
+
+    match /blogs/{blogId} {
+      // Anyone can read published blog posts.
+      allow read: if resource.data.status == 'published';
+
+      // Logged-in users can create posts, but ONLY if they are the author and the status is 'pending'.
+      allow create: if request.auth != null &&
+                       request.resource.data.authorId == request.auth.uid &&
+                       request.resource.data.status == 'pending';
+
+      // Authors can update their own pending posts.
+      allow update: if request.auth != null &&
+                       request.auth.uid == resource.data.authorId &&
+                       resource.data.status == 'pending';
+
+      // Admins can perform any write operation (create, update, delete).
+      // This rule is separate and provides broader permissions for admins.
+      allow write: if isAdmin();
+    }
+
     match /roles/{userId} {
-      // Admins can manage roles. Users can read their own role document.
-      allow read: if request.auth.uid == userId || (request.auth != null && isAdmin());
-      allow write: if request.auth != null && isAdmin();
+      // Admins can read and write any role document.
+      allow read, write: if isAdmin();
+      
+      // A user can read their own role document (if it exists).
+      allow get: if request.auth != null && request.auth.uid == userId;
     }
 
     match /users/{userId} {
-      // Users can read and write their own profile. Admins can list all users.
-      allow read, update: if request.auth.uid == userId;
-      allow list: if request.auth != null && isAdmin();
+      // Anyone can read user profiles.
+      allow read: if true;
+      // Users can only update their own profile.
+      allow update: if request.auth != null && request.auth.uid == userId;
     }
 
     match /usernames/{username} {
-      // Allow reading for uniqueness checks during signup.
-      allow read: if request.auth != null;
-      // Writes are handled by secure backend/transaction logic, not direct client writes.
-      allow write: if false; 
-    }
-
-    match /sessions/{sessionId} {
-      // Logged-in users can see session details.
-      allow read: if request.auth != null;
-      // The host is the one who can create the session.
-      allow create: if request.auth.uid == request.resource.data.hostUid;
-      // Any logged-in user can join (update) a session. More specific rules can be added here.
-      allow update: if request.auth != null;
+      // Allow creation only if the user is creating their own username mapping.
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+      // No one can read, update, or delete username docs after creation to protect user data.
+      allow read, update, delete: if false;
     }
   }
 }
