@@ -122,9 +122,9 @@ export default function ArithmeticChallengeGame({ onBack, difficulty }: Arithmet
 
   useEffect(() => {
     resetGame();
-  }, [resetGame, difficulty]);
+  }, [resetGame]);
 
-  const handleSubmitAnswer = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmitAnswer = useCallback((e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!currentProblem || isGameOver || feedback) return;
 
@@ -147,19 +147,17 @@ export default function ArithmeticChallengeGame({ onBack, difficulty }: Arithmet
     }
 
     setTimeout(() => {
-      setQuestionsAnswered(prev => {
-        const newTotalAnswered = prev + 1;
+        const newTotalAnswered = questionsAnswered + 1;
         if (newTotalAnswered >= QUESTIONS_PER_ROUND) {
           const finalScore = score + (isCorrect ? 1 : 0);
           handleGameOver(finalScore);
           setFeedback(`Round Over! Final Score: ${finalScore}/${QUESTIONS_PER_ROUND}`);
         } else {
+          setQuestionsAnswered(newTotalAnswered);
           generateProblem();
         }
-        return newTotalAnswered;
-      });
     }, isCorrect ? 1000 : 2000);
-  };
+  }, [currentProblem, userAnswer, isGameOver, feedback, toast, score, questionsAnswered, handleGameOver, generateProblem]);
   
   const renderGameOverView = () => (
      <div className="text-center p-6 bg-blue-100 rounded-lg shadow-inner">

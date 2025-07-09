@@ -145,9 +145,9 @@ export default function NumberSequenceGame({ onBack, difficulty }: NumberSequenc
 
   useEffect(() => { 
     resetGame();
-  }, [resetGame, difficulty]);
+  }, [resetGame]);
 
-  const handleSubmitAnswer = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmitAnswer = useCallback((e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!currentSequence || isGameOver || feedback) return;
 
@@ -170,19 +170,17 @@ export default function NumberSequenceGame({ onBack, difficulty }: NumberSequenc
     }
 
     setTimeout(() => {
-      setQuestionsAnswered(prev => {
-        const newTotalAnswered = prev + 1;
+        const newTotalAnswered = questionsAnswered + 1;
         if (newTotalAnswered >= QUESTIONS_PER_ROUND) {
           const finalScore = score + (isCorrect ? 1 : 0);
           handleGameOver(finalScore);
           setFeedback(`Round Over! Final Score: ${finalScore}/${QUESTIONS_PER_ROUND}`);
         } else {
+          setQuestionsAnswered(newTotalAnswered);
           loadNewSequence();
         }
-        return newTotalAnswered;
-      });
     }, isCorrect ? 1500 : 3000);
-  };
+  }, [currentSequence, userAnswer, isGameOver, feedback, toast, score, questionsAnswered, handleGameOver, loadNewSequence]);
   
   const renderGameOverView = () => (
     <div className="text-center p-6 bg-purple-100 rounded-lg shadow-inner">

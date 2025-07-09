@@ -144,7 +144,7 @@ export default function CountTheObjectsGame({ onBack, difficulty }: CountTheObje
     });
     setUserAnswer("");
     setFeedback(null);
-  }, [difficulty]);
+  }, [difficulty, sessionKey]);
 
   const startNewRound = useCallback(() => {
     if (questionsAnswered > 0 && !isRoundOver) {
@@ -166,7 +166,7 @@ export default function CountTheObjectsGame({ onBack, difficulty }: CountTheObje
   }, [difficulty, startNewRound]);
 
 
-  const handleSubmitAnswer = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmitAnswer = useCallback((e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!currentProblem || isRoundOver || feedback) return;
 
@@ -189,20 +189,18 @@ export default function CountTheObjectsGame({ onBack, difficulty }: CountTheObje
     }
     
     setTimeout(() => {
-        setQuestionsAnswered(prev => {
-            const newTotalAnswered = prev + 1;
-            if (newTotalAnswered >= QUESTIONS_PER_ROUND) {
-                const finalScore = score + (isCorrect ? 1 : 0);
-                handleGameOver(finalScore);
-                setFeedback(`Round Over! Final Score: ${finalScore}/${QUESTIONS_PER_ROUND}`);
-                setCurrentProblem(null);
-            } else {
-                loadNewProblem();
-            }
-            return newTotalAnswered;
-        });
+        const newTotalAnswered = questionsAnswered + 1;
+        if (newTotalAnswered >= QUESTIONS_PER_ROUND) {
+            const finalScore = score + (isCorrect ? 1 : 0);
+            handleGameOver(finalScore);
+            setFeedback(`Round Over! Final Score: ${finalScore}/${QUESTIONS_PER_ROUND}`);
+            setCurrentProblem(null);
+        } else {
+            setQuestionsAnswered(newTotalAnswered);
+            loadNewProblem();
+        }
     }, isCorrect ? 1500 : 3000);
-  };
+  }, [currentProblem, userAnswer, isRoundOver, feedback, toast, score, questionsAnswered, handleGameOver, loadNewProblem]);
   
   const renderGameOverView = () => (
      <div className="text-center p-6 bg-pink-100 rounded-lg shadow-inner">

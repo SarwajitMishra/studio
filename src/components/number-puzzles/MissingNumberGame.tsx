@@ -137,9 +137,9 @@ export default function MissingNumberGame({ onBack, difficulty }: MissingNumberG
 
   useEffect(() => {
     resetGame();
-  }, [resetGame, difficulty]);
+  }, [resetGame]);
 
-  const handleSubmitAnswer = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmitAnswer = useCallback((e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!currentProblem || isGameOver || feedback) return;
 
@@ -151,7 +151,7 @@ export default function MissingNumberGame({ onBack, difficulty }: MissingNumberG
     }
 
     const isCorrect = answerNum === currentProblem.answer;
-
+    
     setFeedback(isCorrect ? "Correct!" : `Not quite. The missing number was ${currentProblem.answer}.`);
 
     if (isCorrect) {
@@ -162,19 +162,17 @@ export default function MissingNumberGame({ onBack, difficulty }: MissingNumberG
     }
     
     setTimeout(() => {
-      setQuestionsAnswered(prev => {
-        const newTotalAnswered = prev + 1;
+        const newTotalAnswered = questionsAnswered + 1;
         if (newTotalAnswered >= QUESTIONS_PER_ROUND) {
           const finalScore = score + (isCorrect ? 1 : 0);
           handleGameOver(finalScore);
           setFeedback(`Round Over! Final Score: ${finalScore}/${QUESTIONS_PER_ROUND}`);
         } else {
+          setQuestionsAnswered(newTotalAnswered);
           loadNewProblem();
         }
-        return newTotalAnswered;
-      });
     }, isCorrect ? 1500 : 3000);
-  };
+  }, [currentProblem, userAnswer, isGameOver, feedback, toast, score, questionsAnswered, handleGameOver, loadNewProblem]);
   
   const renderGameOverView = () => (
     <div className="text-center p-6 bg-orange-100 rounded-lg shadow-inner">
