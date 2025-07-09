@@ -77,7 +77,14 @@ export default function CreateBlogForm({ isAdmin = false }: CreateBlogFormProps)
     }
 
     setIsLoading(true);
-    const result = await createBlogPost(data, currentUser, status);
+
+    const authorInfo = {
+      uid: currentUser.uid,
+      displayName: currentUser.displayName,
+      photoURL: currentUser.photoURL,
+    };
+
+    const result = await createBlogPost(data, authorInfo, status);
     setIsLoading(false);
 
     if (result.success) {

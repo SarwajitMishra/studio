@@ -1,3 +1,4 @@
+
 'use server';
 
 import { db } from '@/lib/firebase';
@@ -11,7 +12,6 @@ import {
   doc,
   updateDoc,
 } from 'firebase/firestore';
-import type { User } from 'firebase/auth';
 import { revalidatePath } from 'next/cache';
 
 export interface BlogPost {
@@ -37,13 +37,18 @@ const generateSlug = (title: string): string => {
   return `${slug}-${Date.now().toString(36)}`; // Add a timestamp for uniqueness
 };
 
+export interface AuthorInfo {
+  uid: string;
+  displayName: string | null;
+  photoURL: string | null;
+}
 
 export async function createBlogPost(
   data: { title: string; content: string },
-  user: User,
+  author: AuthorInfo,
   status: 'pending' | 'draft' | 'published'
 ): Promise<{ success: boolean; id?: string; error?: string }> {
-  if (!user) {
+  if (!author || !author.uid) {
     return { success: false, error: 'User is not authenticated.' };
   }
 
@@ -52,9 +57,9 @@ export async function createBlogPost(
       title: data.title,
       content: data.content,
       slug: generateSlug(data.title),
-      authorId: user.uid,
-      authorName: user.displayName || 'Anonymous',
-      authorAvatar: user.photoURL || '',
+      authorId: author.uid,
+      authorName: author.displayName || 'Anonymous',
+      authorAvatar: author.photoURL || '',
       status: status,
       createdAt: serverTimestamp(),
     };
