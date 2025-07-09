@@ -1,19 +1,29 @@
+
 "use client";
 
 import { useState, useEffect, useMemo } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Component, Terminal, X } from 'lucide-react';
+import { Component, Terminal, X, Award } from 'lucide-react';
 import { 
   GAMES,
   type GameCategory,
+  S_POINTS_ICON as SPointsIcon,
+  S_COINS_ICON as SCoinsIcon,
+  LOCAL_STORAGE_S_POINTS_KEY,
+  LOCAL_STORAGE_S_COINS_KEY,
+  LOCAL_STORAGE_REWARD_HISTORY_KEY,
 } from '@/lib/constants';
+import { LOCAL_STORAGE_GAME_STATS_KEY } from '@/lib/progress';
 import { cn } from '@/lib/utils';
 import GameCard from '@/components/game-card';
 import { onAuthStateChanged, type User } from '@/lib/firebase';
 import { auth } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { applyRewards } from '@/lib/rewards';
 
 const CATEGORIES_ORDER: GameCategory[] = ['Strategy', 'Puzzles', 'Learning'];
 
@@ -22,6 +32,13 @@ export default function DashboardPage() {
   const [authChecked, setAuthChecked] = useState(false);
   const [showGuestWarning, setShowGuestWarning] = useState(true);
 
+  // New state and hooks for the welcome reward
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [showRewardDialog, setShowRewardDialog] = useState(false);
+  const [newUserInfo, setNewUserInfo] = useState<{ points: number; coins: number } | null>(null);
+
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
@@ -29,6 +46,28 @@ export default function DashboardPage() {
     });
     return () => unsubscribe();
   }, []);
+
+  // Effect to handle the new user welcome reward
+  useEffect(() => {
+    const isNewUser = searchParams.get('new_user') === 'true';
+    if (isNewUser) {
+      // Clear local storage to ensure a fresh start. This prevents guest data from carrying over.
+      localStorage.removeItem(LOCAL_STORAGE_S_POINTS_KEY);
+      localStorage.removeItem(LOCAL_STORAGE_S_COINS_KEY);
+      localStorage.removeItem(LOCAL_STORAGE_REWARD_HISTORY_KEY);
+      localStorage.removeItem(LOCAL_STORAGE_GAME_STATS_KEY);
+      window.dispatchEvent(new CustomEvent('storageUpdated')); // Notify other components
+
+      // Apply welcome bonus
+      const earned = applyRewards(100, 5, "Welcome Bonus!");
+      setNewUserInfo(earned);
+      setShowRewardDialog(true);
+      
+      // Clean up the URL to prevent the dialog from showing again on refresh
+      router.replace('/dashboard', { scroll: false });
+    }
+  }, [searchParams, router]);
+
 
   const isGuest = authChecked && !currentUser;
 
@@ -41,6 +80,34 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      <AlertDialog open={showRewardDialog} onOpenChange={setShowRewardDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-2xl text-primary flex items-center justify-center gap-2">
+                <Award size={28} /> Welcome to Shravya Playhouse!
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-center text-base pt-2">
+                As a special welcome gift, we've added some rewards to your account to get you started.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {newUserInfo && (
+            <div className="py-4 flex flex-col items-center gap-3 text-center">
+                <div className="flex items-center gap-6 mt-2">
+                    <span className="flex items-center font-bold text-2xl">
+                        +{newUserInfo.points} <SPointsIcon className="ml-2 h-7 w-7 text-yellow-400" />
+                    </span>
+                    <span className="flex items-center font-bold text-2xl">
+                        +{newUserInfo.coins} <SCoinsIcon className="ml-2 h-7 w-7 text-amber-500" />
+                    </span>
+                </div>
+            </div>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setShowRewardDialog(false)}>Start Playing!</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {isGuest && showGuestWarning && (
         <Alert variant="default" className="relative bg-accent/20 border-accent/50">
            <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-6 w-6" onClick={() => setShowGuestWarning(false)}>

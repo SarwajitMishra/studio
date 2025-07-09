@@ -151,7 +151,7 @@ export default function SignupPage() {
       await createUserProfile(userCredential.user, additionalData);
       
       toast({ title: "Account Created!", description: "Welcome to Shravya Playhouse!" });
-      router.push('/dashboard');
+      router.push('/dashboard?new_user=true');
     } catch (error: any) {
       console.error("Error signing up:", error);
       let description = error.message || "An unexpected error occurred.";
@@ -181,7 +181,7 @@ export default function SignupPage() {
         
         toast({ title: "Profile Complete!", description: "Welcome to Shravya Playhouse!" });
         setCompletingUser(null);
-        router.push('/dashboard');
+        router.push('/dashboard?new_user=true');
 
       } catch (error: any) {
         console.error("Error completing profile:", error);
