@@ -6,12 +6,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Sigma, Hash, RotateCcw, Award, ArrowLeft, CheckCircle, XCircle, Apple, Star, Heart, Smile, Cloud, Sun, HelpCircle } from "lucide-react";
+import { Sigma, Hash, RotateCcw, Award, ArrowLeft, CheckCircle, XCircle, Apple, Star, Heart, Smile, Cloud, Sun, HelpCircle, Loader2 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import type { Difficulty } from "@/lib/constants";
 import { updateGameStats } from "@/lib/progress";
+import { S_POINTS_ICON as SPointsIcon, S_COINS_ICON as SCoinsIcon } from "@/lib/constants";
+import { applyRewards, calculateRewards } from "@/lib/rewards";
+
 
 const QUESTIONS_PER_ROUND = 5;
 
@@ -52,6 +55,9 @@ export default function CountTheObjectsGame({ onBack, difficulty }: CountTheObje
   const [isRoundOver, setIsRoundOver] = useState<boolean>(false);
   const { toast } = useToast();
   const [allIconsUsed, setAllIconsUsed] = useState<boolean>(false);
+  
+  const [isCalculatingReward, setIsCalculatingReward] = useState(false);
+  const [lastReward, setLastReward] = useState<{points: number, coins: number, stars: number} | null>(null);
 
   const sessionKey = `usedCountIcons_${difficulty}`;
 
@@ -73,17 +79,54 @@ export default function CountTheObjectsGame({ onBack, difficulty }: CountTheObje
       sessionStorage.removeItem(sessionKey);
     }
   };
+  
+  const StarRating = ({ rating }: { rating: number }) => (
+    <div className="flex justify-center">
+        {[...Array(3)].map((_, i) => (
+            <Star key={i} className={cn("h-10 w-10", i < rating ? "text-yellow-400 fill-yellow-400" : "text-gray-300")} />
+        ))}
+    </div>
+  );
+
+  const calculateStars = (score: number, maxScore: number): number => {
+      const percentage = (score / maxScore) * 100;
+      if (percentage === 100) return 3;
+      if (percentage >= 80) return 2;
+      if (percentage >= 50) return 1;
+      return 0;
+  };
+  
+  const handleGameOver = useCallback(async (finalScore: number) => {
+    setIsRoundOver(true);
+    setIsCalculatingReward(true);
+    const didWin = finalScore === QUESTIONS_PER_ROUND;
+    updateGameStats({ gameId: 'countTheObjects', didWin, score: finalScore * 100 });
+    
+    try {
+        const rewards = await calculateRewards({
+            gameId: 'countTheObjects',
+            difficulty,
+            performanceMetrics: { score: finalScore, maxScore: QUESTIONS_PER_ROUND }
+        });
+        const earned = applyRewards(rewards.sPoints, rewards.sCoins, `Count The Objects (${difficulty})`);
+        const stars = calculateStars(finalScore, QUESTIONS_PER_ROUND);
+        setLastReward({ points: earned.points, coins: earned.coins, stars });
+    } catch (error) {
+        console.error("Reward calculation failed:", error);
+        toast({ variant: 'destructive', title: 'Reward Error' });
+    } finally {
+        setIsCalculatingReward(false);
+    }
+  }, [difficulty, toast]);
 
   const loadNewProblem = useCallback(() => {
     const usedIcons = getUsedIconsFromSession();
-    const availableIcons = OBJECT_ICONS.filter(icon => !usedIcons.includes(icon.name));
+    let availableIcons = OBJECT_ICONS.filter(icon => !usedIcons.includes(icon.name));
     
     if (availableIcons.length === 0 && OBJECT_ICONS.length > 0) {
-      setAllIconsUsed(true);
-      setCurrentProblem(null);
-      setFeedback(`You've counted all the different types of objects!`);
-      setIsRoundOver(true);
-      return;
+      setAllIconsUsed(true); // Mark that we've used all icons once
+      resetSessionHistory(); // Reset history for the next round
+      availableIcons = OBJECT_ICONS; // Use all icons again
     }
 
     const selectedObject = availableIcons[Math.floor(Math.random() * availableIcons.length)];
@@ -103,23 +146,23 @@ export default function CountTheObjectsGame({ onBack, difficulty }: CountTheObje
     setFeedback(null);
   }, [difficulty, sessionKey]);
 
-  const startNewRound = useCallback((clearHistory = false) => {
+  const startNewRound = useCallback(() => {
     if (questionsAnswered > 0 && !isRoundOver) {
         updateGameStats({ gameId: 'countTheObjects', didWin: false, score: score * 100 });
-    }
-    if (clearHistory) {
-      resetSessionHistory();
     }
     setScore(0);
     setQuestionsAnswered(0);
     setIsRoundOver(false);
     setAllIconsUsed(false);
     setFeedback(null);
+    setLastReward(null);
+    setIsCalculatingReward(false);
+    resetSessionHistory();
     loadNewProblem();
   }, [loadNewProblem, questionsAnswered, isRoundOver, score]);
   
   useEffect(() => {
-    startNewRound(false);
+    startNewRound();
   }, [difficulty, startNewRound]);
 
 
@@ -139,7 +182,7 @@ export default function CountTheObjectsGame({ onBack, difficulty }: CountTheObje
     let newScore = score;
 
     if (isCorrect) {
-      newScore = score + 1;
+      newScore++;
       setScore(newScore);
       currentFeedbackMsg = "Correct!";
       toast({ title: "Correct!", className: "bg-green-500 text-white" });
@@ -154,11 +197,9 @@ export default function CountTheObjectsGame({ onBack, difficulty }: CountTheObje
       const newQuestionsAnswered = questionsAnswered + 1;
       setQuestionsAnswered(newQuestionsAnswered);
       if (newQuestionsAnswered >= QUESTIONS_PER_ROUND) {
-        setIsRoundOver(true);
         const finalScore = isCorrect ? newScore : score;
-        const didWin = finalScore === QUESTIONS_PER_ROUND;
-        updateGameStats({ gameId: 'countTheObjects', didWin, score: finalScore * 100 });
-        setFeedback(isCorrect ? `Correct! Final Score: ${finalScore}/${QUESTIONS_PER_ROUND}` : `Not quite. There were ${currentProblem.count} ${currentProblem.iconName.toLowerCase()}s. Final Score: ${score}/${QUESTIONS_PER_ROUND}`);
+        handleGameOver(finalScore);
+        setFeedback(isCorrect ? `Correct! Final Score: ${finalScore}/${QUESTIONS_PER_ROUND}` : `Not quite. There were ${currentProblem.count} ${currentProblem.iconName.toLowerCase()}s. Final Score: ${finalScore}/${QUESTIONS_PER_ROUND}`);
         setCurrentProblem(null);
       } else {
         loadNewProblem();
@@ -168,12 +209,35 @@ export default function CountTheObjectsGame({ onBack, difficulty }: CountTheObje
   
   const renderGameOverView = () => (
      <div className="text-center p-6 bg-pink-100 rounded-lg shadow-inner">
-        <Award className="mx-auto h-16 w-16 text-yellow-500 mb-3" />
-        <h2 className="text-2xl font-bold text-pink-700">Round Over!</h2>
-        <p className="text-lg text-pink-600 mt-1">{feedback || `Your final score is ${score}/${QUESTIONS_PER_ROUND}.`}</p>
-        <Button onClick={() => startNewRound(allIconsUsed)} className="mt-6 w-full sm:w-auto bg-accent text-accent-foreground hover:bg-accent/90">
-          <RotateCcw className="mr-2 h-5 w-5" /> 
-          {allIconsUsed ? "Play Again (Reset History)" : "Play Again"}
+        {isCalculatingReward ? (
+            <div className="flex flex-col items-center justify-center gap-2 pt-4 min-h-[150px]">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="text-sm text-muted-foreground">Calculating your rewards...</p>
+            </div>
+        ) : lastReward ? (
+            <div className="flex flex-col items-center gap-3 text-center min-h-[150px]">
+                <StarRating rating={lastReward.stars} />
+                <p className="text-xl font-semibold text-accent mt-2">
+                    Final Score: {score}/{QUESTIONS_PER_ROUND}
+                </p>
+                <div className="flex items-center gap-6 mt-1">
+                    <span className="flex items-center font-bold text-xl">
+                        +{lastReward.points} <SPointsIcon className="ml-1.5 h-6 w-6 text-yellow-400" />
+                    </span>
+                    <span className="flex items-center font-bold text-xl">
+                        +{lastReward.coins} <SCoinsIcon className="ml-1.5 h-6 w-6 text-amber-500" />
+                    </span>
+                </div>
+            </div>
+        ) : (
+             <div className="min-h-[150px]">
+                <Award className="mx-auto h-16 w-16 text-yellow-500 mb-3" />
+                <h2 className="text-2xl font-bold text-pink-700">Round Over!</h2>
+                <p className="text-lg text-pink-600 mt-1">{feedback || `Your final score is ${score}/${QUESTIONS_PER_ROUND}.`}</p>
+             </div>
+        )}
+        <Button onClick={() => startNewRound()} className="mt-6 w-full sm:w-auto bg-accent text-accent-foreground hover:bg-accent/90" disabled={isCalculatingReward}>
+          <RotateCcw className="mr-2 h-5 w-5" /> Play Again
         </Button>
       </div>
   );
@@ -191,7 +255,7 @@ export default function CountTheObjectsGame({ onBack, difficulty }: CountTheObje
           </Button>
         </div>
         <CardDescription className="text-center text-md text-foreground/80 pt-2">
-          How many objects do you see? Score: {score}/{QUESTIONS_PER_ROUND} | Difficulty: <span className="capitalize">{difficulty}</span>
+          Question: {Math.min(questionsAnswered + 1, QUESTIONS_PER_ROUND)}/{QUESTIONS_PER_ROUND} | Score: {score} | Difficulty: <span className="capitalize">{difficulty}</span>
         </CardDescription>
       </CardHeader>
       <CardContent className="p-6 space-y-6">
@@ -243,8 +307,8 @@ export default function CountTheObjectsGame({ onBack, difficulty }: CountTheObje
             )}
           </>
         ) : (
-            <div className="text-center p-6">
-                <HelpCircle size={48} className="mx-auto text-primary/50 mb-4"/>
+            <div className="text-center p-6 flex flex-col items-center justify-center min-h-[250px]">
+                <Loader2 size={48} className="mx-auto text-primary/50 mb-4 animate-spin"/>
                 <p className="text-lg text-muted-foreground">Loading puzzle...</p>
             </div>
         )}

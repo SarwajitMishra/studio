@@ -6,11 +6,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ListOrdered, Hash, RotateCcw, Award, ArrowLeft, CheckCircle, XCircle } from "lucide-react";
+import { ListOrdered, Hash, RotateCcw, Award, ArrowLeft, CheckCircle, XCircle, Loader2, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import type { Difficulty } from "@/lib/constants";
 import { updateGameStats } from "@/lib/progress";
+import { S_POINTS_ICON as SPointsIcon, S_COINS_ICON as SCoinsIcon } from "@/lib/constants";
+import { applyRewards, calculateRewards } from "@/lib/rewards";
+
 
 const QUESTIONS_PER_ROUND = 5;
 
@@ -79,6 +82,8 @@ export default function NumberSequenceGame({ onBack, difficulty }: NumberSequenc
   const [feedback, setFeedback] = useState<string | null>(null);
   const [isGameOver, setIsGameOver] = useState<boolean>(false);
   const { toast } = useToast();
+  const [isCalculatingReward, setIsCalculatingReward] = useState(false);
+  const [lastReward, setLastReward] = useState<{points: number, coins: number, stars: number} | null>(null);
 
   const loadNewSequence = useCallback(() => {
     const newSequence = generateSequenceProblem(difficulty);
@@ -86,6 +91,45 @@ export default function NumberSequenceGame({ onBack, difficulty }: NumberSequenc
     setUserAnswer("");
     setFeedback(null);
   }, [difficulty]);
+  
+  const StarRating = ({ rating }: { rating: number }) => (
+    <div className="flex justify-center">
+        {[...Array(3)].map((_, i) => (
+            <Star key={i} className={cn("h-10 w-10", i < rating ? "text-yellow-400 fill-yellow-400" : "text-gray-300")} />
+        ))}
+    </div>
+  );
+
+  const calculateStars = (score: number, maxScore: number): number => {
+      const percentage = (score / maxScore) * 100;
+      if (percentage === 100) return 3;
+      if (percentage >= 80) return 2;
+      if (percentage >= 50) return 1;
+      return 0;
+  };
+  
+  const handleGameOver = useCallback(async (finalScore: number) => {
+    setIsGameOver(true);
+    setIsCalculatingReward(true);
+    const didWin = finalScore === QUESTIONS_PER_ROUND;
+    updateGameStats({ gameId: 'numberSequence', didWin, score: finalScore * 100 });
+
+    try {
+        const rewards = await calculateRewards({
+            gameId: 'numberSequence',
+            difficulty,
+            performanceMetrics: { score: finalScore, maxScore: QUESTIONS_PER_ROUND }
+        });
+        const earned = applyRewards(rewards.sPoints, rewards.sCoins, `Number Sequence Challenge (${difficulty})`);
+        const stars = calculateStars(finalScore, QUESTIONS_PER_ROUND);
+        setLastReward({ points: earned.points, coins: earned.coins, stars });
+    } catch (error) {
+        console.error("Reward calculation failed:", error);
+        toast({ variant: 'destructive', title: 'Reward Error' });
+    } finally {
+        setIsCalculatingReward(false);
+    }
+  }, [difficulty, toast]);
 
   const resetGame = useCallback(() => {
     if (questionsAnswered > 0 && !isGameOver) {
@@ -94,6 +138,8 @@ export default function NumberSequenceGame({ onBack, difficulty }: NumberSequenc
     setScore(0);
     setQuestionsAnswered(0);
     setIsGameOver(false);
+    setLastReward(null);
+    setIsCalculatingReward(false);
     loadNewSequence();
   }, [loadNewSequence, questionsAnswered, isGameOver, score]);
 
@@ -113,8 +159,10 @@ export default function NumberSequenceGame({ onBack, difficulty }: NumberSequenc
     }
 
     const isCorrect = answerNum === currentSequence.nextNumber;
+    let newScore = score;
     if (isCorrect) {
-      setScore(prev => prev + 1);
+      newScore++;
+      setScore(newScore);
       setFeedback("Correct!");
       toast({ title: "Correct!", className: "bg-green-500 text-white" });
     } else {
@@ -127,16 +175,49 @@ export default function NumberSequenceGame({ onBack, difficulty }: NumberSequenc
     setTimeout(() => {
       setQuestionsAnswered(newQuestionsAnswered);
       if (newQuestionsAnswered >= QUESTIONS_PER_ROUND) {
-        setIsGameOver(true);
-        const finalScore = isCorrect ? score + 1 : score;
-        const didWin = finalScore === QUESTIONS_PER_ROUND;
-        updateGameStats({ gameId: 'numberSequence', didWin, score: finalScore * 100 });
+        const finalScore = isCorrect ? newScore : score;
+        handleGameOver(finalScore);
         setFeedback(isCorrect ? `Correct! Final Score: ${finalScore}/${QUESTIONS_PER_ROUND}` : `Not quite. The next number was ${currentSequence.nextNumber}. ${currentSequence.description || ''} Final Score: ${finalScore}/${QUESTIONS_PER_ROUND}`);
       } else {
         loadNewSequence();
       }
     }, isCorrect ? 1500 : 3000);
   };
+  
+  const renderGameOverView = () => (
+    <div className="text-center p-6 bg-purple-100 rounded-lg shadow-inner">
+       {isCalculatingReward ? (
+           <div className="flex flex-col items-center justify-center gap-2 pt-4 min-h-[150px]">
+               <Loader2 className="h-8 w-8 animate-spin text-primary" />
+               <p className="text-sm text-muted-foreground">Calculating your rewards...</p>
+           </div>
+       ) : lastReward ? (
+           <div className="flex flex-col items-center gap-3 text-center min-h-[150px]">
+               <StarRating rating={lastReward.stars} />
+               <p className="text-xl font-semibold text-accent mt-2">
+                   Final Score: {score}/{QUESTIONS_PER_ROUND}
+               </p>
+               <div className="flex items-center gap-6 mt-1">
+                   <span className="flex items-center font-bold text-xl">
+                       +{lastReward.points} <SPointsIcon className="ml-1.5 h-6 w-6 text-yellow-400" />
+                   </span>
+                   <span className="flex items-center font-bold text-xl">
+                       +{lastReward.coins} <SCoinsIcon className="ml-1.5 h-6 w-6 text-amber-500" />
+                   </span>
+               </div>
+           </div>
+       ) : (
+            <div className="min-h-[150px]">
+               <Award className="mx-auto h-16 w-16 text-yellow-500 mb-3" />
+               <h2 className="text-2xl font-bold text-purple-700">Round Over!</h2>
+               <p className="text-lg text-purple-600 mt-1">{feedback || `Your final score is ${score}/${QUESTIONS_PER_ROUND}.`}</p>
+            </div>
+       )}
+       <Button onClick={resetGame} className="mt-6 w-full sm:w-auto bg-accent text-accent-foreground hover:bg-accent/90" disabled={isCalculatingReward}>
+         <RotateCcw className="mr-2 h-5 w-5" /> Play Again
+       </Button>
+     </div>
+  );
 
   return (
     <Card className="w-full max-w-md shadow-xl">
@@ -151,19 +232,12 @@ export default function NumberSequenceGame({ onBack, difficulty }: NumberSequenc
           </Button>
         </div>
         <CardDescription className="text-center text-md text-foreground/80 pt-2">
-          Find the next number. Score: {score}/{QUESTIONS_PER_ROUND} | Difficulty: <span className="capitalize">{difficulty}</span>
+          Question: {Math.min(questionsAnswered + 1, QUESTIONS_PER_ROUND)}/{QUESTIONS_PER_ROUND} | Score: {score} | Difficulty: <span className="capitalize">{difficulty}</span>
         </CardDescription>
       </CardHeader>
       <CardContent className="p-6 space-y-6">
         {isGameOver ? (
-          <div className="text-center p-6 bg-purple-100 rounded-lg shadow-inner">
-            <Award className="mx-auto h-16 w-16 text-yellow-500 mb-3" />
-            <h2 className="text-2xl font-bold text-purple-700">Round Over!</h2>
-            <p className="text-lg text-purple-600 mt-1">{feedback || `Your final score is ${score}/${QUESTIONS_PER_ROUND}.`}</p>
-            <Button onClick={resetGame} className="mt-6 w-full sm:w-auto bg-accent text-accent-foreground hover:bg-accent/90">
-              <RotateCcw className="mr-2 h-5 w-5" /> Play Again
-            </Button>
-          </div>
+          renderGameOverView()
         ) : currentSequence && (
           <>
             <div className="text-center p-4 bg-muted rounded-lg">
@@ -187,6 +261,7 @@ export default function NumberSequenceGame({ onBack, difficulty }: NumberSequenc
                   placeholder="Enter the next number"
                   className="text-base"
                   disabled={isGameOver || !!feedback}
+                  autoFocus
                 />
               </div>
               <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isGameOver || !!feedback || !userAnswer.trim()}>
