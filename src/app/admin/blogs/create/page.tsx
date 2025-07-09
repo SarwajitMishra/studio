@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
-export default function CreateBlogPage() {
+export default function AdminCreateBlogPage() {
   // Form submission logic will be added in a future step.
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

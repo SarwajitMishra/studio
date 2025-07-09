@@ -182,7 +182,11 @@ export default function SignupPage() {
           message: "This email address is already in use. Please log in or use a different email.",
         });
       } else {
-        let description = error.message || "An unexpected error occurred.";
+        let description = typeof error?.message === "string"
+            ? error.message
+            : "An unexpected error occurred.";
+
+        console.error("Error type:", typeof error?.message);
         if (error.code === 'auth/operation-not-allowed') {
           description = "Email/Password sign-up is not enabled. Please enable it in the Firebase console.";
         }
