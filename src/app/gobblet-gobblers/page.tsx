@@ -91,9 +91,8 @@ export default function DotsAndBoxesPage() {
     setGameState('playing');
   }, []);
 
-  const handleLineClick = (clickedLine: Line) => {
+  const handleLineClick = useCallback((clickedLine: Line) => {
     if (clickedLine.owner || gameState !== 'playing') return;
-    if (gameMode === 'ai' && currentPlayer === 'P2') return;
 
     const newLines = lines.map(l => l === clickedLine ? { ...l, owner: currentPlayer } : l);
     
@@ -127,6 +126,27 @@ export default function DotsAndBoxesPage() {
       setHasExtraTurn(false);
       setCurrentPlayer(p => (p === 'P1' ? 'P2' : 'P1'));
     }
+  }, [gameState, lines, boxes, currentPlayer, boardSize]);
+  
+  // Pure function for AI to check potential moves
+  const checkBoxCompletion = (currentLines: Line[], currentBoxes: Box[], testLine: Line, player: PlayerId, size: number) => {
+      const tempLines = currentLines.map(l => l === testLine ? {...l, owner: player} : l);
+      let boxesCompleted = 0;
+      for(let r=0; r<size; r++){
+          for(let c=0; c<size; c++){
+              if(currentBoxes.find(b => b.row === r && b.col === c)?.owner) continue;
+
+              const top = tempLines.find(l => l.type === 'horizontal' && l.row === r && l.col === c)?.owner;
+              const bottom = tempLines.find(l => l.type === 'horizontal' && l.row === r+1 && l.col === c)?.owner;
+              const left = tempLines.find(l => l.type === 'vertical' && l.row === r && l.col === c)?.owner;
+              const right = tempLines.find(l => l.type === 'vertical' && l.row === r && l.col === c+1)?.owner;
+
+              if(top && bottom && left && right){
+                  boxesCompleted++;
+              }
+          }
+      }
+      return { boxesCompleted };
   };
   
   const makeAIMove = useCallback(() => {
@@ -143,12 +163,40 @@ export default function DotsAndBoxesPage() {
       }
     }
 
-    // 2. Medium/Hard: Avoid giving away a box
+    // 2. Medium/Hard: Avoid giving away a box by not creating a 3-sided box.
     if(difficulty !== 'easy') {
-      const safeMoves = availableLines.filter(line => {
-        const { boxesCompleted } = checkBoxCompletion(lines, boxes, line, 'P1', boardSize);
-        return boxesCompleted === 0;
-      });
+        const getSidesForBox = (r: number, c: number, currentLines: Line[]) => {
+            return [
+              currentLines.find(l => l.type === 'horizontal' && l.row === r && l.col === c),
+              currentLines.find(l => l.type === 'horizontal' && l.row === r + 1 && l.col === c),
+              currentLines.find(l => l.type === 'vertical' && l.row === r && l.col === c),
+              currentLines.find(l => l.type === 'vertical' && l.row === r && l.col === c + 1),
+            ].filter(Boolean) as Line[];
+        };
+        const getAdjacentBoxesForLine = (line: Line) => {
+            const adjacent = [];
+            if (line.type === 'horizontal') {
+                if (line.row < boardSize) adjacent.push({r: line.row, c: line.col});
+                if (line.row > 0) adjacent.push({r: line.row - 1, c: line.col});
+            } else {
+                if (line.col < boardSize) adjacent.push({r: line.row, c: line.col});
+                if (line.col > 0) adjacent.push({r: line.row, c: line.col - 1});
+            }
+            return adjacent;
+        };
+
+        const safeMoves = availableLines.filter(line => {
+            const adjacentBoxes = getAdjacentBoxesForLine(line);
+            for (const box of adjacentBoxes) {
+                const boxLines = getSidesForBox(box.r, box.c, lines);
+                const sidesTaken = boxLines.filter(l => l.owner).length;
+                if (sidesTaken === 2) {
+                    return false; // This move is dangerous, it creates a 3-sided box.
+                }
+            }
+            return true;
+        });
+
       if(safeMoves.length > 0){
          handleLineClick(safeMoves[Math.floor(Math.random() * safeMoves.length)]);
          return;
@@ -157,7 +205,8 @@ export default function DotsAndBoxesPage() {
     
     // 3. Fallback: Easy AI or no safe moves found
     handleLineClick(availableLines[Math.floor(Math.random() * availableLines.length)]);
-  }, [lines, boxes, boardSize, difficulty]);
+  }, [lines, boxes, boardSize, difficulty, handleLineClick]);
+
 
   // AI Turn Effect
   useEffect(() => {
@@ -209,27 +258,6 @@ export default function DotsAndBoxesPage() {
     if(gameMode === 'ai') return winner === 'P1' ? 'You Win!' : 'Shravya AI Wins!';
     return `Player ${winner === 'P1' ? '1' : '2'} Wins!`;
   }
-
-  // Pure function for AI to check potential moves
-  const checkBoxCompletion = (currentLines: Line[], currentBoxes: Box[], testLine: Line, player: PlayerId, size: number) => {
-      const tempLines = currentLines.map(l => l === testLine ? {...l, owner: player} : l);
-      let boxesCompleted = 0;
-      for(let r=0; r<size; r++){
-          for(let c=0; c<size; c++){
-              if(currentBoxes.find(b => b.row === r && b.col === c)?.owner) continue;
-
-              const top = tempLines.find(l => l.type === 'horizontal' && l.row === r && l.col === c)?.owner;
-              const bottom = tempLines.find(l => l.type === 'horizontal' && l.row === r+1 && l.col === c)?.owner;
-              const left = tempLines.find(l => l.type === 'vertical' && l.row === r && l.col === c)?.owner;
-              const right = tempLines.find(l => l.type === 'vertical' && l.row === r && l.col === c+1)?.owner;
-
-              if(top && bottom && left && right){
-                  boxesCompleted++;
-              }
-          }
-      }
-      return { boxesCompleted };
-  };
 
   const renderSetupScreen = () => (
       <Card className="w-full max-w-md text-center shadow-xl">
@@ -305,6 +333,7 @@ export default function DotsAndBoxesPage() {
               {lines.map((line, i) => (
                   <button key={i}
                     onClick={() => handleLineClick(line)}
+                    disabled={gameState !== 'playing' || (gameMode === 'ai' && currentPlayer === 'P2')}
                     className={cn(
                         "absolute -translate-x-1/2 -translate-y-1/2 z-10",
                         line.type === 'horizontal' ? 'w-[calc(100%/var(--size)-8px)] h-2' : 'w-2 h-[calc(100%/var(--size)-8px)]',
