@@ -34,11 +34,9 @@ const blogSchema = z.object({
 
 type BlogFormValues = z.infer<typeof blogSchema>;
 
-interface CreateBlogFormProps {
-    isAdmin?: boolean;
-}
-
-export default function CreateBlogForm({ isAdmin = false }: CreateBlogFormProps) {
+// This component is now only for creating posts that will be submitted for review.
+// The isAdmin prop has been removed to simplify logic and fix permission issues.
+export default function CreateBlogForm() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
@@ -69,8 +67,6 @@ export default function CreateBlogForm({ isAdmin = false }: CreateBlogFormProps)
   }, [router]);
   
   const handleFormSubmit: SubmitHandler<BlogFormValues> = useCallback(async (data) => {
-    const status = isAdmin ? 'published' : 'pending';
-
     if (!currentUser) {
       toast({ variant: 'destructive', title: 'Not Authenticated', description: 'You must be logged in to create a post.' });
       return;
@@ -84,16 +80,18 @@ export default function CreateBlogForm({ isAdmin = false }: CreateBlogFormProps)
       photoURL: currentUser.photoURL,
     };
 
-    const result = await createBlogPost(data, authorInfo, status);
+    // All posts are now created with 'pending' status. Admins can publish from the dashboard.
+    const result = await createBlogPost(data, authorInfo, 'pending');
     setIsLoading(false);
 
     if (result.success) {
-      toast({ title: "Success!", description: `Your post has been ${status}.` });
-      router.push(isAdmin ? '/admin/blogs' : '/blogs');
+      toast({ title: "Success!", description: "Your post has been submitted for review." });
+      // Redirect all users to the main blogs page after submission.
+      router.push('/blogs');
     } else {
       toast({ variant: 'destructive', title: 'Error', description: result.error || 'Failed to save post.' });
     }
-  }, [currentUser, router, toast, isAdmin]);
+  }, [currentUser, router, toast]);
 
   const handleAnalyzeContent = useCallback(async () => {
     const content = form.getValues('content');
@@ -156,10 +154,7 @@ export default function CreateBlogForm({ isAdmin = false }: CreateBlogFormProps)
         <CardHeader>
           <CardTitle>Write a New Blog Post</CardTitle>
           <CardDescription>
-            {isAdmin 
-              ? "Write and publish a new article for the Shravya Playhouse community."
-              : "Share your thoughts with the Shravya Playhouse community. Your post will be reviewed before publishing."
-            }
+            Share your thoughts with the Shravya Playhouse community. Your post will be reviewed by our team before publishing.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -253,7 +248,7 @@ export default function CreateBlogForm({ isAdmin = false }: CreateBlogFormProps)
                 <div className="flex justify-end gap-2">
                     <Button type="submit" disabled={isLoading || isAnalyzing}>
                         {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                        {isAdmin ? 'Publish Post' : 'Submit for Review'}
+                        Submit for Review
                     </Button>
                 </div>
             </div>

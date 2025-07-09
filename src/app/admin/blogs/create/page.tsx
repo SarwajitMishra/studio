@@ -12,7 +12,8 @@ export default function AdminCreateBlogPage() {
               Back to Blog Management
             </Link>
           </Button>
-          <CreateBlogForm isAdmin={true} />
+          {/* Admins now use the same form, which creates a 'pending' post they can then publish. */}
+          <CreateBlogForm />
         </div>
       );
 }
