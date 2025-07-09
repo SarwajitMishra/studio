@@ -10,6 +10,7 @@ import { Crown, AlertTriangle, Timer, ListChecks, ArrowRight, ArrowLeft, Brain, 
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { S_POINTS_ICON as SPointsIcon, S_COINS_ICON as SCoinsIcon } from '@/lib/constants';
 import { applyRewards, calculateRewards } from "@/lib/rewards";
 import { updateGameStats } from "@/lib/progress";
@@ -611,7 +612,7 @@ export default function ChessPage() {
   }
 
   return (
-    <div className="flex flex-col xl:flex-row gap-4 lg:gap-8 items-start justify-center p-2 md:p-4">
+    <div className="flex flex-col lg:flex-row gap-4 lg:gap-8 items-start justify-center p-2 md:p-4">
       <AlertDialog open={gameOver && !!lastReward}>
         <AlertDialogContent>
             <AlertDialogHeader>
@@ -648,7 +649,7 @@ export default function ChessPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <div className="w-full xl:max-w-2xl flex-shrink-0">
+      <div className="w-full lg:max-w-2xl flex-shrink-0">
         <Card className="shadow-xl bg-card/80 backdrop-blur-sm">
           <PlayerInfoPanel color="b" timer={playerTimers.b} capturedPieces={capturedPieces.w} isCurrentTurn={currentPlayer === 'b' && !gameOver} />
           <CardContent className="p-1 sm:p-2">
@@ -691,7 +692,7 @@ export default function ChessPage() {
         </Card>
       </div>
 
-      <div className="w-full xl:w-80 space-y-4 flex-shrink-0">
+      <div className="w-full lg:w-80 space-y-4 flex-shrink-0">
         <Card className="shadow-lg">
            <CardHeader>
                 <CardTitle className="text-xl flex items-center gap-2"><Timer /> Status</CardTitle>
@@ -708,7 +709,9 @@ export default function ChessPage() {
                 </Button>
             </CardContent>
         </Card>
-        <Card className="shadow-lg">
+
+        {/* Desktop History */}
+        <Card className="shadow-lg hidden lg:block">
           <CardHeader>
             <CardTitle className="text-xl flex items-center gap-2"><ListChecks /> Move History</CardTitle>
           </CardHeader>
@@ -725,6 +728,32 @@ export default function ChessPage() {
             </ScrollArea>
           </CardContent>
         </Card>
+
+        {/* Mobile History Button */}
+        <div className="lg:hidden">
+            <Dialog>
+                <DialogTrigger asChild>
+                    <Button variant="outline" className="w-full">
+                        <ListChecks className="mr-2 h-4 w-4" /> View Move History
+                    </Button>
+                </DialogTrigger>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Move History</DialogTitle>
+                    </DialogHeader>
+                     <ScrollArea className="h-96 w-full pr-4 mt-4">
+                        <ol className="list-decimal list-inside space-y-1 text-sm font-mono">
+                            {movePairs.map((pair, index) => (
+                            <li key={index} className="grid grid-cols-2 gap-x-2 items-center border-b border-dashed">
+                                <span className="p-1.5 truncate">{pair[0]}</span>
+                                {pair[1] && <span className="p-1.5 truncate">{pair[1]}</span>}
+                            </li>
+                            ))}
+                        </ol>
+                    </ScrollArea>
+                </DialogContent>
+            </Dialog>
+        </div>
       </div>
     </div>
   );
