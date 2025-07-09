@@ -46,7 +46,10 @@ export async function searchImages(
     return [];
   }
 
-  let apiUrl = `https://pixabay.com/api/?key=${apiKey}&q=${encodeURIComponent(query)}&image_type=illustration&orientation=horizontal&safesearch=true`;
+  // FIX: Replace space encoding with '+' to match Pixabay API examples and fix 400 errors on multi-word queries.
+  const formattedQuery = encodeURIComponent(query).replace(/%20/g, '+');
+
+  let apiUrl = `https://pixabay.com/api/?key=${apiKey}&q=${formattedQuery}&image_type=illustration&orientation=horizontal&safesearch=true`;
 
   if (options.category) {
     apiUrl += `&category=${encodeURIComponent(options.category)}`;
