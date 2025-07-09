@@ -3,49 +3,63 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to safely check if a user is an admin.
-    // It checks for the existence of the role document before trying to read its data.
+    // Helper function to safely check for admin privileges.
+    // This can be called by any authenticated user without causing a permission error.
     function isAdmin() {
+      // Check if the user is authenticated, if the role document exists, and if isAdmin is true.
       return request.auth != null &&
              exists(/databases/$(database)/documents/roles/$(request.auth.uid)) &&
              get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.isAdmin == true;
     }
 
     match /blogs/{blogId} {
-      // READ: Anyone can read published blogs. Admins can read any blog regardless of status.
-      allow read: if resource.data.status == 'published' || isAdmin();
+      // Anyone can read published blog posts.
+      allow read: if resource.data.status == 'published';
 
-      // CREATE:
-      // 1. Any authenticated user can create a blog if they are the author and the status is 'pending'.
-      // 2. Admins can create blogs with any status (e.g., publish directly).
-      allow create: if (request.auth != null &&
-                        request.resource.data.authorId == request.auth.uid &&
-                        request.resource.data.status == 'pending')
-                     || isAdmin();
+      // Admins have full write access (create, update, delete).
+      allow write: if isAdmin();
 
-      // UPDATE / DELETE: Only admins can update or delete blogs.
-      allow update, delete: if isAdmin();
+      // Non-admins can only create posts with a 'pending' status.
+      // This rule is evaluated only if the isAdmin() rule above is false.
+      allow create: if request.auth != null &&
+                       request.resource.data.authorId == request.auth.uid &&
+                       request.resource.data.status == 'pending';
     }
 
     match /users/{userId} {
-      // A user can read/write their own profile. Admins can read/write any profile.
-      allow read, write: if (request.auth != null && request.auth.uid == userId) || isAdmin();
+      // Admins can read/write any user profile.
+      // A regular user can only read/write their own profile.
+      allow read, write: if isAdmin() || (request.auth != null && request.auth.uid == userId);
     }
 
     match /usernames/{username} {
-      // Allow client to check for username uniqueness.
-      allow read;
-      // Disallow client from writing directly. This must be done in a transaction/backend.
-      allow write: if false;
+      // Only allow creation of username documents for authenticated users (during signup).
+      // No one can read, update, or delete usernames from the client.
+      allow create: if request.auth != null;
+      allow read, update, delete: if false;
     }
 
     match /roles/{userId} {
-      // Only admins can see who has roles.
-      // The get() call in the isAdmin() function bypasses this rule check for a user checking their own role.
-      allow read: if isAdmin();
-      
-      // Roles must be assigned from a trusted environment (e.g., Firebase Console or a backend function).
-      allow write: if false;
+      // A user can get their own role document. This is required for the isAdmin() function to work.
+      // An admin can get any role document.
+      allow get: if isAdmin() || (request.auth != null && request.auth.uid == userId);
+
+      // No one can list, create, update, or delete roles from the client.
+      allow list, create, update, delete: if false;
+    }
+
+    match /sessions/{sessionId} {
+      // Any authenticated user can create a session if they are the host.
+      allow create: if request.auth != null && request.resource.data.hostUid == request.auth.uid;
+
+      // Any authenticated user can read session data.
+      allow read: if request.auth != null;
+
+      // Any authenticated user can update (join) a session. App logic handles max players.
+      allow update: if request.auth != null;
+
+      // Only the host can delete their own session.
+      allow delete: if request.auth != null && resource.data.hostUid == request.auth.uid;
     }
   }
 }
