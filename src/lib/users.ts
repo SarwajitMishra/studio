@@ -36,10 +36,12 @@ export interface UserProfile {
 export async function checkUsernameUnique(username: string): Promise<boolean> {
   if (!username || username.length < 3) return false;
 
+  console.log(`Checking username uniqueness for: ${username}`);
   const usernameDocRef = doc(db, "usernames", username.toLowerCase());
 
   try {
     const docSnap = await getDoc(usernameDocRef);
+    console.log(`Username '${username}' exists: ${docSnap.exists()}`);
     return !docSnap.exists();
   } catch (error) {
     console.error("Error checking username uniqueness:", error);
@@ -70,9 +72,11 @@ export async function createUserProfile(user: User, additionalData: any, guestDa
 
   try {
     await runTransaction(db, async (transaction) => {
+      console.log("Starting transaction to create user profile...");
       // First, check if the username document already exists inside the transaction
       const usernameDoc = await transaction.get(usernameRef);
       if (usernameDoc.exists()) {
+        console.error(`Transaction failed: Username ${additionalData.username} already exists.`);
         throw new Error("This username is already taken. Please choose another one.");
       }
 
@@ -86,7 +90,9 @@ export async function createUserProfile(user: User, additionalData: any, guestDa
         ...additionalData,
       };
       transaction.set(userRef, userProfileData);
+      console.log("User profile document queued for creation.");
       transaction.set(usernameRef, { uid: user.uid });
+      console.log("Username document queued for creation.");
     });
 
     console.log(`Successfully created profile and username for user ${user.uid}.`);

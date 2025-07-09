@@ -50,8 +50,7 @@ const emailFormSchema = z.object({
   username: z.string()
     .min(3, "Username must be at least 3 characters.")
     .max(20, "Username must be 20 characters or less.")
-    .regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores.")
-    .refine(async (username) => await checkUsernameUnique(username), "This username is already taken."),
+    .regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores."),
   name: z.string().min(2, "Name must be at least 2 characters."),
   countryCode: z.string(),
   phoneNumber: z.string().min(10, "Please enter a valid phone number."),
@@ -107,7 +106,7 @@ export default function SignupPage() {
       .refine(
           async (username) => {
               // Pass the current user's ID to exclude it from the check
-              return await checkUsernameUnique(username, completingUser?.uid);
+              return await checkUsernameUnique(username);
           },
           "This username is already taken."
       ),
@@ -138,6 +137,21 @@ export default function SignupPage() {
 
   async function onEmailSubmit(values: z.infer<typeof emailFormSchema>) {
     setIsLoading(true);
+    console.log("Signup submission started with values:", values);
+    
+    // Explicitly check for username uniqueness on submit
+    const isUnique = await checkUsernameUnique(values.username);
+    if (!isUnique) {
+      emailForm.setError("username", {
+        type: "manual",
+        message: "This username is already taken. Please choose another.",
+      });
+      setIsLoading(false);
+      console.log(`Username "${values.username}" is not unique. Halting signup.`);
+      return;
+    }
+    console.log(`Username "${values.username}" is unique. Proceeding...`);
+
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       
