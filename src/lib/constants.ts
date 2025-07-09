@@ -7,7 +7,7 @@ import {
     Target, Calculator, ListOrdered, SpellCheck, CaseLower, AlignJustify, Filter, 
     Keyboard, Gamepad2, Languages, Lightbulb, Mail, Calendar, Heart, Hash, CircleDot,
     Grid3x3, Route, Blocks, KeyRound, LayoutGrid, XCircle, Ticket, Dice6, Users, FileText,
-    Trophy, Award, Compass, BrainCircuit, Shield, Palette, Volume2
+    Trophy, Award, Compass, BrainCircuit, Shield, Palette, Volume2, PenSquare
 } from 'lucide-react';
 
 export type GameCategory = 'Strategy' | 'Puzzles' | 'Learning';
@@ -34,13 +34,13 @@ export const GAMES: Game[] = [
     color: 'text-sky-600',
   },
   {
-    id: 'gobblet-gobblers',
-    title: 'Gobblet Gobblers',
+    id: 'dots-and-boxes',
+    title: 'Dots & Boxes',
     category: 'Strategy',
-    Icon: Users,
-    description: 'A tic-tac-toe style game where bigger pieces gobble smaller ones.',
-    href: '/gobblet-gobblers',
-    color: 'text-blue-500',
+    Icon: PenSquare,
+    description: 'Connect dots to form lines and claim boxes. A game of simple rules and deep strategy.',
+    href: '/gobblet-gobblers', // Repurposed URL
+    color: 'text-orange-500',
   },
   {
     id: 'tower-of-hanoi',

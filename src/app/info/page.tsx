@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,13 +8,13 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { GAMES, BADGES, MATH_PUZZLE_TYPES, ENGLISH_PUZZLE_TYPES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
-import { Info } from 'lucide-react';
+import { Info, PenSquare } from 'lucide-react';
 
 const allGames = [...GAMES, ...MATH_PUZZLE_TYPES, ...ENGLISH_PUZZLE_TYPES];
 
 const gameInstructions: Record<string, { title: string; instructions: string[] }> = {
   chess: { title: 'Chess', instructions: ['Objective: Checkmate the opponent\'s king.', 'Each piece has a unique movement pattern.', 'Capture opponent pieces by landing on their square.'] },
-  'gobblet-gobblers': { title: 'Gobblet Gobblers', instructions: ['A tic-tac-toe style game.', 'Larger pieces can "gobble" and cover smaller ones.', 'Get three of your pieces in a row to win.'] },
+  'dots-and-boxes': { title: 'Dots & Boxes', instructions: ['Players take turns drawing one line between two adjacent dots.', 'Completing the 4th side of a box earns you that box and an extra turn.', 'The game ends when all boxes are claimed.', 'The player with the most boxes wins.'] },
   'tower-of-hanoi': { title: 'Tower of Hanoi', instructions: ['Move the entire stack of disks to another rod.', 'Rule 1: Only move one disk at a time.', 'Rule 2: A larger disk cannot be placed on a smaller one.'] },
   jigsaw: { title: 'Jigsaw Puzzles', instructions: ['Assemble the scattered pieces to reveal a complete picture.', 'Drag and drop pieces to connect them.', 'Solve puzzles of varying difficulty (9, 16, or 25 pieces).'] },
   memory: { title: 'Memory Matching', instructions: ['Find all the matching pairs of cards.', 'Click a card to flip it over.', 'Try to remember where each icon is located.'] },
