@@ -2,7 +2,17 @@
 'use client';
 
 import { db, auth, type User } from './firebase';
-import { doc, setDoc, getDocs, collection, query, where, serverTimestamp, getDoc, writeBatch } from 'firebase/firestore';
+import {
+  doc,
+  getDocs,
+  collection,
+  query,
+  where,
+  serverTimestamp,
+  getDoc,
+  writeBatch,
+  runTransaction,
+} from 'firebase/firestore';
 import type { GuestData } from './sync';
 import { getGuestData } from './sync';
 
@@ -18,107 +28,100 @@ export interface UserProfile {
 
 
 /**
- * Checks if a username is unique by querying the 'users' collection.
+ * Checks if a username is unique by checking for a document in the 'usernames' collection.
+ * This is a fast and secure way to enforce unique usernames.
  * @param username The username to check.
- * @param userIdToExclude Optional UID of the current user to exclude from the check, allowing them to keep their own name.
  * @returns {Promise<boolean>} True if the username is unique, false otherwise.
  */
-export async function checkUsernameUnique(username: string, userIdToExclude?: string): Promise<boolean> {
-  if (!username) return false;
+export async function checkUsernameUnique(username: string): Promise<boolean> {
+  if (!username || username.length < 3) return false;
+
+  const usernameDocRef = doc(db, "usernames", username.toLowerCase());
+
   try {
-    const usersRef = collection(db, 'users');
-    const q = query(usersRef, where("username", "==", username.toLowerCase()));
-    const querySnapshot = await getDocs(q);
-    
-    if (querySnapshot.empty) {
-      return true; // No one has this username, it's unique.
-    }
-
-    // If a user was found...
-    // and we've provided a userIdToExclude...
-    // and there's only one user with that name...
-    // and that user's ID matches the one we want to exclude...
-    // then it's still considered "unique" for our purposes (the user can keep their name).
-    if (userIdToExclude && querySnapshot.docs.length === 1 && querySnapshot.docs[0].id === userIdToExclude) {
-      return true;
-    }
-
-    // Otherwise, the username is taken by someone else.
-    return false;
+    const docSnap = await getDoc(usernameDocRef);
+    return !docSnap.exists();
   } catch (error) {
     console.error("Error checking username uniqueness:", error);
-    // Fail safely
+    // Fail safely, preventing signup if the check fails.
     return false;
   }
 }
 
 /**
- * Creates or updates a user profile document in Firestore.
- * Now optionally accepts guest data to sync on creation.
+ * Creates a user profile document in Firestore and a corresponding username document
+ * within a transaction to ensure data integrity.
  * @param user The Firebase User object.
- * @param additionalData An object containing additional profile data to store.
- * @param guestData Optional guest data to sync to the new profile.
+ * @param additionalData An object containing additional profile data.
+ * @param guestData Optional guest data to sync on creation.
  */
 export async function createUserProfile(user: User, additionalData: any, guestData?: GuestData | null) {
   if (!user) {
     console.error("createUserProfile called with no user object.");
     return;
   }
-  const userRef = doc(db, 'users', user.uid);
-
-  const data: any = {
-    uid: user.uid,
-    displayName: user.displayName,
-    email: user.email,
-    photoURL: user.photoURL,
-    createdAt: serverTimestamp(),
-    ...additionalData
-  };
-
-  try {
-    await setDoc(userRef, data, { merge: true });
-    console.log(`Successfully created or merged profile for user ${user.uid}. The 'users' collection should now be visible in Firestore.`);
-  } catch (error) {
-    console.error(`Failed to create profile for user ${user.uid}. This is likely a Firestore security rule issue.`, error);
-    // Re-throwing the error so the calling function can catch it and show a user-facing message.
-    throw new Error("Could not save user profile to the database. Please check your Firestore security rules.");
+  if (!additionalData.username) {
+    console.error("createUserProfile requires a username in additionalData.");
+    throw new Error("Username is required to create a profile.");
   }
 
+  const userRef = doc(db, 'users', user.uid);
+  const usernameRef = doc(db, 'usernames', additionalData.username.toLowerCase());
 
-  // If there's guest data, also sync stats and history to subcollections
-  if (guestData) {
-    console.log(`Syncing guest data for user ${user.uid}...`);
-    const batch = writeBatch(db);
-    
-    // Sync Game Stats
-    if (guestData.gameStats && guestData.gameStats.length > 0) {
-      const statsRef = collection(db, 'users', user.uid, 'gameStats');
-      guestData.gameStats.forEach(stat => {
-        const statDocRef = doc(statsRef, stat.gameId);
-        batch.set(statDocRef, stat);
-      });
+  try {
+    await runTransaction(db, async (transaction) => {
+      // First, check if the username document already exists inside the transaction
+      const usernameDoc = await transaction.get(usernameRef);
+      if (usernameDoc.exists()) {
+        throw new Error("This username is already taken. Please choose another one.");
+      }
+
+      // If the username is free, create both the user profile and the username document
+      const userProfileData = {
+        uid: user.uid,
+        displayName: user.displayName,
+        email: user.email,
+        photoURL: user.photoURL,
+        createdAt: serverTimestamp(),
+        ...additionalData,
+      };
+      transaction.set(userRef, userProfileData);
+      transaction.set(usernameRef, { uid: user.uid });
+    });
+
+    console.log(`Successfully created profile and username for user ${user.uid}.`);
+
+    // If there's guest data, sync it in a separate batch write after the profile is created.
+    if (guestData) {
+      console.log(`Syncing guest data for user ${user.uid}...`);
+      const batch = writeBatch(db);
+      
+      if (guestData.gameStats && guestData.gameStats.length > 0) {
+        const statsRef = collection(db, 'users', user.uid, 'gameStats');
+        guestData.gameStats.forEach(stat => {
+          const statDocRef = doc(statsRef, stat.gameId);
+          batch.set(statDocRef, stat);
+        });
+      }
+
+      if (guestData.rewardHistory && guestData.rewardHistory.length > 0) {
+        const historyRef = collection(db, 'users', user.uid, 'rewardHistory');
+        guestData.rewardHistory.forEach(event => {
+          const eventDocRef = doc(historyRef, event.id);
+          batch.set(eventDocRef, event);
+        });
+      }
+
+      const hasDataToCommit = (guestData.gameStats?.length > 0) || (guestData.rewardHistory?.length > 0);
+      if (hasDataToCommit) {
+          await batch.commit();
+          console.log(`Guest data sync complete for ${user.uid}.`);
+      }
     }
 
-    // Sync Reward History
-    if (guestData.rewardHistory && guestData.rewardHistory.length > 0) {
-      const historyRef = collection(db, 'users', user.uid, 'rewardHistory');
-      guestData.rewardHistory.forEach(event => {
-        const eventDocRef = doc(historyRef, event.id);
-        batch.set(eventDocRef, event);
-      });
-    }
-
-    // Only commit the batch if there's actually something to write.
-    const hasDataToCommit = (guestData.gameStats && guestData.gameStats.length > 0) || (guestData.rewardHistory && guestData.rewardHistory.length > 0);
-
-    if (hasDataToCommit) {
-        try {
-            await batch.commit();
-            console.log(`Guest data sync complete for ${user.uid}.`);
-        } catch (error) {
-            console.error(`Failed to sync subcollection guest data for user ${user.uid}:`, error);
-        }
-    }
+  } catch (error) {
+    console.error(`Failed to create profile for user ${user.uid}:`, error);
+    throw error; // Re-throw the error to be caught by the calling UI function
   }
 }
 

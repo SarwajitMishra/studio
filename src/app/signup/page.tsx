@@ -51,7 +51,7 @@ const emailFormSchema = z.object({
     .min(3, "Username must be at least 3 characters.")
     .max(20, "Username must be 20 characters or less.")
     .regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores.")
-    .refine(async (username) => await checkUsernameUnique(username), "This username is already taken."),
+    .refine(checkUsernameUnique, "This username is already taken."),
   name: z.string().min(2, "Name must be at least 2 characters."),
   countryCode: z.string(),
   phoneNumber: z.string().min(10, "Please enter a valid phone number."),
@@ -104,19 +104,13 @@ export default function SignupPage() {
       .min(3, "Username must be at least 3 characters.")
       .max(20, "Username must be 20 characters or less.")
       .regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores.")
-      .refine(
-          async (username) => {
-              // Pass the current user's ID to exclude it from the check
-              return await checkUsernameUnique(username, completingUser?.uid);
-          },
-          "This username is already taken."
-      ),
+      .refine(checkUsernameUnique, "This username is already taken."),
     name: z.string().min(2, "Name must be at least 2 characters."),
     country: z.string().min(1, "Please select a country."),
     birthday: z.date({ required_error: "A date of birth is required." })
       .refine((date) => date <= subYears(new Date(), 3), "You must be at least 3 years old."),
     gender: z.enum(["male", "female", "other", "prefer_not_to_say"]),
-  }), [completingUser]);
+  }), []);
 
   const profileForm = useForm<z.infer<typeof profileFormSchema>>({
     resolver: zodResolver(profileFormSchema),
