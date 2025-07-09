@@ -19,7 +19,7 @@ export default function FloatingChatButton() {
   if (!isMounted) return null;
 
   return (
-    <div className="fixed bottom-6 right-6 flex flex-col items-center z-50">
+    <div className="fixed bottom-6 right-6 z-50">
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <TooltipProvider delayDuration={100}>
           <Tooltip>
@@ -58,9 +58,6 @@ export default function FloatingChatButton() {
           </div>
         </DialogContent>
       </Dialog>
-      <p className="text-xs text-center text-muted-foreground mt-1.5 px-2 py-0.5 bg-background/70 rounded-md shadow-sm">
-        Ask Shravya about the games!
-      </p>
     </div>
   );
 }
