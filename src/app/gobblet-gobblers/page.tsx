@@ -98,6 +98,54 @@ const BoardSquare = ({ cell, colorP1, colorP2, onSelect, canDrop }: { cell: Boar
   );
 };
 
+// --- AI Helper Function ---
+const findWinningMove = (boardState: BoardState, pieces: Record<PlayerId, Piece[]>, player: PlayerId): { piece: Piece, from?: {r:number, c:number}, to: {r:number, c:number} } | null => {
+    // Check moves from off-board
+    for (const piece of pieces[player]) {
+        for (let r = 0; r < 3; r++) {
+            for (let c = 0; c < 3; c++) {
+                const targetCell = boardState[r][c];
+                const topPiece = targetCell.stack.length > 0 ? targetCell.stack[targetCell.stack.length - 1] : null;
+                if (!topPiece || piece.size > topPiece.size) {
+                    const tempBoard = boardState.map(row => row.map(cell => ({ stack: [...cell.stack] })));
+                    tempBoard[r][c].stack.push(piece);
+                    if (checkWin(tempBoard) === player) {
+                        return { piece, to: { r, c } };
+                    }
+                }
+            }
+        }
+    }
+    // Check moves from on-board
+    for (let rFrom = 0; rFrom < 3; rFrom++) {
+        for (let cFrom = 0; cFrom < 3; cFrom++) {
+            const fromCell = boardState[rFrom][cFrom];
+            if (fromCell.stack.length > 0) {
+                const pieceOnTop = fromCell.stack[fromCell.stack.length - 1];
+                if (pieceOnTop.player === player) {
+                    for (let rTo = 0; rTo < 3; rTo++) {
+                        for (let cTo = 0; cTo < 3; cTo++) {
+                             if (rFrom === rTo && cFrom === cTo) continue;
+                             const targetCell = boardState[rTo][cTo];
+                             const topPieceOnTarget = targetCell.stack.length > 0 ? targetCell.stack[targetCell.stack.length - 1] : null;
+                            if (!topPieceOnTarget || pieceOnTop.size > topPieceOnTarget.size) {
+                                const tempBoard = boardState.map(row => row.map(cell => ({ stack: [...cell.stack] })));
+                                const movedPiece = tempBoard[rFrom][cFrom].stack.pop()!;
+                                tempBoard[rTo][cTo].stack.push(movedPiece);
+                                if (checkWin(tempBoard) === player) {
+                                    return { piece: pieceOnTop, from: {r: rFrom, c: cFrom}, to: { r: rTo, c: cTo } };
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return null;
+}
+
 
 export default function GobbletGobblersPage() {
   const [gameMode, setGameMode] = useState<GameMode>(null);
@@ -151,84 +199,25 @@ export default function GobbletGobblersPage() {
     setLastReward(null);
     setGameState('playing');
   }, []);
-
-  const makeAIMove = useCallback(() => {
-    if (winner) return;
-
-    // AI Logic (simplified)
-    // 1. Check for winning move
-    // 2. Block player's winning move
-    // 3. Take center
-    // 4. Move a new piece out if possible
-    // 5. Random valid move
-    
-    // For now, a simplified random valid move
-    const validMoves: {piece: Piece, from?: {r:number, c:number}, to?: {r:number, c:number}}[] = [];
-
-    // Moves from off-board
-    playerPieces.P2.forEach(p => {
-        for(let r=0; r<3; r++){
-            for(let c=0; c<3; c++){
-                const targetCell = board[r][c];
-                const topPiece = targetCell.stack.length > 0 ? targetCell.stack[targetCell.stack.length-1] : null;
-                if(!topPiece || p.size > topPiece.size) {
-                    validMoves.push({piece: p, to: {r,c}});
-                }
-            }
-        }
-    });
-
-    // Moves from on-board
-    for (let rFrom = 0; rFrom < 3; rFrom++) {
-        for (let cFrom = 0; cFrom < 3; cFrom++) {
-            const topPiece = board[rFrom][cFrom].stack.length > 0 ? board[rFrom][cFrom].stack[board[rFrom][cFrom].stack.length - 1] : null;
-            if (topPiece && topPiece.player === 'P2') {
-                for (let rTo = 0; rTo < 3; rTo++) {
-                    for (let cTo = 0; cTo < 3; cTo++) {
-                        const targetCell = board[rTo][cTo];
-                        const targetTopPiece = targetCell.stack.length > 0 ? targetCell.stack[targetCell.stack.length - 1] : null;
-                        if (!targetTopPiece || topPiece.size > targetTopPiece.size) {
-                            validMoves.push({ piece: topPiece, from: { r: rFrom, c: cFrom }, to: { r: rTo, c: cTo } });
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
-    if (validMoves.length > 0) {
-      const move = validMoves[Math.floor(Math.random() * validMoves.length)];
-      handleSelectPiece(move.piece, move.from);
-      setTimeout(() => {
-        if(move.to) handleBoardClick(move.to.r, move.to.c);
-      }, 500);
-    }
-  }, [playerPieces, board, winner]);
-
-  useEffect(() => {
-    if (gameMode === 'ai' && currentPlayer === 'P2' && !winner) {
-      const timer = setTimeout(() => {
-        makeAIMove();
-      }, 1200);
-      return () => clearTimeout(timer);
-    }
-  }, [currentPlayer, gameMode, winner, makeAIMove]);
-
+  
   const handleSelectPiece = (piece: Piece, from?: {r: number, c: number}) => {
     if (winner || piece.player !== currentPlayer || (gameMode === 'ai' && currentPlayer === 'P2')) return;
     setSelectedPiece({ piece, from });
   };
-  
+
   const handleBoardClick = (r: number, c: number) => {
     if (!selectedPiece || winner) {
-      const topPiece = board[r][c].stack[board[r][c].stack.length - 1];
-      if (topPiece) handleSelectPiece(topPiece, {r, c});
+      const cell = board[r][c];
+      if (cell.stack.length > 0) {
+        const topPiece = cell.stack[cell.stack.length - 1];
+        handleSelectPiece(topPiece, {r, c});
+      }
       return;
     }
 
     const { piece, from } = selectedPiece;
     const targetCell = board[r][c];
-    const topPieceOnTarget = targetCell.stack[targetCell.stack.length - 1];
+    const topPieceOnTarget = targetCell.stack.length > 0 ? targetCell.stack[targetCell.stack.length - 1] : null;
 
     if (topPieceOnTarget && piece.size <= topPieceOnTarget.size) return;
 
@@ -244,6 +233,93 @@ export default function GobbletGobblersPage() {
     else setCurrentPlayer(currentPlayer === 'P1' ? 'P2' : 'P1');
     setSelectedPiece(null);
   };
+
+  const makeAIMove = useCallback(() => {
+    if (winner) return;
+
+    // --- Smarter AI Logic ---
+    // 1. Check for AI's winning move
+    const aiWinningMove = findWinningMove(board, playerPieces, 'P2');
+    if (aiWinningMove) {
+        handleSelectPiece(aiWinningMove.piece, aiWinningMove.from);
+        setTimeout(() => { if (aiWinningMove.to) handleBoardClick(aiWinningMove.to.r, aiWinningMove.to.c); }, 500);
+        return;
+    }
+
+    // 2. Block player's winning move
+    const playerWinningMove = findWinningMove(board, playerPieces, 'P1');
+    if (playerWinningMove) {
+        const blockTo = playerWinningMove.to;
+        // Find best piece to block with: largest one possible
+        const piecesToBlockWith: {piece: Piece, from?: {r:number, c:number}}[] = [
+            ...playerPieces.P2.map(p => ({piece: p})),
+            ...board.flatMap((row, r) => row.flatMap((cell, c) => cell.stack.length > 0 && cell.stack[cell.stack.length - 1].player === 'P2' ? [{piece: cell.stack[cell.stack.length - 1], from: {r, c}}] : []))
+        ].sort((a,b) => b.piece.size - a.piece.size);
+
+        const targetCellTopPiece = board[blockTo.r][blockTo.c].stack.length > 0 ? board[blockTo.r][blockTo.c].stack[board[blockTo.r][blockTo.c].stack.length-1] : null;
+
+        for (const {piece, from} of piecesToBlockWith) {
+             if (!targetCellTopPiece || piece.size > targetCellTopPiece.size) {
+                 handleSelectPiece(piece, from);
+                 setTimeout(() => handleBoardClick(blockTo.r, blockTo.c), 500);
+                 return;
+             }
+        }
+    }
+    
+    // 3. Take the center square if available with the largest piece from off-board
+    const centerCell = board[1][1];
+    const topPieceOnCenter = centerCell.stack.length > 0 ? centerCell.stack[centerCell.stack.length - 1] : null;
+    const largestOffBoardPiece = playerPieces.P2.sort((a,b)=>b.size-a.size)[0];
+    if (largestOffBoardPiece && (!topPieceOnCenter || largestOffBoardPiece.size > topPieceOnCenter.size)) {
+        handleSelectPiece(largestOffBoardPiece, undefined);
+        setTimeout(() => handleBoardClick(1, 1), 500);
+        return;
+    }
+
+    // 4. Fallback to random valid move
+    const validMoves: {piece: Piece, from?: {r:number, c:number}, to: {r:number, c:number}}[] = [];
+    // From off-board
+    playerPieces.P2.forEach(p => {
+        for(let r=0; r<3; r++){ for(let c=0; c<3; c++){
+            const targetCell = board[r][c];
+            const topPiece = targetCell.stack.length > 0 ? targetCell.stack[targetCell.stack.length-1] : null;
+            if(!topPiece || p.size > topPiece.size) validMoves.push({piece: p, to: {r,c}});
+        }}
+    });
+    // From on-board
+    for (let rFrom = 0; rFrom < 3; rFrom++) { for (let cFrom = 0; cFrom < 3; cFrom++) {
+        const cell = board[rFrom][cFrom];
+        if (cell.stack.length > 0) {
+            const topPiece = cell.stack[cell.stack.length - 1];
+            if (topPiece.player === 'P2') {
+                for (let rTo = 0; rTo < 3; rTo++) { for (let cTo = 0; cTo < 3; cTo++) {
+                    if (rFrom === rTo && cFrom === cTo) continue;
+                    const targetCell = board[rTo][cTo];
+                    const targetTopPiece = targetCell.stack.length > 0 ? targetCell.stack[targetCell.stack.length - 1] : null;
+                    if (!targetTopPiece || topPiece.size > targetTopPiece.size) {
+                        validMoves.push({ piece: topPiece, from: { r: rFrom, c: cFrom }, to: { r: rTo, c: cTo } });
+                    }
+                }}
+            }
+        }
+    }}
+    
+    if (validMoves.length > 0) {
+      const move = validMoves[Math.floor(Math.random() * validMoves.length)];
+      handleSelectPiece(move.piece, move.from);
+      setTimeout(() => handleBoardClick(move.to.r, move.to.c), 500);
+    }
+  }, [playerPieces, board, winner]);
+
+  useEffect(() => {
+    if (gameMode === 'ai' && currentPlayer === 'P2' && !winner) {
+      const timer = setTimeout(() => {
+        makeAIMove();
+      }, 1200);
+      return () => clearTimeout(timer);
+    }
+  }, [currentPlayer, gameMode, winner, makeAIMove]);
   
   if (gameState === 'setupMode') {
     return (
@@ -355,3 +431,5 @@ export default function GobbletGobblersPage() {
     </div>
   );
 }
+
+    
