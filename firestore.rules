@@ -1,40 +1,58 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
     
+    // By default, deny all reads and writes
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper function to check for admin role
     function isAdmin() {
-      return request.auth != null && 
-             exists(/databases/$(database)/documents/roles/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.isAdmin == true;
+      return request.auth != null && get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.isAdmin == true;
     }
-    
+
+    // Blogs Collection Rules
     match /blogs/{blogId} {
-      // Admins have full read/write access. This rule is checked first.
-      allow read, write: if isAdmin();
+      // READ: Anyone can read published blogs. Admins can read any blog.
+      allow read: if resource.data.status == 'published' || isAdmin();
 
-      // Below rules apply to non-admins
+      // CREATE: An authenticated user can create a 'pending' post for themselves, OR an admin can create any post.
+      allow create: if (request.auth != null && 
+                        request.resource.data.authorId == request.auth.uid &&
+                        request.resource.data.status == 'pending')
+                     || isAdmin();
       
-      // Allow reading a single document if it's published.
-      // This rule also implicitly secures list queries: any query will only return documents
-      // for which this `get` rule is true.
-      allow get: if resource.data.status == 'published';
-
-      // Allow creating a document if the user is authenticated, the author ID matches their UID,
-      // and the status is 'pending'. This prevents users from creating posts for others or publishing directly.
-      allow create: if request.auth != null &&
-                       request.resource.data.authorId == request.auth.uid &&
-                       request.resource.data.status == 'pending';
+      // UPDATE & DELETE: Only admins can update or delete posts.
+      allow update, delete: if isAdmin();
     }
     
-    match /users/{userId} {
-      // A user can read/write their own profile. Admins can access any.
-      allow read, write: if (request.auth != null && request.auth.uid == userId) || isAdmin();
-    }
-    
+    // Roles Collection Rules
     match /roles/{userId} {
-      // Only admins can see who has roles. Clients cannot write roles.
-      allow get: if isAdmin();
-      allow list, create, update, delete: if false;
+      // A user can read their own role document (important for the isAdmin() check to work for everyone).
+      // Admins can read any role document.
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      
+      // WRITE: Only admins can write to the roles collection.
+      allow write: if isAdmin();
+    }
+
+    // Users Collection Rules
+    match /users/{userId} {
+      // A user can read/update their own profile. Admins can read any profile.
+      allow read, update: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      // Admins can list all users for the admin panel.
+      allow list: if isAdmin();
+      // CREATE is handled by a secure transaction in the backend.
+    }
+
+    // Usernames Collection Rules
+    match /usernames/{username} {
+        // Anyone can check if a username exists during signup.
+        allow read: if true;
+        // Only an authenticated user can claim their own username during signup.
+        allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
     }
   }
 }
