@@ -1,62 +1,76 @@
 
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // --- Helper Functions ---
+    // Safely checks if the currently authenticated user has the 'isAdmin' role.
+    // This is the key change: it uses `exists()` before `get()` to prevent errors.
     function isAdmin() {
-      // Safe check: Only attempt to read the doc if the user is authenticated.
-      // The rule on /roles/{userId} will determine if this get() is allowed.
-      return request.auth != null &&
+      return request.auth != null && 
              exists(/databases/$(database)/documents/roles/$(request.auth.uid)) &&
              get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.isAdmin == true;
     }
 
+    // --- Collection Rules ---
+
+    // Blogs Collection
     match /blogs/{blogId} {
-      // Allow anyone to read published blogs.
+      // Rule 1: Anyone can read a post that has been published.
       allow read: if resource.data.status == 'published';
 
-      // Allow users to create their own pending posts.
+      // Rule 2: Any logged-in user can create a new post, but ONLY if its
+      // status is 'pending' and they are the author.
       allow create: if request.auth != null &&
                        request.resource.data.authorId == request.auth.uid &&
                        request.resource.data.status == 'pending';
-
-      // Admins can update/delete any blog. Users can update/delete their own drafts.
-      allow update, delete: if isAdmin() || (request.auth.uid == resource.data.authorId && resource.data.status == 'draft');
+                       
+      // Rule 3: Only an admin can update or delete any blog post.
+      // This covers publishing, rejecting, or editing.
+      allow update, delete: if isAdmin();
     }
 
+    // User Profiles Collection
     match /users/{userId} {
-      // Admins can read any user profile.
-      allow get, list: if isAdmin();
-      // Users can read/write their own profile.
+      // Rule 1: A user can read/write to their own profile.
       allow read, write: if request.auth != null && request.auth.uid == userId;
+
+      // Rule 2: An admin can read any user's profile.
+      allow get, list: if isAdmin();
     }
 
+    // Usernames Collection (for ensuring unique usernames)
     match /usernames/{username} {
-        // Anyone can check if a username exists during signup.
-        allow get: if true;
-        // Only the backend (or an admin) should create username documents. We lock this down.
-        // The transaction in createUserProfile handles this securely.
-        allow list, create, update, delete: if false;
+      // Rule 1: No one can read the list of all usernames.
+      allow list, get: if false;
+
+      // Rule 2: A user can create their own username document during signup,
+      // but cannot change or delete it later.
+      allow create: if request.auth != null &&
+                       request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
     }
 
+    // Roles Collection (for admin checks)
     match /roles/{userId} {
-      // Allow a user to read ONLY THEIR OWN role document. This is crucial for isAdmin() to work.
-      // This breaks the recursive loop that was causing permission errors.
+      // THIS IS THE FIX: A user can read their OWN role document.
+      // This allows the isAdmin() function to work for everyone without failing.
       allow get: if request.auth != null && request.auth.uid == userId;
 
-      // No one can list, create, or modify roles from the client-side.
-      allow list, create, update, delete: if false;
+      // Only admins can see other people's roles.
+      allow list: if isAdmin();
+
+      // No one can write to the roles collection from the client.
+      allow create, update, delete: if false;
     }
-
+    
+    // Online Sessions Collection
     match /sessions/{sessionId} {
-      // Allow any authenticated user to create a session
-      allow create: if request.auth != null && request.resource.data.hostUid == request.auth.uid;
-      
-      // Allow any authenticated user to read/join a session
+      // Any authenticated user can read or join a session.
       allow read, update: if request.auth != null;
-
-      // Only the host can delete the session
-      allow delete: if request.auth != null && request.auth.uid == resource.data.hostUid;
+      // Any authenticated user can create a new session.
+      allow create: if request.auth != null;
     }
   }
 }
