@@ -1,3 +1,4 @@
+
 import { notFound } from 'next/navigation';
 import { getBlogBySlug } from '@/lib/blogs';
 import { format } from 'date-fns';
@@ -41,7 +42,7 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
              <div className="flex items-center gap-2">
                 <Calendar size={16} />
                 <span>
-                   {blog.publishedAt ? format(blog.publishedAt.toDate(), 'PPP') : format(blog.createdAt.toDate(), 'PPP')}
+                   {blog.publishedAt ? format(new Date(blog.publishedAt), 'PPP') : format(new Date(blog.createdAt), 'PPP')}
                 </span>
             </div>
         </div>

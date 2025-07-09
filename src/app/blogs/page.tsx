@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -73,7 +74,7 @@ export default function BlogsPage() {
                                         <span>{blog.authorName}</span>
                                         <span>•</span>
                                         <span>
-                                            {blog.publishedAt ? format(blog.publishedAt.toDate(), 'PPP') : format(blog.createdAt.toDate(), 'PPP')}
+                                            {blog.publishedAt ? format(new Date(blog.publishedAt), 'PPP') : format(new Date(blog.createdAt), 'PPP')}
                                         </span>
                                     </div>
                                 </CardDescription>

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -75,7 +76,7 @@ export default function AdminBlogsPage() {
             <TableRow key={post.id}>
               <TableCell className="font-medium">{post.title}</TableCell>
               <TableCell>{post.authorName}</TableCell>
-              <TableCell>{format(post.createdAt.toDate(), 'PPP')}</TableCell>
+              <TableCell>{format(new Date(post.createdAt), 'PPP')}</TableCell>
               <TableCell><Badge variant={post.status === 'published' ? 'default' : 'secondary'}>{post.status}</Badge></TableCell>
               <TableCell className="text-right space-x-2">
                 {isPendingTab ? (

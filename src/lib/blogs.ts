@@ -11,6 +11,8 @@ import {
   getDocs,
   doc,
   updateDoc,
+  type DocumentSnapshot,
+  type DocumentData,
 } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 
@@ -23,8 +25,8 @@ export interface BlogPost {
   authorName: string;
   authorAvatar?: string;
   status: 'draft' | 'pending' | 'published' | 'rejected';
-  createdAt: any; // Firestore Timestamp
-  publishedAt?: any;
+  createdAt: string; // ISO String
+  publishedAt?: string | null; // ISO String or null
 }
 
 // Function to generate a URL-friendly slug
@@ -42,6 +44,28 @@ export interface AuthorInfo {
   displayName: string | null;
   photoURL: string | null;
 }
+
+// Helper function to serialize a blog post document
+const serializePost = (docSnap: DocumentSnapshot<DocumentData>): BlogPost => {
+    const data = docSnap.data();
+    if (!data) {
+        throw new Error(`Document with id ${docSnap.id} has no data.`);
+    }
+
+    return {
+        id: docSnap.id,
+        title: data.title,
+        slug: data.slug,
+        content: data.content,
+        authorId: data.authorId,
+        authorName: data.authorName,
+        authorAvatar: data.authorAvatar,
+        status: data.status,
+        createdAt: data.createdAt?.toDate().toISOString() || new Date().toISOString(), // Fallback to now
+        publishedAt: data.publishedAt ? data.publishedAt.toDate().toISOString() : null,
+    } as BlogPost;
+};
+
 
 export async function createBlogPost(
   data: { title: string; content: string },
@@ -62,7 +86,7 @@ export async function createBlogPost(
       authorAvatar: author.photoURL || '',
       status: status,
       createdAt: serverTimestamp(),
-      publishedAt: null, // Ensure this field exists for rule validation
+      publishedAt: null, // Always include this key
     };
     
     if (status === 'published') {
@@ -88,18 +112,10 @@ export async function getPublishedBlogs(): Promise<BlogPost[]> {
     const blogsCol = collection(db, 'blogs');
     const q = query(blogsCol, where('status', '==', 'published'));
     const snapshot = await getDocs(q);
-    const blogs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as BlogPost));
+    const blogs = snapshot.docs.map(serializePost);
     
-    // Sort in code instead of in the query to avoid needing a composite index
-    blogs.sort((a, b) => {
-        if (a.publishedAt && b.publishedAt) {
-            return b.publishedAt.toMillis() - a.publishedAt.toMillis();
-        }
-        // Handle cases where publishedAt might be null or undefined
-        if (a.publishedAt) return -1;
-        if (b.publishedAt) return 1;
-        return 0;
-    });
+    // Sort by string date (ISO format is sortable)
+    blogs.sort((a, b) => (b.publishedAt || b.createdAt).localeCompare(a.publishedAt || a.createdAt));
     return blogs;
 }
 
@@ -107,15 +123,9 @@ export async function getPendingBlogs(): Promise<BlogPost[]> {
     const blogsCol = collection(db, 'blogs');
     const q = query(blogsCol, where('status', '==', 'pending'));
     const snapshot = await getDocs(q);
-    const blogs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as BlogPost));
+    const blogs = snapshot.docs.map(serializePost);
 
-    // Sort in code
-    blogs.sort((a, b) => {
-      if (a.createdAt && b.createdAt) {
-        return b.createdAt.toMillis() - a.createdAt.toMillis();
-      }
-      return 0;
-    });
+    blogs.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     return blogs;
 }
 
@@ -128,14 +138,15 @@ export async function getBlogBySlug(slug: string): Promise<BlogPost | null> {
     if (snapshot.empty) {
         return null;
     }
-    const blog = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as BlogPost;
+    const doc = snapshot.docs[0];
+    const data = doc.data();
     
     // After fetching, filter by status in code. This avoids a composite index.
-    if (blog.status !== 'published') {
+    if (data.status !== 'published') {
       return null;
     }
 
-    return blog;
+    return serializePost(doc);
 }
 
 export async function updateBlogStatus(blogId: string, status: 'published' | 'rejected' | 'draft'): Promise<{success: boolean}> {
