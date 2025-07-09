@@ -40,6 +40,7 @@ import { COUNTRIES, COUNTRY_CODES } from '@/lib/constants';
 import { CalendarIcon, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { checkUsernameUnique, createUserProfile } from '@/lib/users';
+import { getGuestData, clearGuestData } from '@/lib/sync';
 
 
 const passwordRegex = new RegExp("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$");
@@ -148,7 +149,12 @@ export default function SignupPage() {
           birthday: values.birthday.toISOString(),
           gender: values.gender,
       };
-      await createUserProfile(userCredential.user, additionalData);
+
+      const guestData = getGuestData();
+      await createUserProfile(userCredential.user, additionalData, guestData);
+      if (guestData) {
+        clearGuestData();
+      }
       
       toast({ title: "Account Created!", description: "Welcome to Shravya Playhouse!" });
       router.push('/dashboard?new_user=true');
@@ -175,9 +181,13 @@ export default function SignupPage() {
           country: values.country,
           birthday: values.birthday.toISOString(),
           gender: values.gender,
-          // Other details like email/phone are already on the user object
         };
-        await createUserProfile(completingUser, additionalData);
+        
+        const guestData = getGuestData();
+        await createUserProfile(completingUser, additionalData, guestData);
+        if (guestData) {
+          clearGuestData();
+        }
         
         toast({ title: "Profile Complete!", description: "Welcome to Shravya Playhouse!" });
         setCompletingUser(null);
@@ -191,22 +201,35 @@ export default function SignupPage() {
       }
   }
 
+  const handleAuthError = (error: any) => {
+    if (error.code === 'auth/popup-closed-by-user') {
+      return; // Do nothing, user cancelled intentionally
+    }
+    console.error("Authentication error", error);
+    toast({
+      variant: "destructive",
+      title: "Sign Up Failed",
+      description: error.message || "An unexpected error occurred.",
+    });
+  };
+
   const handleGoogleLogin = async () => {
     setIsLoading(true);
     try {
       const result = await signInWithPopup(auth, googleProvider);
       const additionalInfo = getAdditionalUserInfo(result);
+      
       if (additionalInfo?.isNewUser) {
-          setCompletingUser(result.user);
+        setCompletingUser(result.user);
       } else {
+        // This is a login to an existing account, not a new signup.
+        // The sync dialog should appear on the login page for this case.
+        // For now, we just log them in. The user should ideally use the login page.
         toast({ title: "Welcome Back!", description: "You've been successfully logged in." });
         router.push('/dashboard');
       }
     } catch (error: any) {
-      console.error("Error signing in with Google", error);
-       if (error.code !== 'auth/popup-closed-by-user') {
-        toast({ variant: "destructive", title: "Google Sign In Failed", description: error.message });
-      }
+      handleAuthError(error);
     } finally {
       setIsLoading(false);
     }

@@ -2,7 +2,8 @@
 'use client';
 
 import { db, type User } from './firebase';
-import { doc, setDoc, getDocs, collection, query, where, serverTimestamp, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDocs, collection, query, where, serverTimestamp, getDoc, writeBatch } from 'firebase/firestore';
+import type { GuestData } from './sync';
 
 export interface UserProfile {
     uid: string;
@@ -52,14 +53,16 @@ export async function checkUsernameUnique(username: string, userIdToExclude?: st
 
 /**
  * Creates or updates a user profile document in Firestore.
+ * Now optionally accepts guest data to sync on creation.
  * @param user The Firebase User object.
  * @param additionalData An object containing additional profile data to store.
+ * @param guestData Optional guest data to sync to the new profile.
  */
-export async function createUserProfile(user: User, additionalData: any) {
+export async function createUserProfile(user: User, additionalData: any, guestData?: GuestData | null) {
   if (!user) return;
   const userRef = doc(db, 'users', user.uid);
-  
-  const data = {
+
+  const data: any = {
     uid: user.uid,
     displayName: user.displayName,
     email: user.email,
@@ -67,10 +70,74 @@ export async function createUserProfile(user: User, additionalData: any) {
     createdAt: serverTimestamp(),
     ...additionalData
   };
+
+  // If there's guest data, add it to the initial profile document
+  if (guestData) {
+    data.sPoints = guestData.sPoints;
+    data.sCoins = guestData.sCoins;
+  }
   
-  // Use setDoc with merge: true to create or update the document without overwriting existing fields
-  // that might have been set by other processes (e.g., Google sign-in).
-  return setDoc(userRef, data, { merge: true });
+  await setDoc(userRef, data, { merge: true });
+
+  // If there's guest data, also sync stats and history to subcollections
+  if (guestData) {
+    const batch = writeBatch(db);
+    
+    // Sync Game Stats
+    if (guestData.gameStats && guestData.gameStats.length > 0) {
+      const statsRef = collection(db, 'users', user.uid, 'gameStats');
+      guestData.gameStats.forEach(stat => {
+        const statDocRef = doc(statsRef, stat.gameId);
+        batch.set(statDocRef, stat);
+      });
+    }
+
+    // Sync Reward History
+    if (guestData.rewardHistory && guestData.rewardHistory.length > 0) {
+      const historyRef = collection(db, 'users', user.uid, 'rewardHistory');
+      guestData.rewardHistory.forEach(event => {
+        const eventDocRef = doc(historyRef, event.id);
+        batch.set(eventDocRef, event);
+      });
+    }
+
+    if (guestData.gameStats.length > 0 || guestData.rewardHistory.length > 0) {
+        await batch.commit();
+    }
+  }
+}
+
+/**
+ * Overwrites an existing user's cloud data with local guest data.
+ * @param userId The UID of the user whose data will be overwritten.
+ * @param guestData The local guest data to sync.
+ */
+export async function syncGuestDataToProfile(userId: string, guestData: GuestData): Promise<void> {
+    if (!userId) return;
+    const batch = writeBatch(db);
+
+    // 1. Update main user document with points and coins
+    const userRef = doc(db, 'users', userId);
+    batch.update(userRef, {
+        sPoints: guestData.sPoints,
+        sCoins: guestData.sCoins,
+    });
+
+    // 2. Overwrite game stats
+    const statsRef = collection(db, 'users', userId, 'gameStats');
+    guestData.gameStats.forEach(stat => {
+        const statDocRef = doc(statsRef, stat.gameId);
+        batch.set(statDocRef, stat); // Use set to overwrite completely
+    });
+
+    // 3. Overwrite reward history
+    const historyRef = collection(db, 'users', userId, 'rewardHistory');
+    guestData.rewardHistory.forEach(event => {
+        const eventDocRef = doc(historyRef, event.id);
+        batch.set(eventDocRef, event); // Use set to overwrite completely
+    });
+
+    await batch.commit();
 }
 
 /**

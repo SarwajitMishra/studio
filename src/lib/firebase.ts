@@ -1,4 +1,5 @@
 
+
 import { initializeApp, getApp, getApps, type FirebaseOptions } from 'firebase/app';
 import {
   getAuth,
@@ -12,7 +13,8 @@ import {
   createUserWithEmailAndPassword,
   RecaptchaVerifier,
   signInWithPhoneNumber,
-  getAdditionalUserInfo
+  getAdditionalUserInfo,
+  type UserCredential,
 } from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
 import { getFirestore } from 'firebase/firestore';
@@ -71,4 +73,4 @@ export {
   signInWithPhoneNumber,
   getAdditionalUserInfo
 };
-export type { User };
+export type { User, UserCredential };
