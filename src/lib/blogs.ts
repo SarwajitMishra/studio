@@ -10,7 +10,6 @@ import {
   getDocs,
   doc,
   updateDoc,
-  orderBy,
 } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 import { revalidatePath } from 'next/cache';
@@ -76,27 +75,56 @@ export async function createBlogPost(
 
 export async function getPublishedBlogs(): Promise<BlogPost[]> {
     const blogsCol = collection(db, 'blogs');
-    const q = query(blogsCol, where('status', '==', 'published'), orderBy('publishedAt', 'desc'));
+    const q = query(blogsCol, where('status', '==', 'published'));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as BlogPost));
+    const blogs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as BlogPost));
+    
+    // Sort in code instead of in the query to avoid needing a composite index
+    blogs.sort((a, b) => {
+        if (a.publishedAt && b.publishedAt) {
+            return b.publishedAt.toMillis() - a.publishedAt.toMillis();
+        }
+        // Handle cases where publishedAt might be null or undefined
+        if (a.publishedAt) return -1;
+        if (b.publishedAt) return 1;
+        return 0;
+    });
+    return blogs;
 }
 
 export async function getPendingBlogs(): Promise<BlogPost[]> {
     const blogsCol = collection(db, 'blogs');
-    const q = query(blogsCol, where('status', '==', 'pending'), orderBy('createdAt', 'desc'));
+    const q = query(blogsCol, where('status', '==', 'pending'));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as BlogPost));
+    const blogs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as BlogPost));
+
+    // Sort in code
+    blogs.sort((a, b) => {
+      if (a.createdAt && b.createdAt) {
+        return b.createdAt.toMillis() - a.createdAt.toMillis();
+      }
+      return 0;
+    });
+    return blogs;
 }
 
 export async function getBlogBySlug(slug: string): Promise<BlogPost | null> {
     const blogsCol = collection(db, 'blogs');
-    const q = query(blogsCol, where('slug', '==', slug), where('status', '==', 'published'));
+    // Query only by slug, as it should be unique.
+    const q = query(blogsCol, where('slug', '==', slug));
     const snapshot = await getDocs(q);
+    
     if (snapshot.empty) {
         return null;
     }
-    const docData = snapshot.docs[0];
-    return { id: docData.id, ...docData.data() } as BlogPost;
+    const blog = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as BlogPost;
+    
+    // After fetching, filter by status in code. This avoids a composite index.
+    if (blog.status !== 'published') {
+      return null;
+    }
+
+    return blog;
 }
 
 export async function updateBlogStatus(blogId: string, status: 'published' | 'rejected' | 'draft'): Promise<{success: boolean}> {
@@ -109,6 +137,7 @@ export async function updateBlogStatus(blogId: string, status: 'published' | 're
         await updateDoc(blogRef, updateData);
         revalidatePath('/admin/blogs');
         revalidatePath('/blogs');
+        revalidatePath('/blogs/[slug]'); // Revalidate individual blog pages too
         return { success: true };
     } catch (error) {
         console.error("Error updating blog status:", error);
