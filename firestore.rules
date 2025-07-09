@@ -1,61 +1,63 @@
 
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper function to safely check for admin role.
-    // It verifies the user is authenticated, the role document exists,
-    // and the isAdmin flag is true. This prevents errors on non-existent docs.
+    
+    // Helper function to safely check for admin status
     function isAdmin() {
-      return request.auth != null &&
+      // The user must be authenticated.
+      // Their role document must exist.
+      // The isAdmin field in their role document must be true.
+      return request.auth != null && 
              exists(/databases/$(database)/documents/roles/$(request.auth.uid)) &&
              get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.isAdmin == true;
     }
 
     match /blogs/{blogId} {
-      // Rule 1: Allow anyone to read published blog posts.
+      // Admins can perform any action on any blog post.
+      allow read, write: if isAdmin();
+
+      // For non-admins:
+      // Allow reading of any blog post that has the status 'published'.
       allow read: if resource.data.status == 'published';
 
-      // Rule 2: Allow authenticated users to create their own 'pending' posts.
-      // This is the key rule for user submissions.
+      // Allow authenticated users to create a 'pending' post for themselves.
       allow create: if request.auth != null &&
                        request.resource.data.authorId == request.auth.uid &&
-                       request.resource.data.status == 'pending' &&
-                       // Ensure the publishedAt field is null on creation
-                       request.resource.data.publishedAt == null;
-
-      // Rule 3: Allow admins to perform any write operation.
-      // This covers creating published posts, updating status, and deleting.
-      allow write: if isAdmin();
+                       request.resource.data.status == 'pending';
     }
 
     match /users/{userId} {
-      // Rule 4: A user can read/write their own profile. Admins can read any.
-      allow read: if (request.auth != null && request.auth.uid == userId) || isAdmin();
-      allow write: if request.auth != null && request.auth.uid == userId;
+      // Admins can read/write any user profile.
+      // Users can read/write their own profile.
+      allow read, write: if (request.auth != null && request.auth.uid == userId) || isAdmin();
     }
-
+    
     match /usernames/{username} {
-      // Rule 5: Only allow creation of a username document; prevent changes.
-      // This is used to ensure usernames are unique.
-      allow read, update, delete: if false;
-      allow create: if true;
+      // Anyone can check if a username exists (read).
+      allow read: if true;
+      // Only the corresponding user can create their username document during signup.
+      // Admins can also create/delete them for maintenance.
+      allow create: if (request.auth != null && request.resource.data.uid == request.auth.uid) || isAdmin();
+      allow write: if isAdmin();
     }
 
     match /roles/{userId} {
-      // Rule 6: FIX - Allow a user to read THEIR OWN role document.
-      // This is crucial to break the recursive loop in the isAdmin() check.
-      // Admins can also read any role document.
-      allow get: if (request.auth != null && request.auth.uid == userId) || isAdmin();
+      // A user can ONLY read their OWN role document. This is required for the 
+      // isAdmin() function to work for everyone without causing a recursive error.
+      allow get: if request.auth != null && request.auth.uid == userId;
 
-      // Rule 7: Prevent clients from listing or writing roles.
+      // No client can list, create, update, or delete roles. This must be done securely.
       allow list, create, update, delete: if false;
     }
-
-     match /sessions/{sessionId} {
-      // Rule 8: Authenticated users can read/write sessions.
-      allow read, write: if request.auth != null;
+    
+    match /sessions/{sessionId} {
+      // Anyone authenticated can read a session to see who is in it.
+      allow read: if request.auth != null;
+      // Only an authenticated user can create a session.
+      allow create: if request.auth != null && request.resource.data.hostUid == request.auth.uid;
+      // Participants and the host can update the session (e.g., change status, add participants).
+      allow update: if request.auth != null && (request.resource.data.hostUid == request.auth.uid || request.auth.uid in resource.data.participants.map(p => p.uid));
     }
   }
 }
