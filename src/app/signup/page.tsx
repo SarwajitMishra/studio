@@ -88,6 +88,18 @@ export default function SignupPage() {
     path: ["confirmPassword"],
   }), []);
 
+  const profileFormSchema = useMemo(() => z.object({
+    username: z.string()
+      .min(3, "Username must be at least 3 characters.")
+      .max(20, "Username must be 20 characters or less.")
+      .regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores."),
+    name: z.string().min(2, "Name must be at least 2 characters."),
+    country: z.string().min(1, "Please select a country."),
+    birthday: z.date({ required_error: "A date of birth is required." })
+      .refine((date) => date <= subYears(new Date(), 3), "You must be at least 3 years old."),
+    gender: z.enum(["male", "female", "other", "prefer_not_to_say"]),
+  }), []);
+
   const emailForm = useForm<z.infer<typeof emailFormSchema>>({
     resolver: zodResolver(emailFormSchema),
     mode: 'onBlur',
@@ -103,18 +115,6 @@ export default function SignupPage() {
       gender: "prefer_not_to_say",
     },
   });
-
-  const profileFormSchema = useMemo(() => z.object({
-    username: z.string()
-      .min(3, "Username must be at least 3 characters.")
-      .max(20, "Username must be 20 characters or less.")
-      .regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores."),
-    name: z.string().min(2, "Name must be at least 2 characters."),
-    country: z.string().min(1, "Please select a country."),
-    birthday: z.date({ required_error: "A date of birth is required." })
-      .refine((date) => date <= subYears(new Date(), 3), "You must be at least 3 years old."),
-    gender: z.enum(["male", "female", "other", "prefer_not_to_say"]),
-  }), []);
 
   const profileForm = useForm<z.infer<typeof profileFormSchema>>({
     resolver: zodResolver(profileFormSchema),
@@ -343,9 +343,9 @@ export default function SignupPage() {
                           <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                         </Button>
                       </FormControl></PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
+                      <PopoverContent className="w-auto p-0 rounded-xl shadow-lg border" align="start">
                         <Calendar
-                          mode="single" captionLayout="dropdown-buttons"
+                          mode="single" captionLayout="dropdown"
                           fromYear={1920} toYear={subYears(new Date(), 3).getFullYear()}
                           selected={field.value} onSelect={field.onChange}
                           disabled={(date) => date > subYears(new Date(), 3) || date < new Date("1900-01-01")}
@@ -515,10 +515,10 @@ export default function SignupPage() {
                           <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                         </Button>
                       </FormControl></PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
+                      <PopoverContent className="w-auto p-0 rounded-xl shadow-lg border" align="start">
                         <Calendar
                           mode="single"
-                          captionLayout="dropdown-buttons"
+                          captionLayout="dropdown"
                           fromYear={1920}
                           toYear={subYears(new Date(), 3).getFullYear()}
                           selected={field.value}
