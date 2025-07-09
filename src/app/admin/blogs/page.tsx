@@ -80,7 +80,7 @@ export default function AdminBlogsPage() {
             </CardHeader>
             <CardContent>
                <p className="text-center text-muted-foreground py-8">No pending posts to review.</p>
-            </Content>
+            </CardContent>
           </Card>
         </TabsContent>
          <TabsContent value="drafts">
