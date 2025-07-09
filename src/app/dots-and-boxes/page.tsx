@@ -69,8 +69,8 @@ export default function DotsAndBoxesPage() {
   const [boxes, setBoxes] = useState<Box[]>([]);
   const [scores, setScores] = useState({ P1: 0, P2: 0 });
   const [currentPlayer, setCurrentPlayer] = useState<PlayerId>('P1');
-  const [hasExtraTurn, setHasExtraTurn] = useState(false);
   const [winner, setWinner] = useState<PlayerId | 'draw' | null>(null);
+  const [turn, setTurn] = useState(0);
 
   const [isCalculatingReward, setIsCalculatingReward] = useState(false);
   const [lastReward, setLastReward] = useState<{ points: number; coins: number; stars: number } | null>(null);
@@ -89,6 +89,7 @@ export default function DotsAndBoxesPage() {
     setGameMode(mode);
     setDifficulty(diff);
     setGameState('playing');
+    setTurn(0);
   }, []);
 
   const handleLineClick = useCallback((clickedLine: Line) => {
@@ -110,8 +111,10 @@ export default function DotsAndBoxesPage() {
 
             if(top && bottom && left && right){
                 const boxIndex = newBoxes.findIndex(b => b.row === r && b.col === c);
-                newBoxes[boxIndex] = { ...newBoxes[boxIndex], owner: currentPlayer };
-                boxesCompleted++;
+                if (boxIndex !== -1) {
+                  newBoxes[boxIndex] = { ...newBoxes[boxIndex], owner: currentPlayer };
+                  boxesCompleted++;
+                }
             }
         }
     }
@@ -121,11 +124,11 @@ export default function DotsAndBoxesPage() {
 
     if (boxesCompleted > 0) {
       setScores(s => ({ ...s, [currentPlayer]: s[currentPlayer] + boxesCompleted }));
-      setHasExtraTurn(true);
+      // Extra turn is handled by NOT changing the player
     } else {
-      setHasExtraTurn(false);
       setCurrentPlayer(p => (p === 'P1' ? 'P2' : 'P1'));
     }
+    setTurn(t => t + 1);
   }, [gameState, lines, boxes, currentPlayer, boardSize]);
   
   // Pure function for AI to check potential moves
@@ -210,13 +213,13 @@ export default function DotsAndBoxesPage() {
 
   // AI Turn Effect
   useEffect(() => {
-    if (gameMode === 'ai' && currentPlayer === 'P2' && gameState === 'playing' && !hasExtraTurn) {
+    if (gameMode === 'ai' && currentPlayer === 'P2' && gameState === 'playing') {
         const aiMoveTimeout = setTimeout(() => {
             makeAIMove();
         }, 800);
         return () => clearTimeout(aiMoveTimeout);
     }
-  }, [currentPlayer, gameState, gameMode, hasExtraTurn, makeAIMove]);
+  }, [turn, gameMode, currentPlayer, gameState, makeAIMove]);
 
   // Check for game end
   useEffect(() => {
@@ -304,11 +307,11 @@ export default function DotsAndBoxesPage() {
           </AlertDialog>
           
           <div className="grid grid-cols-2 gap-4 w-full max-w-sm">
-            <Card className={cn("text-center p-3", currentPlayer === 'P1' && 'ring-2 ring-blue-500')}>
+            <Card className={cn("text-center p-3", currentPlayer === 'P1' && gameState === 'playing' && 'ring-2 ring-blue-500')}>
               <CardTitle className="text-blue-500">Player 1</CardTitle>
               <CardDescription className="text-2xl font-bold">{scores.P1}</CardDescription>
             </Card>
-            <Card className={cn("text-center p-3", currentPlayer === 'P2' && 'ring-2 ring-red-500')}>
+            <Card className={cn("text-center p-3", currentPlayer === 'P2' && gameState === 'playing' && 'ring-2 ring-red-500')}>
               <CardTitle className="text-red-500">{gameMode === 'ai' ? 'Shravya AI' : 'Player 2'}</CardTitle>
               <CardDescription className="text-2xl font-bold">{scores.P2}</CardDescription>
             </Card>
@@ -317,7 +320,7 @@ export default function DotsAndBoxesPage() {
           <div className="relative p-2 bg-muted rounded-lg" style={{ width: "clamp(300px, 90vw, 400px)", height: "clamp(300px, 90vw, 400px)" }}>
             <div className="grid w-full h-full" style={{gridTemplateColumns: `repeat(${boardSize}, 1fr)`, gridTemplateRows: `repeat(${boardSize}, 1fr)`}}>
                {boxes.map((box, i) => (
-                    <div key={i} className={cn("w-full h-full flex items-center justify-center", box.owner === 'P1' && 'bg-blue-500/30', box.owner === 'P2' && 'bg-red-500/30')}>
+                    <div key={i} className={cn("w-full h-full flex items-center justify-center transition-colors duration-300", box.owner === 'P1' && 'bg-blue-500/30', box.owner === 'P2' && 'bg-red-500/30')}>
                       {box.owner && <span className={cn("text-4xl font-bold", box.owner === 'P1' ? 'text-blue-600' : 'text-red-600')}>{box.owner}</span>}
                     </div>
                 ))}
@@ -333,7 +336,7 @@ export default function DotsAndBoxesPage() {
               {lines.map((line, i) => (
                   <button key={i}
                     onClick={() => handleLineClick(line)}
-                    disabled={gameState !== 'playing' || (gameMode === 'ai' && currentPlayer === 'P2')}
+                    disabled={!!line.owner || gameState !== 'playing' || (gameMode === 'ai' && currentPlayer === 'P2')}
                     className={cn(
                         "absolute -translate-x-1/2 -translate-y-1/2 z-10",
                         line.type === 'horizontal' ? 'w-[calc(100%/var(--size)-8px)] h-2' : 'w-2 h-[calc(100%/var(--size)-8px)]',
