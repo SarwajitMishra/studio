@@ -129,8 +129,8 @@ export default function SignupPage() {
   }, [completingUser, profileForm]);
 
   async function onEmailSubmit(values: z.infer<typeof emailFormSchema>) {
-    console.log("onEmailSubmit triggered.");
     setIsLoading(true);
+    console.log("Signup submission started with values:", values);
     
     const isUnique = await checkUsernameUnique(values.username);
     if (!isUnique) {
@@ -139,11 +139,14 @@ export default function SignupPage() {
         message: "This username is already taken. Please choose another.",
       });
       setIsLoading(false);
+      console.log(`Username "${values.username}" is not unique. Halting signup.`);
       return;
     }
+    console.log(`Username "${values.username}" is unique. Proceeding...`);
 
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+      
       await updateProfile(userCredential.user, { displayName: values.name });
 
       const additionalData = {
@@ -163,12 +166,20 @@ export default function SignupPage() {
       toast({ title: "Account Created!", description: "Welcome to Shravya Playhouse!" });
       router.push('/dashboard?new_user=true');
     } catch (error: any) {
-      console.error("Error signing up with email:", error);
-      let description = error.message || "An unexpected error occurred.";
-      if (error.code === 'auth/operation-not-allowed') {
-        description = "Email/Password sign-up is not enabled. Please enable it in the Firebase console.";
+      console.error("Error signing up:", error);
+
+      if (error.code === 'auth/email-already-in-use') {
+        emailForm.setError("email", {
+          type: "manual",
+          message: "This email address is already in use. Please log in or use a different email.",
+        });
+      } else {
+        let description = error.message || "An unexpected error occurred.";
+        if (error.code === 'auth/operation-not-allowed') {
+          description = "Email/Password sign-up is not enabled. Please enable it in the Firebase console.";
+        }
+        toast({ variant: "destructive", title: "Sign Up Failed", description });
       }
-      toast({ variant: "destructive", title: "Sign Up Failed", description });
     } finally {
       setIsLoading(false);
     }
@@ -176,7 +187,6 @@ export default function SignupPage() {
 
   async function onProfileSubmit(values: z.infer<typeof profileFormSchema>) {
       if (!completingUser) return;
-      console.log("onProfileSubmit triggered for social/phone signup.");
       setIsLoading(true);
 
       const isUnique = await checkUsernameUnique(values.username);
