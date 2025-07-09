@@ -60,7 +60,10 @@ export async function checkUsernameUnique(username: string, userIdToExclude?: st
  * @param guestData Optional guest data to sync to the new profile.
  */
 export async function createUserProfile(user: User, additionalData: any, guestData?: GuestData | null) {
-  if (!user) return;
+  if (!user) {
+    console.error("createUserProfile called with no user object.");
+    return;
+  }
   const userRef = doc(db, 'users', user.uid);
 
   const data: any = {
@@ -72,16 +75,19 @@ export async function createUserProfile(user: User, additionalData: any, guestDa
     ...additionalData
   };
 
-  // If there's guest data, add it to the initial profile document
-  if (guestData) {
-    data.sPoints = guestData.sPoints;
-    data.sCoins = guestData.sCoins;
+  try {
+    await setDoc(userRef, data, { merge: true });
+    console.log(`Successfully created or merged profile for user ${user.uid}. The 'users' collection should now be visible in Firestore.`);
+  } catch (error) {
+    console.error(`Failed to create profile for user ${user.uid}. This is likely a Firestore security rule issue.`, error);
+    // Re-throwing the error so the calling function can catch it and show a user-facing message.
+    throw new Error("Could not save user profile to the database. Please check your Firestore security rules.");
   }
-  
-  await setDoc(userRef, data, { merge: true });
+
 
   // If there's guest data, also sync stats and history to subcollections
   if (guestData) {
+    console.log(`Syncing guest data for user ${user.uid}...`);
     const batch = writeBatch(db);
     
     // Sync Game Stats
@@ -102,8 +108,16 @@ export async function createUserProfile(user: User, additionalData: any, guestDa
       });
     }
 
-    if ((guestData.gameStats && guestData.gameStats.length > 0) || (guestData.rewardHistory && guestData.rewardHistory.length > 0)) {
-        await batch.commit();
+    // Only commit the batch if there's actually something to write.
+    const hasDataToCommit = (guestData.gameStats && guestData.gameStats.length > 0) || (guestData.rewardHistory && guestData.rewardHistory.length > 0);
+
+    if (hasDataToCommit) {
+        try {
+            await batch.commit();
+            console.log(`Guest data sync complete for ${user.uid}.`);
+        } catch (error) {
+            console.error(`Failed to sync subcollection guest data for user ${user.uid}:`, error);
+        }
     }
   }
 }
@@ -153,7 +167,7 @@ export async function syncLocalDataToFirebase() {
     }
     const guestData = getGuestData();
     if (guestData) {
-        await syncGuestDataToProfile(user.uid, guestData);
+        await createUserProfile(user, {}, guestData);
     }
 }
 
