@@ -4,45 +4,46 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Helper function to safely check for admin role
     function isAdmin() {
-      return request.auth != null && 
+      // Safely checks if a user is an admin.
+      return request.auth != null &&
              exists(/databases/$(database)/documents/roles/$(request.auth.uid)) &&
              get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.isAdmin == true;
     }
-    
-    // Rules for user profiles
-    match /users/{userId} {
-      allow read, write: if request.auth.uid == userId || isAdmin();
+
+    match /blogs/{blogId} {
+      // Admins have full access.
+      allow read, write: if isAdmin();
+      
+      // Non-admins can read published blogs.
+      allow read: if resource.data.status == 'published';
+
+      // Any authenticated user can create a PENDING post for themselves.
+      allow create: if request.auth != null &&
+                      request.resource.data.authorId == request.auth.uid &&
+                      request.resource.data.status == 'pending';
     }
     
-    // Rules for roles collection (very restrictive)
+    match /users/{userId} {
+      // A user can read/write their own profile. Admins can access any.
+      allow read, write: if (request.auth != null && request.auth.uid == userId) || isAdmin();
+    }
+    
     match /roles/{userId} {
-      // Allow a user to read their own role document, or an admin to read any.
-      // This is crucial for the isAdmin() function to work for all users without failing.
-      allow get: if request.auth.uid == userId || isAdmin();
-      // No one can list, create, update, or delete roles from the client.
+      // A user can read their own role document to allow the isAdmin() check to function.
+      // Admins can also read any role document.
+      allow get: if (request.auth != null && request.auth.uid == userId) || isAdmin();
+      
+      // No one can list all roles, or create/modify/delete them from the client.
       allow list, create, update, delete: if false;
     }
 
-    // Rules for blogs
-    match /blogs/{blogId} {
-      // Admins have full read/write access to all blog posts.
-      // This rule is a catch-all for admin operations.
-      allow read, write: if isAdmin();
-
-      // For non-admins:
-      // Allow reading of any blog post that is 'published'.
-      // Also allow an author to read their own non-published posts.
-      allow read: if !isAdmin() && 
-                     (resource.data.status == 'published' || 
-                      (request.auth != null && request.auth.uid == resource.data.authorId));
-      
-      // Allow creation of a post, but ONLY if the status is 'pending' and the authorId matches.
-      // This is the main fix for the user's reported permission issue.
-      allow create: if !isAdmin() &&
-                       request.auth.uid == request.resource.data.authorId &&
-                       request.resource.data.status == 'pending';
+    match /sessions/{sessionId} {
+      // Allow any authenticated user to create a session document.
+      allow create: if request.auth != null;
+      // Allow any authenticated user to read or join (update) a session.
+      // More specific rules (like checking for game state) could be added here.
+      allow read, update: if request.auth != null;
     }
   }
 }
