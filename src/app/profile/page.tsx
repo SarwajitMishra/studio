@@ -233,6 +233,7 @@ export default function ProfilePage() {
     const handleSelectedAvatarChange = (avatarSrc: string) => {
       setSelectedAvatar(avatarSrc);
       localStorage.setItem(LOCAL_STORAGE_AVATAR_KEY, avatarSrc);
+      window.dispatchEvent(new CustomEvent('profileUpdated'));
       if (currentUser) {
         handleAutoSaveAvatar(avatarSrc);
       } else {
@@ -257,6 +258,7 @@ export default function ProfilePage() {
         try {
           await updateProfile(currentUser, { displayName: editingUserName });
           localStorage.setItem(LOCAL_STORAGE_USER_NAME_KEY, editingUserName);
+          window.dispatchEvent(new CustomEvent('profileUpdated'));
           toast({ title: "Username Auto-Saved!", description: `Your display name is now ${editingUserName}.` });
         } catch (error: any) {
           console.error("Error auto-saving username:", error);

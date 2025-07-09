@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -13,11 +14,17 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Settings, UserCircle, Home, Store, BookOpen, Bell, BookText, LogOut, Shield } from 'lucide-react';
+import { Settings, Home, Store, BookOpen, Bell, BookText, LogOut, Shield } from 'lucide-react';
 import { SETTINGS_MENU_ITEMS } from '@/lib/constants';
 import { auth, signOut as firebaseSignOut, onAuthStateChanged, type User } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { isUserAdmin } from '@/lib/users';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+
+const DEFAULT_AVATAR_SRC = '/images/avatars/modern_girl.png';
+const DEFAULT_USER_NAME = "Kiddo";
+const LOCAL_STORAGE_AVATAR_KEY = 'shravyaPlayhouse_avatar';
+const LOCAL_STORAGE_USER_NAME_KEY = 'shravyaPlayhouse_userName';
 
 interface NavigationProps {
   side: 'left' | 'right';
@@ -29,18 +36,39 @@ export default function Navigation({ side }: NavigationProps) {
   const { toast } = useToast();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState(DEFAULT_AVATAR_SRC);
+  const [userName, setUserName] = useState(DEFAULT_USER_NAME);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    const updateProfileDisplay = () => {
+        const user = auth.currentUser;
+        if (user) {
+            setAvatarUrl(user.photoURL || localStorage.getItem(LOCAL_STORAGE_AVATAR_KEY) || DEFAULT_AVATAR_SRC);
+            setUserName(user.displayName || localStorage.getItem(LOCAL_STORAGE_USER_NAME_KEY) || DEFAULT_USER_NAME);
+        } else {
+            setAvatarUrl(localStorage.getItem(LOCAL_STORAGE_AVATAR_KEY) || DEFAULT_AVATAR_SRC);
+            setUserName(localStorage.getItem(LOCAL_STORAGE_USER_NAME_KEY) || DEFAULT_USER_NAME);
+        }
+    };
+
+    updateProfileDisplay();
+
+    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
       if (user) {
-        const adminStatus = await isUserAdmin(user.uid);
-        setIsAdmin(adminStatus);
+        setIsAdmin(await isUserAdmin(user.uid));
       } else {
         setIsAdmin(false);
       }
+      updateProfileDisplay();
     });
-    return () => unsubscribe();
+    
+    window.addEventListener('profileUpdated', updateProfileDisplay);
+
+    return () => {
+      unsubscribeAuth();
+      window.removeEventListener('profileUpdated', updateProfileDisplay);
+    };
   }, []);
 
   const handleLogout = async () => {
@@ -99,9 +127,16 @@ export default function Navigation({ side }: NavigationProps) {
           <Button
             variant="ghost"
             size="icon"
-            className={cn(commonButtonClasses, pathname === '/profile' && "bg-accent text-accent-foreground hover:bg-accent/90")}
+            className={cn(
+                "rounded-full p-0", // Remove padding for avatar to fill the button
+                commonButtonClasses, 
+                pathname === '/profile' && "ring-2 ring-accent ring-offset-primary ring-offset-2"
+            )}
           >
-            <UserCircle size={24} />
+            <Avatar className="h-full w-full">
+              <AvatarImage src={avatarUrl} alt={`${userName}'s avatar`} />
+              <AvatarFallback>{userName.charAt(0).toUpperCase()}</AvatarFallback>
+            </Avatar>
           </Button>
         </Link>
         
