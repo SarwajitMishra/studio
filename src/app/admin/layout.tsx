@@ -1,16 +1,19 @@
+
 "use client";
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { onAuthStateChanged } from '@/lib/firebase';
 import { auth } from '@/lib/firebase';
 import { isUserAdmin } from '@/lib/users';
 import { Loader2, ShieldCheck, Home, Users, FileText } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -38,6 +41,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
   }
 
+  const navItems = [
+      { href: "/admin", label: "Dashboard", Icon: Home },
+      { href: "/admin/users", label: "Users", Icon: Users },
+      { href: "/admin/blogs", label: "Blogs", Icon: FileText },
+  ];
+
   return (
     <div className="flex min-h-screen">
       <aside className="w-64 bg-muted/40 border-r p-4 flex-col hidden md:flex">
@@ -46,18 +55,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <h2 className="text-xl font-bold">Admin Panel</h2>
         </div>
         <nav className="flex flex-col gap-2">
-          <Link href="/admin" className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary">
-            <Home className="h-4 w-4" />
-            Dashboard
-          </Link>
-          <Link href="/admin/users" className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary">
-            <Users className="h-4 w-4" />
-            Users
-          </Link>
-          <Link href="/admin/blogs" className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary">
-            <FileText className="h-4 w-4" />
-            Blogs
-          </Link>
+            {navItems.map(item => {
+                const isActive = pathname === item.href || (item.href !== "/admin" && pathname.startsWith(item.href));
+                return (
+                    <Link 
+                        key={item.href}
+                        href={item.href} 
+                        className={cn(
+                            "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
+                            isActive && "bg-muted text-primary font-semibold"
+                        )}
+                    >
+                        <item.Icon className="h-4 w-4" />
+                        {item.label}
+                    </Link>
+                );
+            })}
         </nav>
       </aside>
       <main className="flex-1 p-6">
