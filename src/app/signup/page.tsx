@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { subYears, format } from "date-fns";
+import { subYears, format, differenceInYears } from "date-fns";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -329,25 +329,32 @@ export default function SignupPage() {
                   </SelectContent>
                 </Select><FormMessage /></FormItem>
               )} />
-               <FormField control={profileForm.control} name="birthday" render={({ field }) => (
-                <FormItem className="flex flex-col"><FormLabel>Date of birth</FormLabel><Popover>
-                  <PopoverTrigger asChild><FormControl>
-                    <Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                      {field.value ? (format(field.value, "PPP")) : (<span>Pick a date</span>)}
-                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                    </Button>
-                  </FormControl></PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single" captionLayout="dropdown-buttons"
-                      fromYear={1920} toYear={subYears(new Date(), 3).getFullYear()}
-                      selected={field.value} onSelect={field.onChange}
-                      disabled={(date) => date > subYears(new Date(), 3) || date < new Date("1900-01-01")}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover><FormMessage /></FormItem>
-              )} />
+               <FormField control={profileForm.control} name="birthday" render={({ field }) => {
+                 const age = field.value ? differenceInYears(new Date(), field.value) : null;
+                 return (
+                    <FormItem className="flex flex-col"><FormLabel>Date of birth</FormLabel><Popover>
+                      <PopoverTrigger asChild><FormControl>
+                        <Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                           {field.value ? (
+                            <span>{format(field.value, "PPP")} {age !== null && <span className="text-muted-foreground"> (Age: {age})</span>}</span>
+                          ) : (
+                            <span>Pick a date</span>
+                          )}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </FormControl></PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single" captionLayout="dropdown-buttons"
+                          fromYear={1920} toYear={subYears(new Date(), 3).getFullYear()}
+                          selected={field.value} onSelect={field.onChange}
+                          disabled={(date) => date > subYears(new Date(), 3) || date < new Date("1900-01-01")}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover><FormMessage /></FormItem>
+                 )
+                }} />
                <FormField control={profileForm.control} name="gender" render={({ field }) => (
                 <FormItem><FormLabel>Gender</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl><SelectTrigger><SelectValue placeholder="Select a gender" /></SelectTrigger></FormControl>
@@ -463,7 +470,7 @@ export default function SignupPage() {
                   <FormControl>
                     <div className="relative">
                       <Input type={showPassword ? "text" : "password"} placeholder="••••••••" {...field} className="pr-10" />
-                      <Button type="button" variant="ghost" size="icon" className="absolute right-0 top-0 h-full w-10 text-muted-foreground hover:bg-transparent" onClick={() => setShowPassword(!showPassword)} tabIndex={-1}>
+                      <Button type="button" variant="ghost" size="icon" className="absolute right-0 top-0 h-full w-10 text-muted-foreground hover:bg-transparent" onClick={() => setShowPassword(!showPassword)} tabIndex={-1} aria-label={showPassword ? "Hide password" : "Show password"}>
                           {showPassword ? <EyeOff /> : <Eye />}
                       </Button>
                     </div>
@@ -477,7 +484,7 @@ export default function SignupPage() {
                   <FormControl>
                     <div className="relative">
                       <Input type={showConfirmPassword ? "text" : "password"} placeholder="••••••••" {...field} className="pr-10" />
-                      <Button type="button" variant="ghost" size="icon" className="absolute right-0 top-0 h-full w-10 text-muted-foreground hover:bg-transparent" onClick={() => setShowConfirmPassword(!showConfirmPassword)} tabIndex={-1}>
+                      <Button type="button" variant="ghost" size="icon" className="absolute right-0 top-0 h-full w-10 text-muted-foreground hover:bg-transparent" onClick={() => setShowConfirmPassword(!showConfirmPassword)} tabIndex={-1} aria-label={showConfirmPassword ? "Hide password" : "Show password"}>
                           {showConfirmPassword ? <EyeOff /> : <Eye />}
                       </Button>
                     </div>
@@ -494,28 +501,35 @@ export default function SignupPage() {
                   </SelectContent>
                 </Select><FormMessage /></FormItem>
               )} />
-               <FormField control={emailForm.control} name="birthday" render={({ field }) => (
-                <FormItem className="flex flex-col pt-2"><FormLabel>Date of birth</FormLabel><Popover>
-                  <PopoverTrigger asChild><FormControl>
-                    <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                      {field.value ? (format(field.value, "PPP")) : (<span>Pick a date</span>)}
-                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                    </Button>
-                  </FormControl></PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      captionLayout="dropdown-buttons"
-                      fromYear={1920}
-                      toYear={subYears(new Date(), 3).getFullYear()}
-                      selected={field.value}
-                      onSelect={field.onChange}
-                      disabled={(date) => date > subYears(new Date(), 3) || date < new Date("1900-01-01")}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover><FormMessage /></FormItem>
-              )} />
+               <FormField control={emailForm.control} name="birthday" render={({ field }) => {
+                 const age = field.value ? differenceInYears(new Date(), field.value) : null;
+                 return (
+                    <FormItem className="flex flex-col pt-2"><FormLabel>Date of birth</FormLabel><Popover>
+                      <PopoverTrigger asChild><FormControl>
+                        <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                          {field.value ? (
+                            <span>{format(field.value, "PPP")} {age !== null && <span className="text-muted-foreground"> (Age: {age})</span>}</span>
+                          ) : (
+                            <span>Pick a date</span>
+                          )}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </FormControl></PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          captionLayout="dropdown-buttons"
+                          fromYear={1920}
+                          toYear={subYears(new Date(), 3).getFullYear()}
+                          selected={field.value}
+                          onSelect={field.onChange}
+                          disabled={(date) => date > subYears(new Date(), 3) || date < new Date("1900-01-01")}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover><FormMessage /></FormItem>
+                 )
+                }} />
                <FormField control={emailForm.control} name="gender" render={({ field }) => (
                 <FormItem className="md:col-span-2"><FormLabel>Gender</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl><SelectTrigger><SelectValue placeholder="Select a gender" /></SelectTrigger></FormControl>
