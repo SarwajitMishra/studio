@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
@@ -251,38 +252,38 @@ export default function DotsAndBoxesPage() {
       if (scores.P1 > scores.P2) finalWinner = 'P1';
       else if (scores.P2 > scores.P1) finalWinner = 'P2';
       else finalWinner = 'draw';
-      setWinner(finalWinner);
       
-      // Handle AI win/loss logic separately
-      if (gameMode === 'ai' && finalWinner === 'P2') {
+      setWinner(finalWinner);
+      setGameState('gameOver');
+
+      if (gameMode === 'ai') {
         // Player lost to AI
-        setLastReward({ points: 0, coins: 0, stars: 0 });
-        updateGameStats({ gameId: 'dots-and-boxes', didWin: false, score: scores.P1 - scores.P2 });
-        setIsCalculatingReward(false); // No reward to calculate
-        setGameState('gameOver');
-        return;
+        if (finalWinner === 'P2') {
+          setLastReward({ points: 0, coins: 0, stars: 0 });
+          updateGameStats({ gameId: 'dots-and-boxes', didWin: false, score: scores.P1 - scores.P2 });
+          setIsCalculatingReward(false);
+          return;
+        }
+
+        // Player won or drew against AI
+        const didWin = finalWinner === 'P1';
+        updateGameStats({gameId: 'dots-and-boxes', didWin, score: scores.P1 - scores.P2 });
+        setIsCalculatingReward(true);
+        calculateRewards({
+          gameId: 'dots-and-boxes',
+          difficulty: difficulty,
+          performanceMetrics: { winner: finalWinner, score: scores },
+        }).then(rewards => {
+          const earned = applyRewards(rewards.sPoints, rewards.sCoins, "Dots and Boxes Game");
+          const stars = finalWinner === 'draw' ? 1 : (Math.abs(scores.P1 - scores.P2) > boardSize ? 3 : 2);
+          setLastReward({points: earned.points, coins: earned.coins, stars });
+        }).catch(err => {
+          console.error("Reward calculation failed:", err);
+          toast({variant: 'destructive', title: 'Reward Error'});
+        }).finally(() => {
+          setIsCalculatingReward(false);
+        });
       }
-
-      // Proceed with normal reward calculation for player win/draw
-      const didWin = gameMode === 'ai' ? finalWinner === 'P1' : true;
-      updateGameStats({gameId: 'dots-and-boxes', didWin, score: scores.P1 - scores.P2 });
-
-      setIsCalculatingReward(true);
-      calculateRewards({
-        gameId: 'dots-and-boxes',
-        difficulty: difficulty,
-        performanceMetrics: { winner: finalWinner, score: scores },
-      }).then(rewards => {
-        const earned = applyRewards(rewards.sPoints, rewards.sCoins, "Dots and Boxes Game");
-        const stars = finalWinner === 'draw' ? 1 : (Math.abs(scores.P1 - scores.P2) > boardSize ? 3 : 2);
-        setLastReward({points: earned.points, coins: earned.coins, stars });
-      }).catch(err => {
-        console.error("Reward calculation failed:", err);
-        toast({variant: 'destructive', title: 'Reward Error'});
-      }).finally(() => {
-        setIsCalculatingReward(false);
-        setGameState('gameOver');
-      });
     }
   }, [lines, scores, gameState, boardSize, difficulty, gameMode, toast]);
 
@@ -323,22 +324,30 @@ export default function DotsAndBoxesPage() {
                     <AlertDialogDescription className="text-center text-lg">{getWinnerMessage()}</AlertDialogDescription>
                 </AlertDialogHeader>
                 <div className="py-4 text-center">
-                  {isCalculatingReward ? <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" /> : lastReward ? (
-                    lastReward.stars === 0 ? (
-                       <div className="flex flex-col items-center gap-3 text-center">
-                           <p className="text-xl text-destructive font-semibold">You Lost!</p>
-                           <p className="text-muted-foreground">Keep practicing to beat the AI!</p>
-                       </div>
-                    ) : (
+                  {gameMode === 'player' ? (
+                     <div className="flex flex-col items-center gap-2 text-center">
+                        <p className="font-semibold text-lg">Final Score</p>
+                        <p>{playerNames.P1}: <span className="font-bold">{scores.P1}</span> boxes</p>
+                        <p>{playerNames.P2}: <span className="font-bold">{scores.P2}</span> boxes</p>
+                    </div>
+                  ) : (
+                    isCalculatingReward ? <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" /> : lastReward ? (
+                      lastReward.stars === 0 ? (
                         <div className="flex flex-col items-center gap-3 text-center">
-                            <StarRating rating={lastReward.stars} />
-                            <div className="flex items-center gap-6 mt-2">
-                              <span className="flex items-center font-bold text-xl">+{lastReward.points} <SPointsIcon className="ml-2 h-6 w-6 text-yellow-400" /></span>
-                              <span className="flex items-center font-bold text-xl">+{lastReward.coins} <SCoinsIcon className="ml-2 h-6 w-6 text-amber-500" /></span>
-                            </div>
+                            <p className="text-xl text-destructive font-semibold">You Lost!</p>
+                            <p className="text-muted-foreground">Keep practicing to beat the AI!</p>
                         </div>
-                    )
-                  ) : null}
+                      ) : (
+                          <div className="flex flex-col items-center gap-3 text-center">
+                              <StarRating rating={lastReward.stars} />
+                              <div className="flex items-center gap-6 mt-2">
+                                <span className="flex items-center font-bold text-xl">+{lastReward.points} <SPointsIcon className="ml-2 h-6 w-6 text-yellow-400" /></span>
+                                <span className="flex items-center font-bold text-xl">+{lastReward.coins} <SCoinsIcon className="ml-2 h-6 w-6 text-amber-500" /></span>
+                              </div>
+                          </div>
+                      )
+                    ) : null
+                  )}
                 </div>
                 <AlertDialogFooter>
                     <AlertDialogAction onClick={() => tempSetup && openSetupDialog(tempSetup.mode, tempSetup.diff)} disabled={isCalculatingReward}>Play Again</AlertDialogAction>
