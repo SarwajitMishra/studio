@@ -46,26 +46,6 @@ import { getGuestData, clearGuestData } from '@/lib/sync';
 
 const passwordRegex = new RegExp("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$");
 
-const emailFormSchema = z.object({
-  username: z.string()
-    .min(3, "Username must be at least 3 characters.")
-    .max(20, "Username must be 20 characters or less.")
-    .regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores."),
-  name: z.string().min(2, "Name must be at least 2 characters."),
-  countryCode: z.string(),
-  phoneNumber: z.string().min(10, "Please enter a valid phone number."),
-  email: z.string().email("Please enter a valid email address."),
-  password: z.string().regex(passwordRegex, "Password must be 8+ characters and include an uppercase letter, a lowercase letter, a number, and a special character."),
-  confirmPassword: z.string(),
-  country: z.string().min(1, "Please select a country."),
-  birthday: z.date({ required_error: "A date of birth is required." })
-    .refine((date) => date <= subYears(new Date(), 3), "You must be at least 3 years old."),
-  gender: z.enum(["male", "female", "other", "prefer_not_to_say"]),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
-});
-
 
 export default function SignupPage() {
   const [emailLoading, setEmailLoading] = useState(false);
@@ -88,8 +68,29 @@ export default function SignupPage() {
 
   const [completingUser, setCompletingUser] = useState<User | null>(null);
 
+  const emailFormSchema = useMemo(() => z.object({
+    username: z.string()
+      .min(3, "Username must be at least 3 characters.")
+      .max(20, "Username must be 20 characters or less.")
+      .regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores."),
+    name: z.string().min(2, "Name must be at least 2 characters."),
+    countryCode: z.string(),
+    phoneNumber: z.string().min(10, "Please enter a valid phone number."),
+    email: z.string().email("Please enter a valid email address."),
+    password: z.string().regex(passwordRegex, "Password must be 8+ characters and include an uppercase letter, a lowercase letter, a number, and a special character."),
+    confirmPassword: z.string(),
+    country: z.string().min(1, "Please select a country."),
+    birthday: z.date({ required_error: "A date of birth is required." })
+      .refine((date) => date <= subYears(new Date(), 3), "You must be at least 3 years old."),
+    gender: z.enum(["male", "female", "other", "prefer_not_to_say"]),
+  }).refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
+  }), []);
+
   const emailForm = useForm<z.infer<typeof emailFormSchema>>({
     resolver: zodResolver(emailFormSchema),
+    mode: 'onBlur',
     defaultValues: {
       username: "",
       name: "",
