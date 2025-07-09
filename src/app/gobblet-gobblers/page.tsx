@@ -270,7 +270,7 @@ export default function GobbletGobblersPage() {
     // 3. Take the center square if available with the largest piece from off-board
     const centerCell = board[1][1];
     const topPieceOnCenter = centerCell.stack.length > 0 ? centerCell.stack[centerCell.stack.length - 1] : null;
-    const largestOffBoardPiece = playerPieces.P2.sort((a,b)=>b.size-a.size)[0];
+    const largestOffBoardPiece = [...playerPieces.P2].sort((a,b)=>b.size-a.size)[0];
     if (largestOffBoardPiece && (!topPieceOnCenter || largestOffBoardPiece.size > topPieceOnCenter.size)) {
         handleSelectPiece(largestOffBoardPiece, undefined);
         setTimeout(() => handleBoardClick(1, 1), 500);
@@ -310,7 +310,7 @@ export default function GobbletGobblersPage() {
       handleSelectPiece(move.piece, move.from);
       setTimeout(() => handleBoardClick(move.to.r, move.to.c), 500);
     }
-  }, [playerPieces, board, winner]);
+  }, [playerPieces, board, winner, handleWin]);
 
   useEffect(() => {
     if (gameMode === 'ai' && currentPlayer === 'P2' && !winner) {
