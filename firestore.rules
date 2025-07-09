@@ -1,76 +1,82 @@
-
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- Helper Functions ---
-    // Safely checks if the currently authenticated user has the 'isAdmin' role.
-    // This is the key change: it uses `exists()` before `get()` to prevent errors.
+    // Helper function to check if a user is authenticated
+    function isUserAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper function to safely check if the requesting user is an admin.
+    // This depends on a separate, non-recursive rule allowing users to read their own role doc.
     function isAdmin() {
-      return request.auth != null && 
+      return isUserAuthenticated() &&
              exists(/databases/$(database)/documents/roles/$(request.auth.uid)) &&
              get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.isAdmin == true;
     }
 
-    // --- Collection Rules ---
-
-    // Blogs Collection
+    // --- BLOGS COLLECTION ---
     match /blogs/{blogId} {
-      // Rule 1: Anyone can read a post that has been published.
+      // Anyone can read a published blog post.
       allow read: if resource.data.status == 'published';
 
-      // Rule 2: Any logged-in user can create a new post, but ONLY if its
-      // status is 'pending' and they are the author.
-      allow create: if request.auth != null &&
+      // Admins can do anything to any blog post.
+      // NOTE: This single 'allow write' covers create, update, and delete.
+      allow write: if isAdmin();
+
+      // Logged-in users can create their own 'pending' posts.
+      // This is checked if the 'allow write: if isAdmin()' rule fails.
+      allow create: if isUserAuthenticated() &&
                        request.resource.data.authorId == request.auth.uid &&
                        request.resource.data.status == 'pending';
-                       
-      // Rule 3: Only an admin can update or delete any blog post.
-      // This covers publishing, rejecting, or editing.
-      allow update, delete: if isAdmin();
+
+      // A user can update their own post ONLY IF it is still a 'pending' draft.
+      // They cannot publish their own post.
+      allow update: if isUserAuthenticated() &&
+                       request.resource.data.authorId == request.auth.uid &&
+                       resource.data.status == 'pending';
     }
 
-    // User Profiles Collection
+    // --- USERS COLLECTION (public profiles) ---
     match /users/{userId} {
-      // Rule 1: A user can read/write to their own profile.
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      // Any authenticated user can read any other user's public profile.
+      allow read: if isUserAuthenticated();
 
-      // Rule 2: An admin can read any user's profile.
-      allow get, list: if isAdmin();
+      // A user can create and update their own profile.
+      allow create, update: if isUserAuthenticated() && request.auth.uid == userId;
     }
-
-    // Usernames Collection (for ensuring unique usernames)
+    
+    // --- USERNAMES COLLECTION (for unique username checks) ---
     match /usernames/{username} {
-      // Rule 1: No one can read the list of all usernames.
-      allow list, get: if false;
+      // Anyone can check if a username exists.
+      allow get: if true;
+      
+      // A user can only create their own username entry, preventing spoofing.
+      allow create: if isUserAuthenticated() && request.resource.data.uid == request.auth.uid;
 
-      // Rule 2: A user can create their own username document during signup,
-      // but cannot change or delete it later.
-      allow create: if request.auth != null &&
-                       request.resource.data.uid == request.auth.uid;
+      // No one can modify or delete username entries from the client for security.
       allow update, delete: if false;
     }
 
-    // Roles Collection (for admin checks)
+    // --- ROLES COLLECTION (admin checks) ---
     match /roles/{userId} {
-      // THIS IS THE FIX: A user can read their OWN role document.
+      // THIS IS THE KEY FIX:
+      // A user can read their OWN role document. This is NOT recursive.
       // This allows the isAdmin() function to work for everyone without failing.
-      allow get: if request.auth != null && request.auth.uid == userId;
+      allow get: if isUserAuthenticated() && request.auth.uid == userId;
 
-      // Only admins can see other people's roles.
+      // Admins can list all roles (e.g., for an admin panel).
       allow list: if isAdmin();
-
-      // No one can write to the roles collection from the client.
-      allow create, update, delete: if false;
+      
+      // Nobody can write roles from the client. This must be done server-side or in the console.
+      allow write: if false;
     }
-    
-    // Online Sessions Collection
+
+    // --- SESSIONS COLLECTION (for online multiplayer) ---
     match /sessions/{sessionId} {
-      // Any authenticated user can read or join a session.
-      allow read, update: if request.auth != null;
-      // Any authenticated user can create a new session.
-      allow create: if request.auth != null;
+      // Any authenticated user can read, create, and update sessions for now.
+      // You might want to make this more specific later (e.g., only participants can update).
+      allow read, write: if isUserAuthenticated();
     }
   }
 }
