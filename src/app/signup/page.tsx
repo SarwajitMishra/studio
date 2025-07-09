@@ -18,12 +18,12 @@ import { Calendar } from "@/components/ui/calendar";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import {
   Dialog,
-  DialogTrigger,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -130,7 +130,6 @@ export default function SignupPage() {
 
   async function onEmailSubmit(values: z.infer<typeof emailFormSchema>) {
     setIsLoading(true);
-    console.log("Signup submission started with values:", values);
     
     const isUnique = await checkUsernameUnique(values.username);
     if (!isUnique) {
@@ -139,10 +138,8 @@ export default function SignupPage() {
         message: "This username is already taken. Please choose another.",
       });
       setIsLoading(false);
-      console.log(`Username "${values.username}" is not unique. Halting signup.`);
       return;
     }
-    console.log(`Username "${values.username}" is unique. Proceeding...`);
 
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
@@ -248,7 +245,7 @@ export default function SignupPage() {
       if (additionalInfo?.isNewUser) {
         setCompletingUser(result.user);
       } else {
-        toast({ title: "Welcome Back!", description: "You've been successfully logged in." });
+        toast({ title: "Welcome Back!", description: "This account already exists. Logging you in." });
         router.push('/dashboard');
       }
     } catch (error: any) {
@@ -286,12 +283,12 @@ export default function SignupPage() {
       const userCredential = await confirmationResultRef.current.confirm(otp);
       const additionalInfo = getAdditionalUserInfo(userCredential);
       
-      setIsPhoneDialogOpen(false); // Close phone dialog
+      setIsPhoneDialogOpen(false); 
 
       if (additionalInfo?.isNewUser) {
         setCompletingUser(userCredential.user);
       } else {
-        toast({ title: "Welcome Back!", description: "You've been successfully logged in." });
+        toast({ title: "Welcome Back!", description: "This account already exists. Logging you in." });
         router.push('/dashboard');
       }
     } catch (error: any) {
@@ -302,7 +299,6 @@ export default function SignupPage() {
 
   return (
     <div className="flex items-center justify-center min-h-screen py-12">
-      {/* Complete Profile Dialog */}
       <Dialog open={!!completingUser} onOpenChange={(open) => !open && setCompletingUser(null)}>
         <DialogContent>
           <DialogHeader>
@@ -364,7 +360,6 @@ export default function SignupPage() {
         </DialogContent>
       </Dialog>
       
-      {/* Main Signup Card */}
       <Card className="w-full max-w-2xl">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">Create Your Account</CardTitle>
