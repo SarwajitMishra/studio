@@ -37,25 +37,25 @@ export default function SyncDataDialog({
             We found saved progress on this device. Choose which data you want to keep. This action cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <div className="flex flex-col sm:flex-row gap-4 py-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-4">
             <Button 
                 variant="outline" 
-                className="w-full h-auto py-4 flex flex-col gap-2 text-base" 
+                className="h-auto py-4 flex flex-col items-center justify-center gap-2 text-base text-center"
                 onClick={onKeepOnline}
                 disabled={isSyncing}
             >
                 <Cloud className="h-8 w-8 text-blue-500" />
-                <span>Keep Online Data</span>
+                <span className="font-semibold">Keep Online Data</span>
                 <span className="text-xs font-normal text-muted-foreground">Your cloud save will be used. Local data on this device will be deleted.</span>
             </Button>
             <Button 
                 variant="outline" 
-                className="w-full h-auto py-4 flex flex-col gap-2 text-base" 
+                className="h-auto py-4 flex flex-col items-center justify-center gap-2 text-base text-center"
                 onClick={onKeepLocal}
                 disabled={isSyncing}
             >
                 <HardDrive className="h-8 w-8 text-green-500" />
-                <span>Use Local Data</span>
+                <span className="font-semibold">Use Local Data</span>
                 <span className="text-xs font-normal text-muted-foreground">Your online save will be overwritten with the data from this device.</span>
             </Button>
         </div>
