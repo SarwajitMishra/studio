@@ -29,7 +29,13 @@ export default function Header() {
           </div>
           <div className="flex items-center gap-2 md:gap-4">
             <div className="flex items-center space-x-2">
-                <Switch id="online-mode" checked={isOnlineMode} onCheckedChange={setIsOnlineMode} aria-label="Toggle Online Mode" />
+                <Switch
+                  id="online-mode"
+                  checked={isOnlineMode}
+                  onCheckedChange={setIsOnlineMode}
+                  aria-label="Toggle Online Mode"
+                  className="data-[state=unchecked]:bg-orange-500 data-[state=checked]:bg-green-500"
+                />
                 <Label htmlFor="online-mode" className="text-primary-foreground font-semibold cursor-pointer">Online</Label>
             </div>
             <Separator orientation="vertical" className="h-6 bg-primary-foreground/30" />
