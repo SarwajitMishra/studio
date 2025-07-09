@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -62,9 +62,9 @@ export default function CreateBlogPage() {
       setAuthChecked(true);
     });
     return () => unsubscribe();
-  }, []);
+  }, [router]);
   
-  const handleFormSubmit: SubmitHandler<BlogFormValues> = async (data, event) => {
+  const handleFormSubmit: SubmitHandler<BlogFormValues> = useCallback(async (data, event) => {
     const submitter = (event?.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
     const status = submitter?.name === 'saveDraft' ? 'draft' : 'pending';
 
@@ -83,9 +83,9 @@ export default function CreateBlogPage() {
     } else {
       toast({ variant: 'destructive', title: 'Error', description: result.error || 'Failed to save post.' });
     }
-  };
+  }, [currentUser, router, toast]);
 
-  const handleAnalyzeContent = async () => {
+  const handleAnalyzeContent = useCallback(async () => {
     const content = form.getValues('content');
     if (!content || content.length < 50) {
         toast({
@@ -115,7 +115,7 @@ export default function CreateBlogPage() {
     } finally {
         setIsAnalyzing(false);
     }
-  };
+  }, [form, toast]);
   
   if (!authChecked) {
       return (
