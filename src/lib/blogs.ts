@@ -41,14 +41,14 @@ const generateSlug = (title: string): string => {
 export async function createBlogPost(
   data: { title: string; content: string },
   user: User,
-  status: 'pending' | 'draft'
+  status: 'pending' | 'draft' | 'published'
 ): Promise<{ success: boolean; id?: string; error?: string }> {
   if (!user) {
     return { success: false, error: 'User is not authenticated.' };
   }
 
   try {
-    const docRef = await addDoc(collection(db, 'blogs'), {
+    const postData: any = {
       title: data.title,
       content: data.content,
       slug: generateSlug(data.title),
@@ -57,14 +57,19 @@ export async function createBlogPost(
       authorAvatar: user.photoURL || '',
       status: status,
       createdAt: serverTimestamp(),
-    });
+    };
+    
+    if (status === 'published') {
+        postData.publishedAt = serverTimestamp();
+    }
+
+    const docRef = await addDoc(collection(db, 'blogs'), postData);
     console.log('Blog post created with ID:', docRef.id);
     
     // Revalidate paths to show new data
     revalidatePath('/admin/blogs');
-    if (status === 'published') {
-        revalidatePath('/blogs');
-    }
+    revalidatePath('/blogs');
+    revalidatePath('/blogs/[slug]');
 
     return { success: true, id: docRef.id };
   } catch (error: any) {
