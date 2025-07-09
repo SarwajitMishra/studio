@@ -102,24 +102,17 @@ export default function SignupPage() {
     username: z.string()
       .min(3, "Username must be at least 3 characters.")
       .max(20, "Username must be 20 characters or less.")
-      .regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores.")
-      .refine(
-          async (username) => {
-              // Pass the current user's ID to exclude it from the check
-              return await checkUsernameUnique(username);
-          },
-          "This username is already taken."
-      ),
+      .regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores."),
     name: z.string().min(2, "Name must be at least 2 characters."),
     country: z.string().min(1, "Please select a country."),
     birthday: z.date({ required_error: "A date of birth is required." })
       .refine((date) => date <= subYears(new Date(), 3), "You must be at least 3 years old."),
     gender: z.enum(["male", "female", "other", "prefer_not_to_say"]),
-  }), [completingUser]);
+  }), []);
 
   const profileForm = useForm<z.infer<typeof profileFormSchema>>({
     resolver: zodResolver(profileFormSchema),
-    mode: 'onChange', // Validate on change to give real-time feedback for username
+    mode: 'onChange',
   });
 
 
@@ -137,9 +130,7 @@ export default function SignupPage() {
 
   async function onEmailSubmit(values: z.infer<typeof emailFormSchema>) {
     setIsLoading(true);
-    console.log("Signup submission started with values:", values);
     
-    // Explicitly check for username uniqueness on submit
     const isUnique = await checkUsernameUnique(values.username);
     if (!isUnique) {
       emailForm.setError("username", {
@@ -147,10 +138,8 @@ export default function SignupPage() {
         message: "This username is already taken. Please choose another.",
       });
       setIsLoading(false);
-      console.log(`Username "${values.username}" is not unique. Halting signup.`);
       return;
     }
-    console.log(`Username "${values.username}" is unique. Proceeding...`);
 
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
@@ -175,11 +164,19 @@ export default function SignupPage() {
       router.push('/dashboard?new_user=true');
     } catch (error: any) {
       console.error("Error signing up:", error);
-      let description = error.message || "An unexpected error occurred.";
-      if (error.code === 'auth/operation-not-allowed') {
-        description = "Email/Password sign-up is not enabled. Please enable it in the Firebase console.";
+
+      if (error.code === 'auth/email-already-in-use') {
+        emailForm.setError("email", {
+          type: "manual",
+          message: "This email address is already in use. Please log in or use a different email.",
+        });
+      } else {
+        let description = error.message || "An unexpected error occurred.";
+        if (error.code === 'auth/operation-not-allowed') {
+          description = "Email/Password sign-up is not enabled. Please enable it in the Firebase console.";
+        }
+        toast({ variant: "destructive", title: "Sign Up Failed", description });
       }
-      toast({ variant: "destructive", title: "Sign Up Failed", description });
     } finally {
       setIsLoading(false);
     }
@@ -188,6 +185,17 @@ export default function SignupPage() {
   async function onProfileSubmit(values: z.infer<typeof profileFormSchema>) {
       if (!completingUser) return;
       setIsLoading(true);
+
+      const isUnique = await checkUsernameUnique(values.username);
+      if (!isUnique) {
+        profileForm.setError("username", {
+          type: "manual",
+          message: "This username is already taken. Please choose another.",
+        });
+        setIsLoading(false);
+        return;
+      }
+
       try {
         await updateProfile(completingUser, { displayName: values.name });
 
@@ -218,7 +226,7 @@ export default function SignupPage() {
 
   const handleAuthError = (error: any) => {
     if (error.code === 'auth/popup-closed-by-user') {
-      return; // Do nothing, user cancelled intentionally
+      return; 
     }
     console.error("Authentication error", error);
     toast({
@@ -237,10 +245,7 @@ export default function SignupPage() {
       if (additionalInfo?.isNewUser) {
         setCompletingUser(result.user);
       } else {
-        // This is a login to an existing account, not a new signup.
-        // The sync dialog should appear on the login page for this case.
-        // For now, we just log them in. The user should ideally use the login page.
-        toast({ title: "Welcome Back!", description: "You've been successfully logged in." });
+        toast({ title: "Welcome Back!", description: "This account already exists. Logging you in." });
         router.push('/dashboard');
       }
     } catch (error: any) {
@@ -259,7 +264,6 @@ export default function SignupPage() {
     setPhoneLoading(true);
     try {
       const fullPhoneNumber = `${phoneDialogCountryCode}${phoneDialogNumber}`;
-       // Create a new verifier each time to avoid stale state issues
       const recaptchaVerifier = new RecaptchaVerifier(auth, recaptchaContainerRef.current, { 'size': 'invisible' });
       const confirmationResult = await signInWithPhoneNumber(auth, fullPhoneNumber, recaptchaVerifier);
       
@@ -279,12 +283,12 @@ export default function SignupPage() {
       const userCredential = await confirmationResultRef.current.confirm(otp);
       const additionalInfo = getAdditionalUserInfo(userCredential);
       
-      setIsPhoneDialogOpen(false); // Close phone dialog
+      setIsPhoneDialogOpen(false); 
 
       if (additionalInfo?.isNewUser) {
         setCompletingUser(userCredential.user);
       } else {
-        toast({ title: "Welcome Back!", description: "You've been successfully logged in." });
+        toast({ title: "Welcome Back!", description: "This account already exists. Logging you in." });
         router.push('/dashboard');
       }
     } catch (error: any) {
@@ -295,7 +299,6 @@ export default function SignupPage() {
 
   return (
     <div className="flex items-center justify-center min-h-screen py-12">
-      {/* Complete Profile Dialog */}
       <Dialog open={!!completingUser} onOpenChange={(open) => !open && setCompletingUser(null)}>
         <DialogContent>
           <DialogHeader>
@@ -357,7 +360,6 @@ export default function SignupPage() {
         </DialogContent>
       </Dialog>
       
-      {/* Main Signup Card */}
       <Card className="w-full max-w-2xl">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">Create Your Account</CardTitle>
