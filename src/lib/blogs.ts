@@ -62,6 +62,7 @@ export async function createBlogPost(
       authorAvatar: author.photoURL || '',
       status: status,
       createdAt: serverTimestamp(),
+      publishedAt: null, // Ensure this field exists for rule validation
     };
     
     if (status === 'published') {
