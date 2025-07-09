@@ -119,7 +119,7 @@ export default function SignupPage() {
 
   const profileForm = useForm<z.infer<typeof profileFormSchema>>({
     resolver: zodResolver(profileFormSchema),
-    mode: 'onChange',
+    mode: 'onBlur',
   });
 
 
