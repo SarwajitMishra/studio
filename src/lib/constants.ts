@@ -39,7 +39,7 @@ export const GAMES: Game[] = [
     category: 'Strategy',
     Icon: PenSquare,
     description: 'Connect dots to form lines and claim boxes. A game of simple rules and deep strategy.',
-    href: '/gobblet-gobblers', // Repurposed URL
+    href: '/dots-and-boxes',
     color: 'text-orange-500',
   },
   {
