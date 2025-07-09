@@ -88,15 +88,24 @@ const GobblerPiece = ({ piece, colorClass, isSelected }: { piece: Piece; colorCl
   );
 };
 
-const BoardSquare = ({ cell, colorP1, colorP2, onSelect, canDrop }: { cell: BoardCell; colorP1: PlayerColor, colorP2: PlayerColor, onSelect: () => void; canDrop: boolean }) => {
+const BoardSquare = ({ cell, colorP1, colorP2, onSelect, canDrop, isDisabled }: { cell: BoardCell; colorP1: PlayerColor; colorP2: PlayerColor; onSelect: () => void; canDrop: boolean; isDisabled?: boolean; }) => {
   const topPiece = cell.stack.length > 0 ? cell.stack[cell.stack.length - 1] : null;
 
   return (
-    <button onClick={onSelect} className={cn("w-24 h-24 sm:w-28 sm:h-28 flex items-center justify-center border-2 rounded-lg transition-colors duration-200 bg-card hover:bg-muted/50 border-border", canDrop && "bg-green-500/30")}>
+    <button
+      onClick={onSelect}
+      disabled={isDisabled}
+      className={cn(
+        "w-24 h-24 sm:w-28 sm:h-28 flex items-center justify-center border-2 rounded-lg transition-colors duration-200 bg-card hover:bg-muted/50 border-border",
+        canDrop && "bg-green-500/30",
+        isDisabled && "cursor-not-allowed"
+      )}
+    >
       {topPiece && <GobblerPiece piece={topPiece} colorClass={topPiece.player === 'P1' ? COLOR_CLASSES[colorP1] : COLOR_CLASSES[colorP2]} isSelected={false} />}
     </button>
   );
 };
+
 
 // --- AI Helper Function ---
 const findWinningMove = (boardState: BoardState, pieces: Record<PlayerId, Piece[]>, player: PlayerId): { piece: Piece, from?: {r:number, c:number}, to: {r:number, c:number} } | null => {
@@ -201,7 +210,7 @@ export default function GobbletGobblersPage() {
   }, []);
   
   const handleSelectPiece = (piece: Piece, from?: {r: number, c: number}) => {
-    if (winner || piece.player !== currentPlayer || (gameMode === 'ai' && currentPlayer === 'P2')) return;
+    if (winner || piece.player !== currentPlayer) return;
     setSelectedPiece({ piece, from });
   };
 
@@ -362,6 +371,8 @@ export default function GobbletGobblersPage() {
     );
   }
 
+  const isAITurn = gameMode === 'ai' && currentPlayer === 'P2';
+
   return (
     <div className="flex flex-col items-center justify-center p-4 space-y-4">
       <AlertDialog open={!!winner}>
@@ -403,7 +414,15 @@ export default function GobbletGobblersPage() {
         <CardContent>
           <div className="grid grid-cols-3 gap-2 p-4 bg-primary/10 rounded-lg">
             {board.map((row, r_idx) => row.map((cell, c_idx) => (
-              <BoardSquare key={`${r_idx}-${c_idx}`} cell={cell} colorP1={playerConfig.P1.color} colorP2={playerConfig.P2.color} onSelect={() => handleBoardClick(r_idx, c_idx)} canDrop={!!selectedPiece && (cell.stack.length === 0 || selectedPiece.piece.size > cell.stack[cell.stack.length - 1].size)} />
+              <BoardSquare
+                key={`${r_idx}-${c_idx}`}
+                cell={cell}
+                colorP1={playerConfig.P1.color}
+                colorP2={playerConfig.P2.color}
+                onSelect={() => handleBoardClick(r_idx, c_idx)}
+                canDrop={!!selectedPiece && (cell.stack.length === 0 || selectedPiece.piece.size > cell.stack[cell.stack.length - 1].size)}
+                isDisabled={isAITurn}
+              />
             )))}
           </div>
         </CardContent>
@@ -415,7 +434,12 @@ export default function GobbletGobblersPage() {
                 <CardTitle className="text-lg mb-4 text-center">{playerConfig[pId].name}</CardTitle>
                 <div className="flex justify-center items-end gap-2 flex-wrap min-h-[70px]">
                     {playerPieces[pId].sort((a,b) => a.size - b.size).map(p => (
-                        <button key={p.id} onClick={() => handleSelectPiece(p)} className={cn("rounded-full transition-all", selectedPiece?.piece.id !== p.id && "hover:ring-2 ring-primary/50")} disabled={!!winner || p.player !== currentPlayer}>
+                        <button
+                            key={p.id}
+                            onClick={() => handleSelectPiece(p)}
+                            className={cn("rounded-full transition-all", selectedPiece?.piece.id !== p.id && "hover:ring-2 ring-primary/50")}
+                            disabled={!!winner || p.player !== currentPlayer || isAITurn}
+                        >
                             <GobblerPiece piece={p} colorClass={COLOR_CLASSES[playerConfig[pId].color]} isSelected={selectedPiece?.piece.id === p.id}/>
                         </button>
                     ))}
