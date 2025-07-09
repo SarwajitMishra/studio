@@ -61,9 +61,6 @@ const emailFormSchema = z.object({
   birthday: z.date({ required_error: "A date of birth is required." })
     .refine((date) => date <= subYears(new Date(), 3), "You must be at least 3 years old."),
   gender: z.enum(["male", "female", "other", "prefer_not_to_say"]),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
 });
 
 
@@ -129,6 +126,15 @@ export default function SignupPage() {
   }, [completingUser, profileForm]);
 
   async function onEmailSubmit(values: z.infer<typeof emailFormSchema>) {
+    // Manual password check here
+    if (values.password !== values.confirmPassword) {
+      emailForm.setError("confirmPassword", {
+        type: "manual",
+        message: "Passwords don't match",
+      });
+      return;
+    }
+
     setIsLoading(true);
     
     const isUnique = await checkUsernameUnique(values.username);
