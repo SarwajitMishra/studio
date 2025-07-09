@@ -1,55 +1,51 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to safely check for admin role.
-    // It checks if the role document exists before trying to access its data.
+    // Helper function to safely check if a user is an admin.
+    // It checks for the existence of the role document before trying to read its data.
     function isAdmin() {
-      return exists(/databases/$(database)/documents/roles/$(request.auth.uid)) &&
+      return request.auth != null &&
+             exists(/databases/$(database)/documents/roles/$(request.auth.uid)) &&
              get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.isAdmin == true;
     }
 
     match /blogs/{blogId} {
-      // Anyone can read published blog posts.
-      allow read: if resource.data.status == 'published';
+      // READ: Anyone can read published blogs. Admins can read any blog regardless of status.
+      allow read: if resource.data.status == 'published' || isAdmin();
 
-      // Logged-in users can create posts, but ONLY if they are the author and the status is 'pending'.
-      allow create: if request.auth != null &&
-                       request.resource.data.authorId == request.auth.uid &&
-                       request.resource.data.status == 'pending';
+      // CREATE:
+      // 1. Any authenticated user can create a blog if they are the author and the status is 'pending'.
+      // 2. Admins can create blogs with any status (e.g., publish directly).
+      allow create: if (request.auth != null &&
+                        request.resource.data.authorId == request.auth.uid &&
+                        request.resource.data.status == 'pending')
+                     || isAdmin();
 
-      // Authors can update their own pending posts.
-      allow update: if request.auth != null &&
-                       request.auth.uid == resource.data.authorId &&
-                       resource.data.status == 'pending';
-
-      // Admins can perform any write operation (create, update, delete).
-      // This rule is separate and provides broader permissions for admins.
-      allow write: if isAdmin();
-    }
-
-    match /roles/{userId} {
-      // Admins can read and write any role document.
-      allow read, write: if isAdmin();
-      
-      // A user can read their own role document (if it exists).
-      allow get: if request.auth != null && request.auth.uid == userId;
+      // UPDATE / DELETE: Only admins can update or delete blogs.
+      allow update, delete: if isAdmin();
     }
 
     match /users/{userId} {
-      // Anyone can read user profiles.
-      allow read: if true;
-      // Users can only update their own profile.
-      allow update: if request.auth != null && request.auth.uid == userId;
+      // A user can read/write their own profile. Admins can read/write any profile.
+      allow read, write: if (request.auth != null && request.auth.uid == userId) || isAdmin();
     }
 
     match /usernames/{username} {
-      // Allow creation only if the user is creating their own username mapping.
-      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
-      // No one can read, update, or delete username docs after creation to protect user data.
-      allow read, update, delete: if false;
+      // Allow client to check for username uniqueness.
+      allow read;
+      // Disallow client from writing directly. This must be done in a transaction/backend.
+      allow write: if false;
+    }
+
+    match /roles/{userId} {
+      // Only admins can see who has roles.
+      // The get() call in the isAdmin() function bypasses this rule check for a user checking their own role.
+      allow read: if isAdmin();
+      
+      // Roles must be assigned from a trusted environment (e.g., Firebase Console or a backend function).
+      allow write: if false;
     }
   }
 }
