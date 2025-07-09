@@ -270,7 +270,15 @@ export default function SignupPage() {
     setPhoneLoading(true);
     try {
       const fullPhoneNumber = `${phoneDialogCountryCode}${phoneDialogNumber}`;
-      const recaptchaVerifier = new RecaptchaVerifier(auth, recaptchaContainerRef.current, { 'size': 'invisible' });
+      
+      const getRecaptchaVerifier = () => {
+          if (!window.recaptchaVerifier) {
+              window.recaptchaVerifier = new RecaptchaVerifier(auth, recaptchaContainerRef.current!, { size: 'invisible' });
+          }
+          return window.recaptchaVerifier;
+      };
+
+      const recaptchaVerifier = getRecaptchaVerifier();
       const confirmationResult = await signInWithPhoneNumber(auth, fullPhoneNumber, recaptchaVerifier);
       
       confirmationResultRef.current = confirmationResult;
@@ -287,6 +295,9 @@ export default function SignupPage() {
     setPhoneLoading(true);
     try {
       const userCredential = await confirmationResultRef.current.confirm(otp);
+      if (window.recaptchaVerifier) {
+          window.recaptchaVerifier.clear();
+      }
       const additionalInfo = getAdditionalUserInfo(userCredential);
       
       setIsPhoneDialogOpen(false); 
@@ -416,9 +427,14 @@ export default function SignupPage() {
                         {phoneLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Send OTP
                        </Button>
                     ) : (
-                       <Button onClick={handleVerifyOtp} disabled={phoneLoading}>
-                        {phoneLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Verify & Sign Up
-                       </Button>
+                       <div className="flex w-full justify-end gap-2">
+                        <Button variant="ghost" onClick={() => setPhoneStep('enterPhone')} disabled={phoneLoading}>
+                            Back
+                        </Button>
+                        <Button onClick={handleVerifyOtp} disabled={phoneLoading}>
+                            {phoneLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Verify & Sign Up
+                        </Button>
+                       </div>
                     )}
                   </DialogFooter>
                    <div ref={recaptchaContainerRef}></div>
