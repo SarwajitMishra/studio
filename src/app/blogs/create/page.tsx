@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
@@ -64,9 +65,8 @@ export default function CreateBlogPage() {
     return () => unsubscribe();
   }, [router]);
   
-  const handleFormSubmit: SubmitHandler<BlogFormValues> = useCallback(async (data, event) => {
-    const submitter = (event?.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
-    const status = submitter?.name === 'saveDraft' ? 'draft' : 'pending';
+  const handleFormSubmit: SubmitHandler<BlogFormValues> = useCallback(async (data) => {
+    const status = 'pending';
 
     if (!currentUser) {
       toast({ variant: 'destructive', title: 'Not Authenticated', description: 'You must be logged in to create a post.' });
@@ -78,7 +78,7 @@ export default function CreateBlogPage() {
     setIsLoading(false);
 
     if (result.success) {
-      toast({ title: "Success!", description: `Your post has been saved as ${status}.` });
+      toast({ title: "Success!", description: `Your post has been submitted for review.` });
       router.push('/blogs');
     } else {
       toast({ variant: 'destructive', title: 'Error', description: result.error || 'Failed to save post.' });
@@ -105,12 +105,13 @@ export default function CreateBlogPage() {
             title: 'Analysis Complete!',
             description: 'AI suggestions are ready for you to review.',
         });
-    } catch (error: any) {
-        console.error('Error analyzing content:', error);
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+        console.error('Error analyzing content:', errorMessage);
         toast({
             variant: 'destructive',
             title: 'Analysis Failed',
-            description: error.message || 'The AI could not analyze your post. Please try again.',
+            description: errorMessage || 'The AI could not analyze your post. Please try again.',
         });
     } finally {
         setIsAnalyzing(false);
@@ -242,12 +243,8 @@ export default function CreateBlogPage() {
                 </Button>
 
                 <div className="flex justify-end gap-2">
-                    <Button type="submit" name="saveDraft" variant="outline" disabled={isLoading || isAnalyzing}>
-                        {isLoading && !isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                        Save as Draft
-                    </Button>
-                    <Button type="submit" name="submitReview" disabled={isLoading || isAnalyzing}>
-                        {isLoading && !isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    <Button type="submit" disabled={isLoading || isAnalyzing}>
+                        {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                         Submit for Review
                     </Button>
                 </div>
