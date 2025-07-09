@@ -5,4 +5,6 @@ import './flows/generate-english-puzzle-flow';
 import './flows/calculate-rewards-flow';
 import './flows/get-word-definition-flow';
 import './flows/generate-puzzle-image-flow';
+import './flows/analyze-blog-content-flow';
+
 

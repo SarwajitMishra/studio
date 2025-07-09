@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, Sparkles, Bot } from "lucide-react";
 import Link from "next/link";
 import {
   AlertDialog,
@@ -25,6 +25,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { analyzeBlogContent, type AnalyzeBlogContentOutput } from '@/ai/flows/analyze-blog-content-flow';
 
 const blogSchema = z.object({
   title: z.string().min(5, "Title must be at least 5 characters.").max(100, "Title must be 100 characters or less."),
@@ -41,10 +42,15 @@ export default function CreateBlogPage() {
   const router = useRouter();
   const { toast } = useToast();
 
+  const [analysis, setAnalysis] = useState<AnalyzeBlogContentOutput | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
   const form = useForm<BlogFormValues>({
     resolver: zodResolver(blogSchema),
     defaultValues: { title: "", content: "" },
   });
+  
+  const contentValue = form.watch('content');
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -76,6 +82,38 @@ export default function CreateBlogPage() {
       router.push('/blogs');
     } else {
       toast({ variant: 'destructive', title: 'Error', description: result.error || 'Failed to save post.' });
+    }
+  };
+
+  const handleAnalyzeContent = async () => {
+    const content = form.getValues('content');
+    if (!content || content.length < 50) {
+        toast({
+            variant: 'destructive',
+            title: 'Content Too Short',
+            description: 'Please write at least 50 characters before analyzing.',
+        });
+        return;
+    }
+
+    setIsAnalyzing(true);
+    setAnalysis(null);
+    try {
+        const result = await analyzeBlogContent({ content });
+        setAnalysis(result);
+        toast({
+            title: 'Analysis Complete!',
+            description: 'AI suggestions are ready for you to review.',
+        });
+    } catch (error: any) {
+        console.error('Error analyzing content:', error);
+        toast({
+            variant: 'destructive',
+            title: 'Analysis Failed',
+            description: error.message || 'The AI could not analyze your post. Please try again.',
+        });
+    } finally {
+        setIsAnalyzing(false);
     }
   };
   
@@ -125,7 +163,7 @@ export default function CreateBlogPage() {
                   <FormItem>
                     <FormLabel>Post Title</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter a catchy title" {...field} disabled={isLoading} />
+                      <Input placeholder="Enter a catchy title" {...field} disabled={isLoading || isAnalyzing} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -138,7 +176,7 @@ export default function CreateBlogPage() {
                   <FormItem>
                     <FormLabel>Post Content</FormLabel>
                     <FormControl>
-                        <Textarea placeholder="Write your blog post here... Use Markdown for formatting." rows={15} {...field} disabled={isLoading} />
+                        <Textarea placeholder="Write your blog post here... Use Markdown for formatting." rows={15} {...field} disabled={isLoading || isAnalyzing} />
                     </FormControl>
                     <FormDescription>Markdown is supported for text formatting.</FormDescription>
                     <FormMessage />
@@ -146,15 +184,73 @@ export default function CreateBlogPage() {
                 )}
               />
             
-            <div className="flex justify-end gap-2">
-                <Button type="submit" name="saveDraft" variant="outline" disabled={isLoading}>
-                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                    Save as Draft
+            { (isAnalyzing || analysis) && (
+              <Card className="mt-6 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+                  <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-blue-800 dark:text-blue-300">
+                          <Bot /> AI Writing Assistant
+                      </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                      {isAnalyzing ? (
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                              <Loader2 className="animate-spin" />
+                              <p>Analyzing your content for grammar, spelling, and style...</p>
+                          </div>
+                      ) : analysis && (
+                          <div className="space-y-4">
+                              <div>
+                                  <h3 className="font-semibold mb-2">Suggestions for Improvement</h3>
+                                  <ul className="list-disc pl-5 space-y-1 text-sm">
+                                      {analysis.suggestions.map((suggestion, index) => (
+                                          <li key={index}>{suggestion}</li>
+                                      ))}
+                                  </ul>
+                              </div>
+                              <div className="space-y-2">
+                                  <h3 className="font-semibold">Corrected Text</h3>
+                                  <p className="p-3 bg-background/50 rounded-md border text-sm max-h-48 overflow-y-auto">
+                                      {analysis.correctedContent}
+                                  </p>
+                                  <Button
+                                      type="button"
+                                      size="sm"
+                                      onClick={() => {
+                                          form.setValue('content', analysis.correctedContent, { shouldValidate: true });
+                                          setAnalysis(null);
+                                          toast({ title: "Content Updated", description: "The corrected text has been applied." });
+                                      }}
+                                  >
+                                      Apply Corrected Text
+                                  </Button>
+                              </div>
+                          </div>
+                      )}
+                  </CardContent>
+              </Card>
+            )}
+
+            <div className="flex justify-between items-center pt-4">
+                <Button 
+                    type="button" 
+                    variant="outline"
+                    onClick={handleAnalyzeContent}
+                    disabled={isAnalyzing || isLoading || contentValue.length < 50}
+                >
+                    {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                    {isAnalyzing ? "Analyzing..." : "AI Grammar Check"}
                 </Button>
-                <Button type="submit" name="submitReview" disabled={isLoading}>
-                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                    Submit for Review
-                </Button>
+
+                <div className="flex justify-end gap-2">
+                    <Button type="submit" name="saveDraft" variant="outline" disabled={isLoading || isAnalyzing}>
+                        {isLoading && !isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                        Save as Draft
+                    </Button>
+                    <Button type="submit" name="submitReview" disabled={isLoading || isAnalyzing}>
+                        {isLoading && !isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                        Submit for Review
+                    </Button>
+                </div>
             </div>
           </form>
          </Form>
