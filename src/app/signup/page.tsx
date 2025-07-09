@@ -23,6 +23,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -97,7 +98,6 @@ export default function SignupPage() {
     },
   });
 
-  // Removed async refine from the schema definition.
   const profileFormSchema = useMemo(() => z.object({
     username: z.string()
       .min(3, "Username must be at least 3 characters.")
