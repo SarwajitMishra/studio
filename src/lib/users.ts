@@ -133,6 +133,7 @@ export async function createUserProfile(user: User, additionalData: any, guestDa
 
 /**
  * Overwrites an existing user's cloud data with local guest data.
+ * This is an "upsert" operation - it creates the document if it doesn't exist.
  * @param userId The UID of the user whose data will be overwritten.
  * @param guestData The local guest data to sync.
  */
@@ -142,10 +143,11 @@ export async function syncGuestDataToProfile(userId: string, guestData: GuestDat
 
     // 1. Update main user document with points and coins
     const userRef = doc(db, 'users', userId);
-    batch.update(userRef, {
+    // Use set with merge to create the document if it's missing, or update it if it exists.
+    batch.set(userRef, {
         sPoints: guestData.sPoints,
         sCoins: guestData.sCoins,
-    });
+    }, { merge: true });
 
     // 2. Overwrite game stats
     const statsRef = collection(db, 'users', userId, 'gameStats');
@@ -176,7 +178,9 @@ export async function syncLocalDataToFirebase() {
     }
     const guestData = getGuestData();
     if (guestData) {
-        await createUserProfile(user, {}, guestData);
+        // This function is intended to sync data to an *existing* profile during login.
+        // It's safer to use syncGuestDataToProfile which handles upserts.
+        await syncGuestDataToProfile(user.uid, guestData);
     }
 }
 
