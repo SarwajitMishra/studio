@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Puzzle as PuzzleIcon, CheckCircle, Shield, Gem, Star as StarIcon, ArrowLeft, Timer, Eye, RotateCw, Loader2, Lightbulb } from "lucide-react";
+import { Puzzle as PuzzleIcon, CheckCircle, Shield, Gem, Star as StarIcon, ArrowLeft, Timer, Eye, RotateCw, Loader2, Lightbulb, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import NextImage from "next/image";
 import { cn } from "@/lib/utils";
@@ -28,9 +28,10 @@ interface DifficultyOption {
 }
 
 interface PuzzleImage {
-  src?: string; // Now optional, will be fetched
+  src?: string;
   alt: string;
   hint: string;
+  id?: number;
 }
 
 interface PuzzlePiece {
@@ -50,16 +51,25 @@ const PUZZLE_IMAGES_BY_DIFFICULTY: Record<Difficulty, PuzzleImage[]> = {
     { alt: "A smiling cartoon sun in a pastel sky", hint: "cartoon sun" },
     { alt: "A friendly cartoon lion in a jungle", hint: "cartoon lion" },
     { alt: "A colorful butterfly on a flower", hint: "butterfly flower" },
+    { alt: "A happy red car on a road", hint: "cartoon car" },
+    { alt: "A cute teddy bear with a bow", hint: "teddy bear" },
+    { alt: "A pile of colorful building blocks", hint: "building blocks" },
   ],
   expert: [
     { alt: "A magical forest with glowing mushrooms", hint: "enchanted forest" },
     { alt: "A playful dolphin jumping in the ocean", hint: "cartoon dolphin" },
     { alt: "A vibrant cartoon farm with animals", hint: "cartoon farm" },
+    { alt: "A robot helping with chores", hint: "friendly robot" },
+    { alt: "A pirate ship on the high seas", hint: "pirate ship" },
+    { alt: "A dragon flying over mountains", hint: "cartoon dragon" },
   ],
   pro: [
     { alt: "An underwater castle with colorful fish", hint: "underwater castle" },
     { alt: "A bustling cartoon city with funny cars", hint: "cartoon city" },
     { alt: "A whimsical treehouse in a fantasy forest", hint: "fantasy treehouse" },
+    { alt: "A spaceship exploring a colorful galaxy", hint: "spaceship galaxy" },
+    { alt: "A detailed map of a fantasy world", hint: "fantasy map" },
+    { alt: "A castle in the clouds", hint: "sky castle" },
   ],
 };
 
@@ -129,6 +139,8 @@ export default function JigsawPuzzlePage() {
     const [fetchedImages, setFetchedImages] = useState<PuzzleImage[]>([]);
     const [areImagesLoading, setAreImagesLoading] = useState(false);
     const [selectedImage, setSelectedImage] = useState<PuzzleImage | null>(null);
+    const [pixabayPage, setPixabayPage] = useState(1);
+    const [seenImageIds, setSeenImageIds] = useState(new Set<number>());
     
     // Game state
     const [puzzlePieces, setPuzzlePieces] = useState<PuzzlePiece[]>([]);
@@ -249,6 +261,54 @@ export default function JigsawPuzzlePage() {
         }
     }, [gridSize, handleWin]);
 
+    const fetchImagesForDifficulty = useCallback(async (difficulty: Difficulty, page: number) => {
+        setAreImagesLoading(true);
+
+        const imageHints = PUZZLE_IMAGES_BY_DIFFICULTY[difficulty];
+        const randomHint = imageHints[Math.floor(Math.random() * imageHints.length)].hint;
+        const apiKey = process.env.NEXT_PUBLIC_PIXABAY_API_KEY;
+
+        try {
+            const pixabayResults = await searchImages(randomHint, apiKey || '', { perPage: 20, page });
+            
+            const uniqueNewImages: PuzzleImage[] = [];
+            for (const img of pixabayResults) {
+                if (!seenImageIds.has(img.id)) {
+                    uniqueNewImages.push({
+                        src: img.webformatURL,
+                        alt: img.tags,
+                        hint: img.tags.split(',')[0] || 'puzzle',
+                        id: img.id,
+                    });
+                }
+            }
+
+            // Replace the list with 6 new images
+            setFetchedImages(uniqueNewImages.slice(0, 6));
+
+            // Update the set of seen images for this session
+            setSeenImageIds(prev => {
+                const newSet = new Set(prev);
+                uniqueNewImages.slice(0, 6).forEach(img => img.id && newSet.add(img.id));
+                return newSet;
+            });
+            
+            if (uniqueNewImages.length === 0 && page > 1) {
+                toast({ title: "No More Images", description: "You've seen all the images for this search. Try a new difficulty!"});
+            }
+
+        } catch (e) {
+            console.error("Image fetching failed:", e);
+            toast({ variant: 'destructive', title: 'Image Fetching Failed', description: 'Could not load images. Please check your connection and API key.' });
+            // Fallback to AI generation if pixabay fails entirely on first load
+            if (page === 1) {
+                const aiImageUri = await generatePuzzleImage(randomHint);
+                setFetchedImages([{ src: aiImageUri, alt: randomHint, hint: randomHint }]);
+            }
+        } finally {
+            setAreImagesLoading(false);
+        }
+    }, [seenImageIds, toast]);
 
     const handleDifficultySelect = (difficulty: Difficulty) => {
         const levelConfig = DIFFICULTY_LEVELS.find(d => d.level === difficulty);
@@ -257,39 +317,17 @@ export default function JigsawPuzzlePage() {
         setSelectedDifficulty(difficulty);
         setGridSize(levelConfig.gridSize);
         setViewMode("selectImage");
-        setAreImagesLoading(true);
+        setPixabayPage(1);
+        setSeenImageIds(new Set<number>());
+        setFetchedImages([]); // Clear previous images
+        fetchImagesForDifficulty(difficulty, 1);
+    };
 
-        const fetchAllImages = async () => {
-            const imagesForDifficulty = PUZZLE_IMAGES_BY_DIFFICULTY[difficulty];
-            const apiKey = process.env.NEXT_PUBLIC_PIXABAY_API_KEY;
-
-            const imagePromises = imagesForDifficulty.map(async (img) => {
-                // 1. Try Pixabay first
-                const pixabayResults = await searchImages(img.hint, apiKey || '', { perPage: 1 });
-                if (pixabayResults.length > 0 && pixabayResults[0].webformatURL) {
-                    console.log(`[Jigsaw Image] Found on Pixabay for "${img.hint}"`);
-                    return { ...img, src: pixabayResults[0].webformatURL };
-                }
-
-                // 2. If Pixabay fails, try AI Image Generation
-                console.log(`[Jigsaw Image] Pixabay failed for "${img.hint}", trying AI generation.`);
-                try {
-                    const aiImageUri = await generatePuzzleImage(img.hint);
-                    console.log(`[Jigsaw Image] Successfully generated AI image for "${img.hint}"`);
-                    return { ...img, src: aiImageUri };
-                } catch (e) {
-                    console.error(`[Jigsaw Image] AI generation also failed for "${img.hint}". Falling back to placeholder.`, e);
-                    // 3. Fallback to placeholder
-                    return { ...img, src: `https://placehold.co/400x400.png?text=Image+Error` };
-                }
-            });
-
-            const newImages = await Promise.all(imagePromises);
-            setFetchedImages(newImages);
-            setAreImagesLoading(false);
-        };
-
-        fetchAllImages();
+    const handleNextImages = () => {
+        if (!selectedDifficulty) return;
+        const nextPage = pixabayPage + 1;
+        setPixabayPage(nextPage);
+        fetchImagesForDifficulty(selectedDifficulty, nextPage);
     };
 
     const handleImageSelect = (image: PuzzleImage) => {
@@ -545,15 +583,15 @@ export default function JigsawPuzzlePage() {
                 <h2 className="text-2xl font-bold text-center mb-6">Choose an Image for Your <span className={cn(DIFFICULTY_LEVELS.find(d => d.level === selectedDifficulty)?.color)}>{selectedDifficulty}</span> Puzzle</h2>
                 
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 max-w-4xl mx-auto">
-                    {areImagesLoading ? (
-                        Array.from({ length: 3 }).map((_, index) => (
-                          <div key={index} className="bg-muted w-full aspect-square flex items-center justify-center rounded-lg shadow-md">
-                            <Loader2 className="animate-spin text-primary h-8 w-8" />
+                    {areImagesLoading && fetchedImages.length === 0 ? (
+                        Array.from({ length: 6 }).map((_, index) => (
+                          <div key={index} className="bg-muted w-full aspect-square flex items-center justify-center rounded-lg shadow-md animate-pulse">
+                            <Loader2 className="text-primary h-8 w-8" />
                           </div>
                         ))
                     ) : (
-                        fetchedImages.map((img, index) => (
-                            <button key={img.hint + index} onClick={() => handleImageSelect(img)} className="relative group rounded-lg overflow-hidden shadow-md focus:outline-none focus:ring-4 focus:ring-accent" disabled={!img.src}>
+                        fetchedImages.map((img) => (
+                            <button key={img.id || img.src} onClick={() => handleImageSelect(img)} className="relative group rounded-lg overflow-hidden shadow-md focus:outline-none focus:ring-4 focus:ring-accent" disabled={!img.src}>
                                 <NextImage
                                     src={img.src!}
                                     alt={img.alt}
@@ -566,8 +604,12 @@ export default function JigsawPuzzlePage() {
                         ))
                     )}
                 </div>
-                <div className="text-center mt-6">
-                    <Button variant="ghost" onClick={() => setViewMode("selectDifficulty")}>
+                 <div className="text-center mt-6 flex flex-col sm:flex-row justify-center items-center gap-4">
+                    <Button onClick={handleNextImages} disabled={areImagesLoading} className="w-full sm:w-auto">
+                        {areImagesLoading ? <Loader2 className="mr-2 animate-spin" /> : <RefreshCw className="mr-2" />}
+                        Show New Images
+                    </Button>
+                    <Button variant="ghost" onClick={() => setViewMode("selectDifficulty")} className="w-full sm:w-auto">
                         <ArrowLeft size={16} className="mr-2" /> Back to Difficulty
                     </Button>
                 </div>

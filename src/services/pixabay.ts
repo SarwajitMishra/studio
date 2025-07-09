@@ -32,6 +32,7 @@ interface PixabayResponse {
 interface SearchImagesOptions {
   category?: string;
   perPage?: number;
+  page?: number;
 }
 
 export async function searchImages(
@@ -57,6 +58,10 @@ export async function searchImages(
 
   if (options.perPage) {
     apiUrl += `&per_page=${options.perPage}`;
+  }
+
+  if (options.page) {
+    apiUrl += `&page=${options.page}`;
   }
 
   try {
