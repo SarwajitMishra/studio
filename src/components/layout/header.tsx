@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -34,19 +35,22 @@ export default function Header() {
             <Navigation side="left" />
           </div>
           <div className="flex items-center gap-2 md:gap-4">
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 min-w-[95px]">
                 {isMounted ? (
-                  <Switch
-                    id="online-mode"
-                    checked={isOnlineMode}
-                    onCheckedChange={setIsOnlineMode}
-                    aria-label="Toggle Online Mode"
-                    className="data-[state=unchecked]:bg-orange-500 data-[state=checked]:bg-green-500"
-                  />
+                  <>
+                    <Switch
+                      id="online-mode"
+                      checked={isOnlineMode}
+                      onCheckedChange={setIsOnlineMode}
+                      aria-label="Toggle Online Mode"
+                      className="data-[state=unchecked]:bg-orange-500 data-[state=checked]:bg-green-500"
+                    />
+                    <Label htmlFor="online-mode" className="text-primary-foreground font-semibold cursor-pointer">Online</Label>
+                  </>
                 ) : (
-                  <div className="inline-flex h-6 w-11 shrink-0 items-center rounded-full border-2 border-transparent bg-input" />
+                  // Render an empty div as a placeholder to prevent layout shift.
+                  <div className="h-6 w-full" />
                 )}
-                <Label htmlFor="online-mode" className="text-primary-foreground font-semibold cursor-pointer">Online</Label>
             </div>
             <Separator orientation="vertical" className="h-6 bg-primary-foreground/30" />
             <Navigation side="right" />
