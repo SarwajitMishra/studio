@@ -1,10 +1,17 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Copy, Share2, Loader2 } from 'lucide-react';
+import { Copy, Share2, Loader2, AlertTriangle } from 'lucide-react';
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from '@/hooks/use-toast';
 import { auth, onAuthStateChanged, type User } from '@/lib/firebase';
 import { createOnlineSession, joinOnlineSession } from '@/lib/sessions';
@@ -86,6 +93,16 @@ export function SessionDialog({ open, onOpenChange }: SessionDialogProps) {
         setIsJoining(false);
       }
   }
+  
+  const NotLoggedInAlert = () => (
+    <Alert variant="destructive" className="mt-4">
+        <AlertTriangle className="h-4 w-4" />
+        <AlertTitle>Login Required</AlertTitle>
+        <AlertDescription>
+            You must be logged in to use online mode.
+        </AlertDescription>
+    </Alert>
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -102,40 +119,52 @@ export function SessionDialog({ open, onOpenChange }: SessionDialogProps) {
             <TabsTrigger value="join">Join Session</TabsTrigger>
           </TabsList>
           <TabsContent value="create" className="pt-4 space-y-4">
-            <p className="text-sm text-muted-foreground">Click the button to generate a new session ID to share with a friend.</p>
-            <Button className="w-full" onClick={createNewSession} disabled={isCreating || !currentUser}>
-              {isCreating ? <Loader2 className="mr-2 animate-spin"/> : null}
-              {isCreating ? 'Creating...' : (currentUser ? 'Create New Session ID' : 'Please Log In')}
-            </Button>
-            {sessionId && (
+            {currentUser ? (
               <>
-                <div className="flex items-center justify-center p-4 border-2 border-dashed rounded-lg">
-                  <span className="text-2xl font-bold tracking-widest">{sessionId}</span>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <Button variant="outline" onClick={handleCopy}>
-                    <Copy className="mr-2" /> Copy ID
-                  </Button>
-                   <Button variant="outline" disabled>
-                    <Share2 className="mr-2" /> Share
-                  </Button>
-                </div>
+                <p className="text-sm text-muted-foreground">Click the button to generate a new session ID to share with a friend.</p>
+                <Button className="w-full" onClick={createNewSession} disabled={isCreating}>
+                  {isCreating ? <Loader2 className="mr-2 animate-spin"/> : null}
+                  {isCreating ? 'Creating...' : 'Create New Session ID'}
+                </Button>
+                {sessionId && (
+                  <>
+                    <div className="flex items-center justify-center p-4 border-2 border-dashed rounded-lg">
+                      <span className="text-2xl font-bold tracking-widest">{sessionId}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button variant="outline" onClick={handleCopy}>
+                        <Copy className="mr-2" /> Copy ID
+                      </Button>
+                       <Button variant="outline" disabled>
+                        <Share2 className="mr-2" /> Share
+                      </Button>
+                    </div>
+                  </>
+                )}
               </>
+            ) : (
+                <NotLoggedInAlert />
             )}
           </TabsContent>
           <TabsContent value="join" className="pt-4 space-y-4">
-            <p className="text-sm text-muted-foreground">Enter the session ID you received from a friend.</p>
-            <Input 
-                placeholder="Enter Session ID" 
-                value={joinId}
-                onChange={(e) => setJoinId(e.target.value.toUpperCase())}
-                className="text-center tracking-widest"
-                maxLength={6}
-            />
-            <Button className="w-full" onClick={handleJoin} disabled={isJoining || !currentUser || !joinId || joinId.length < 6}>
-              {isJoining ? <Loader2 className="mr-2 animate-spin" /> : null}
-              {currentUser ? 'Join Session' : 'Please Log In'}
-            </Button>
+             {currentUser ? (
+                <>
+                    <p className="text-sm text-muted-foreground">Enter the session ID you received from a friend.</p>
+                    <Input 
+                        placeholder="Enter Session ID" 
+                        value={joinId}
+                        onChange={(e) => setJoinId(e.target.value.toUpperCase())}
+                        className="text-center tracking-widest"
+                        maxLength={6}
+                    />
+                    <Button className="w-full" onClick={handleJoin} disabled={isJoining || !joinId || joinId.length < 6}>
+                      {isJoining ? <Loader2 className="mr-2 animate-spin" /> : null}
+                      {'Join Session'}
+                    </Button>
+                </>
+             ) : (
+                <NotLoggedInAlert />
+             )}
           </TabsContent>
         </Tabs>
       </DialogContent>
