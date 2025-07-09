@@ -18,12 +18,12 @@ import { Calendar } from "@/components/ui/calendar";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import {
   Dialog,
+  DialogTrigger,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -377,9 +377,9 @@ export default function SignupPage() {
                 Continue with Google
               </Button>
                <Dialog open={isPhoneDialogOpen} onOpenChange={setIsPhoneDialogOpen}>
-                 <DialogTrigger asChild>
+                <DialogTrigger asChild>
                   <Button variant="outline" className="w-full" disabled={isLoading}>Sign up with Phone</Button>
-                 </DialogTrigger>
+                </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Sign Up with Phone</DialogTitle>
