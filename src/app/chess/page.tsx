@@ -4,6 +4,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from 'next/navigation';
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Crown, AlertTriangle, Timer, ListChecks, ArrowRight, ArrowLeft, Brain, Gamepad2, Award, Loader2 } from "lucide-react";
@@ -27,7 +28,7 @@ interface SquarePosition {
 }
 
 type PlayerColor = "w" | "b";
-type GameState = 'setup' | 'playing';
+type GameState = 'playing';
 
 const PIECE_UNICODE: Record<PlayerColor, Record<Piece["type"], string>> = {
   w: { K: "♔", Q: "♕", R: "♖", B: "♗", N: "♘", P: "♙" },
@@ -148,7 +149,8 @@ const ChessSquare = ({
 };
 
 export default function ChessPage() {
-  const [gameState, setGameState] = useState<GameState>('setup');
+  const [gameState, setGameState] = useState<GameState>('playing');
+  const router = useRouter();
 
   const initialSetup = initialBoardSetup();
   const [board, setBoard] = useState<(Piece | null)[][]>(initialSetup.board);
@@ -581,34 +583,13 @@ export default function ChessPage() {
     setCapturedPieces({ w: [], b: [] });
     setPlayerTimers({ w: 600, b: 600 });
     toast({ title: "Game Reset", description: "The board has been reset." });
-    setGameState('setup');
+    setGameState('playing');
     setLastReward(null);
   };
   
   const movePairs = [];
   for (let i = 0; i < moveHistory.length; i += 2) {
     movePairs.push(moveHistory.slice(i, i + 2));
-  }
-
-  if (gameState === 'setup') {
-     return (
-        <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
-            <Card className="w-full max-w-md text-center shadow-xl">
-                <CardHeader>
-                    <CardTitle className="text-3xl font-bold">Classic Chess</CardTitle>
-                    <CardDescription>The ultimate game of strategy.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <Button onClick={() => setGameState('playing')} className="w-full text-lg"><Gamepad2 className="mr-2"/> Play Game</Button>
-                </CardContent>
-                <CardFooter>
-                    <Button asChild variant="ghost" className="w-full">
-                        <Link href="/dashboard"><ArrowLeft className="mr-2"/> Back to Menu</Link>
-                    </Button>
-                </CardFooter>
-            </Card>
-        </div>
-      )
   }
 
   return (
@@ -644,7 +625,7 @@ export default function ChessPage() {
             </div>
             <AlertDialogFooter>
              <Button onClick={resetGame} disabled={isCalculatingReward}>Play Again</Button>
-             <Button onClick={() => setGameState('setup')} variant="outline" disabled={isCalculatingReward}>Back to Menu</Button>
+             <Button onClick={() => router.push('/dashboard')} variant="outline" disabled={isCalculatingReward}>Back to Menu</Button>
             </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
