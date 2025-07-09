@@ -4,7 +4,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { RotateCw, Award, Users, Cpu, ArrowLeft, Star as StarIcon, Edit, Loader2 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { S_POINTS_ICON as SPointsIcon, S_COINS_ICON as SCoinsIcon } from '@/lib/constants';
@@ -54,16 +56,25 @@ const getInitialBoard = (size: number): { lines: Line[], boxes: Box[] } => {
 };
 
 const DIFFICULTY_CONFIG: Record<Difficulty, { boardSize: number; label: string; }> = {
-  easy: { boardSize: 2, label: "Easy (3x3 Dots)" },
-  medium: { boardSize: 3, label: "Medium (4x4 Dots)" },
-  hard: { boardSize: 4, label: "Hard (5x5 Dots)" },
+  easy: { boardSize: 3, label: "Easy (4x4 Dots)" },
+  medium: { boardSize: 4, label: "Medium (5x5 Dots)" },
+  hard: { boardSize: 5, label: "Hard (6x6 Dots)" },
 };
+
+const COLOR_OPTIONS = [
+  { name: 'Blue', value: '#3B82F6' },
+  { name: 'Red', value: '#EF4444' },
+  { name: 'Green', value: '#10B981' },
+  { name: 'Purple', value: '#8B5CF6' },
+  { name: 'Orange', value: '#F59E0B' },
+  { name: 'Pink', value: '#EC4899' },
+];
 
 export default function DotsAndBoxesPage() {
   const [gameState, setGameState] = useState<GameState>('setup');
   const [gameMode, setGameMode] = useState<GameMode>(null);
   const [difficulty, setDifficulty] = useState<Difficulty>('medium');
-  const [boardSize, setBoardSize] = useState(3);
+  const [boardSize, setBoardSize] = useState(4);
   
   const [lines, setLines] = useState<Line[]>([]);
   const [boxes, setBoxes] = useState<Box[]>([]);
@@ -72,11 +83,16 @@ export default function DotsAndBoxesPage() {
   const [winner, setWinner] = useState<PlayerId | 'draw' | null>(null);
   const [turn, setTurn] = useState(0);
 
+  const [isSetupDialogOpen, setIsSetupDialogOpen] = useState(false);
+  const [tempSetup, setTempSetup] = useState<{ mode: GameMode; diff: Difficulty } | null>(null);
+  const [playerNames, setPlayerNames] = useState({ P1: 'Player 1', P2: 'Player 2' });
+  const [playerColors, setPlayerColors] = useState({ P1: COLOR_OPTIONS[0].value, P2: COLOR_OPTIONS[1].value });
+
   const [isCalculatingReward, setIsCalculatingReward] = useState(false);
   const [lastReward, setLastReward] = useState<{ points: number; coins: number; stars: number } | null>(null);
   const { toast } = useToast();
 
-  const startGame = useCallback((mode: GameMode, diff: Difficulty) => {
+  const startGame = useCallback((mode: GameMode, diff: Difficulty, names: {P1: string, P2: string}, colors: {P1: string, P2: string}) => {
     const config = DIFFICULTY_CONFIG[diff];
     const { lines: newLines, boxes: newBoxes } = getInitialBoard(config.boardSize);
     setBoardSize(config.boardSize);
@@ -88,10 +104,17 @@ export default function DotsAndBoxesPage() {
     setLastReward(null);
     setGameMode(mode);
     setDifficulty(diff);
+    setPlayerNames(names);
+    setPlayerColors(colors);
     setGameState('playing');
     setTurn(0);
   }, []);
 
+  const openSetupDialog = (mode: GameMode, diff: Difficulty) => {
+    setTempSetup({ mode, diff });
+    setIsSetupDialogOpen(true);
+  };
+  
   const handleLineClick = useCallback((clickedLine: Line) => {
     if (clickedLine.owner || gameState !== 'playing') return;
 
@@ -230,6 +253,17 @@ export default function DotsAndBoxesPage() {
       else finalWinner = 'draw';
       setWinner(finalWinner);
       
+      // Handle AI win/loss logic separately
+      if (gameMode === 'ai' && finalWinner === 'P2') {
+        // Player lost to AI
+        setLastReward({ points: 0, coins: 0, stars: 0 });
+        updateGameStats({ gameId: 'dots-and-boxes', didWin: false, score: scores.P1 - scores.P2 });
+        setIsCalculatingReward(false); // No reward to calculate
+        setGameState('gameOver');
+        return;
+      }
+
+      // Proceed with normal reward calculation for player win/draw
       const didWin = gameMode === 'ai' ? finalWinner === 'P1' : true;
       updateGameStats({gameId: 'dots-and-boxes', didWin, score: scores.P1 - scores.P2 });
 
@@ -258,10 +292,10 @@ export default function DotsAndBoxesPage() {
 
   const getWinnerMessage = () => {
     if(winner === 'draw') return "It's a draw!";
-    if(gameMode === 'ai') return winner === 'P1' ? 'You Win!' : 'Shravya AI Wins!';
-    return `Player ${winner === 'P1' ? '1' : '2'} Wins!`;
+    if(winner === 'P1') return `${playerNames.P1} Wins!`;
+    return `${playerNames.P2} Wins!`;
   }
-
+  
   const renderSetupScreen = () => (
       <Card className="w-full max-w-md text-center shadow-xl">
           <CardHeader><CardTitle className="text-3xl font-bold">Dots & Boxes</CardTitle><CardDescription>Select a game mode and difficulty.</CardDescription></CardHeader>
@@ -274,8 +308,8 @@ export default function DotsAndBoxesPage() {
                   ))}
                 </div>
               </div>
-              <Button onClick={() => startGame('player', difficulty)} className="w-full text-lg"><Users className="mr-2"/> Player vs Player</Button>
-              <Button onClick={() => startGame('ai', difficulty)} className="w-full text-lg"><Cpu className="mr-2"/> Player vs AI</Button>
+              <Button onClick={() => openSetupDialog('player', difficulty)} className="w-full text-lg"><Users className="mr-2"/> Player vs Player</Button>
+              <Button onClick={() => openSetupDialog('ai', difficulty)} className="w-full text-lg"><Cpu className="mr-2"/> Player vs AI</Button>
           </CardContent>
       </Card>
   );
@@ -289,30 +323,37 @@ export default function DotsAndBoxesPage() {
                     <AlertDialogDescription className="text-center text-lg">{getWinnerMessage()}</AlertDialogDescription>
                 </AlertDialogHeader>
                 <div className="py-4 text-center">
-                  {isCalculatingReward ? <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" /> : lastReward && (
-                    <div className="flex flex-col items-center gap-3 text-center">
-                        <StarRating rating={lastReward.stars} />
-                        <div className="flex items-center gap-6 mt-2">
-                          <span className="flex items-center font-bold text-xl">+{lastReward.points} <SPointsIcon className="ml-2 h-6 w-6 text-yellow-400" /></span>
-                          <span className="flex items-center font-bold text-xl">+{lastReward.coins} <SCoinsIcon className="ml-2 h-6 w-6 text-amber-500" /></span>
+                  {isCalculatingReward ? <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" /> : lastReward ? (
+                    lastReward.stars === 0 ? (
+                       <div className="flex flex-col items-center gap-3 text-center">
+                           <p className="text-xl text-destructive font-semibold">You Lost!</p>
+                           <p className="text-muted-foreground">Keep practicing to beat the AI!</p>
+                       </div>
+                    ) : (
+                        <div className="flex flex-col items-center gap-3 text-center">
+                            <StarRating rating={lastReward.stars} />
+                            <div className="flex items-center gap-6 mt-2">
+                              <span className="flex items-center font-bold text-xl">+{lastReward.points} <SPointsIcon className="ml-2 h-6 w-6 text-yellow-400" /></span>
+                              <span className="flex items-center font-bold text-xl">+{lastReward.coins} <SCoinsIcon className="ml-2 h-6 w-6 text-amber-500" /></span>
+                            </div>
                         </div>
-                    </div>
-                  )}
+                    )
+                  ) : null}
                 </div>
                 <AlertDialogFooter>
-                    <AlertDialogAction onClick={() => startGame(gameMode!, difficulty)} disabled={isCalculatingReward}>Play Again</AlertDialogAction>
+                    <AlertDialogAction onClick={() => tempSetup && openSetupDialog(tempSetup.mode, tempSetup.diff)} disabled={isCalculatingReward}>Play Again</AlertDialogAction>
                     <AlertDialogCancel onClick={() => setGameState('setup')} disabled={isCalculatingReward}>Back to Menu</AlertDialogCancel>
                 </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
           
           <div className="grid grid-cols-2 gap-4 w-full max-w-sm">
-            <Card className={cn("text-center p-3", currentPlayer === 'P1' && gameState === 'playing' && 'ring-2 ring-blue-500')}>
-              <CardTitle className="text-blue-500">Player 1</CardTitle>
+            <Card className={cn("text-center p-3 transition-shadow", currentPlayer === 'P1' && gameState === 'playing' && 'ring-2 ring-blue-500 shadow-lg')}>
+              <CardTitle className="font-bold truncate" style={{color: playerColors.P1}}>{playerNames.P1}</CardTitle>
               <CardDescription className="text-2xl font-bold">{scores.P1}</CardDescription>
             </Card>
-            <Card className={cn("text-center p-3", currentPlayer === 'P2' && gameState === 'playing' && 'ring-2 ring-red-500')}>
-              <CardTitle className="text-red-500">{gameMode === 'ai' ? 'Shravya AI' : 'Player 2'}</CardTitle>
+            <Card className={cn("text-center p-3 transition-shadow", currentPlayer === 'P2' && gameState === 'playing' && 'ring-2 ring-red-500 shadow-lg')}>
+              <CardTitle className="font-bold truncate" style={{color: playerColors.P2}}>{playerNames.P2}</CardTitle>
               <CardDescription className="text-2xl font-bold">{scores.P2}</CardDescription>
             </Card>
           </div>
@@ -320,19 +361,18 @@ export default function DotsAndBoxesPage() {
           <div className="relative p-2 bg-muted rounded-lg" style={{ width: "clamp(300px, 90vw, 400px)", height: "clamp(300px, 90vw, 400px)" }}>
             <div className="grid w-full h-full" style={{gridTemplateColumns: `repeat(${boardSize}, 1fr)`, gridTemplateRows: `repeat(${boardSize}, 1fr)`}}>
                {boxes.map((box, i) => (
-                    <div key={i} className={cn("w-full h-full flex items-center justify-center transition-colors duration-300", box.owner === 'P1' && 'bg-blue-500/30', box.owner === 'P2' && 'bg-red-500/30')}>
-                      {box.owner && <span className={cn("text-4xl font-bold", box.owner === 'P1' ? 'text-blue-600' : 'text-red-600')}>{box.owner}</span>}
+                    <div key={i} className={cn("w-full h-full flex items-center justify-center transition-colors duration-300")}
+                    style={{ backgroundColor: box.owner ? `${playerColors[box.owner]}60` : 'transparent'}}>
+                      {box.owner && <span className={"text-4xl font-bold"} style={{color: playerColors[box.owner]}}>{box.owner === 'P1' ? 'P1' : (gameMode === 'ai' ? 'AI' : 'P2')}</span>}
                     </div>
                 ))}
             </div>
             <div className="absolute inset-0 p-2 grid" style={{gridTemplateColumns: `repeat(${boardSize}, 1fr)`, gridTemplateRows: `repeat(${boardSize}, 1fr)`}}>
-              {/* Dots */}
               {Array.from({length: (boardSize+1)*(boardSize+1)}).map((_, i) => {
                 const row = Math.floor(i / (boardSize + 1));
                 const col = i % (boardSize + 1);
                 return <div key={`dot-${row}-${col}`} className="absolute w-3 h-3 bg-neutral-700 rounded-full -translate-x-1/2 -translate-y-1/2" style={{top: `${row * 100/boardSize}%`, left: `${col * 100/boardSize}%`}}></div>
               })}
-              {/* Lines */}
               {lines.map((line, i) => (
                   <button key={i}
                     onClick={() => handleLineClick(line)}
@@ -340,9 +380,14 @@ export default function DotsAndBoxesPage() {
                     className={cn(
                         "absolute -translate-x-1/2 -translate-y-1/2 z-10",
                         line.type === 'horizontal' ? 'w-[calc(100%/var(--size)-8px)] h-2' : 'w-2 h-[calc(100%/var(--size)-8px)]',
-                        line.owner ? (line.owner === 'P1' ? 'bg-blue-500' : 'bg-red-500') : 'bg-transparent hover:bg-neutral-400/50'
+                        !line.owner && 'bg-transparent hover:bg-neutral-400/50'
                     )}
-                    style={{'--size': boardSize, top: `${(line.row + (line.type === 'vertical' ? 0.5 : 0)) * 100/boardSize}%`, left: `${(line.col + (line.type === 'horizontal' ? 0.5 : 0)) * 100/boardSize}%` } as React.CSSProperties}
+                    style={{
+                      '--size': boardSize, 
+                      top: `${(line.row + (line.type === 'vertical' ? 0.5 : 0)) * 100/boardSize}%`, 
+                      left: `${(line.col + (line.type === 'horizontal' ? 0.5 : 0)) * 100/boardSize}%`,
+                      backgroundColor: line.owner ? playerColors[line.owner] : undefined,
+                     } as React.CSSProperties}
                   />
               ))}
             </div>
@@ -354,6 +399,100 @@ export default function DotsAndBoxesPage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)]">
       {gameState === 'setup' ? renderSetupScreen() : renderGameScreen()}
+       <SetupDialog 
+        isOpen={isSetupDialogOpen} 
+        onClose={() => setIsSetupDialogOpen(false)} 
+        setupDetails={tempSetup} 
+        onStartGame={startGame}
+      />
     </div>
   );
+}
+
+// Setup Dialog Component
+interface SetupDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  setupDetails: { mode: GameMode; diff: Difficulty } | null;
+  onStartGame: (mode: GameMode, diff: Difficulty, names: {P1: string, P2: string}, colors: {P1: string, P2: string}) => void;
+}
+
+function SetupDialog({ isOpen, onClose, setupDetails, onStartGame }: SetupDialogProps) {
+    const [p1Name, setP1Name] = useState('Player 1');
+    const [p2Name, setP2Name] = useState('Player 2');
+    const [p1Color, setP1Color] = useState(COLOR_OPTIONS[0].value);
+    const [p2Color, setP2Color] = useState(COLOR_OPTIONS[1].value);
+
+    useEffect(() => {
+        if(setupDetails?.mode === 'ai') {
+            setP2Name('Shravya AI');
+            setP2Color(COLOR_OPTIONS[1].value); // AI is always Red
+            if (p1Color === COLOR_OPTIONS[1].value) {
+                setP1Color(COLOR_OPTIONS[0].value);
+            }
+        } else {
+             setP2Name('Player 2');
+        }
+    }, [setupDetails, p1Color]);
+
+
+    const handleSubmit = () => {
+        if (!setupDetails) return;
+        if (p1Name.trim() === '' || (setupDetails.mode === 'player' && p2Name.trim() === '')) {
+            alert('Player names cannot be empty.');
+            return;
+        }
+        if (setupDetails.mode === 'player' && p1Color === p2Color) {
+            alert('Players must choose different colors.');
+            return;
+        }
+        onStartGame(setupDetails.mode, setupDetails.diff, { P1: p1Name, P2: p2Name }, { P1: p1Color, P2: p2Color });
+        onClose();
+    }
+    if (!setupDetails) return null;
+
+    const availableP1Colors = setupDetails.mode === 'ai' ? COLOR_OPTIONS.filter(c => c.value !== p2Color) : COLOR_OPTIONS;
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onClose}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Game Setup: {setupDetails.mode === 'ai' ? 'Player vs AI' : 'Player vs Player'}</DialogTitle>
+                    <DialogDescription>Customize your game session.</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="p1Name">Player 1 Name</Label>
+                        <Input id="p1Name" value={p1Name} onChange={(e) => setP1Name(e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Player 1 Color</Label>
+                        <div className="flex gap-2 flex-wrap">
+                            {availableP1Colors.map(color => (
+                                <button key={color.value} onClick={() => setP1Color(color.value)} className={cn("w-8 h-8 rounded-full border-2", p1Color === color.value && 'ring-4 ring-offset-2 ring-primary')} style={{backgroundColor: color.value}}/>
+                            ))}
+                        </div>
+                    </div>
+
+                    {setupDetails.mode === 'player' && (
+                        <>
+                            <div className="space-y-2">
+                                <Label htmlFor="p2Name">Player 2 Name</Label>
+                                <Input id="p2Name" value={p2Name} onChange={(e) => setP2Name(e.target.value)} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Player 2 Color</Label>
+                                <div className="flex gap-2 flex-wrap">
+                                    {COLOR_OPTIONS.map(color => (
+                                        <button key={color.value} onClick={() => setP2Color(color.value)} className={cn("w-8 h-8 rounded-full border-2", p2Color === color.value && 'ring-4 ring-offset-2 ring-primary')} style={{backgroundColor: color.value}}/>
+                                    ))}
+                                </div>
+                            </div>
+                        </>
+                    )}
+                </div>
+                <Button onClick={handleSubmit}>Start Game</Button>
+            </DialogContent>
+        </Dialog>
+    )
 }
