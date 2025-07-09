@@ -47,15 +47,21 @@ export default function DashboardPage() {
   // Effect to handle the new user welcome reward
   useEffect(() => {
     const handleNewUser = () => {
+      // Prevent double-awarding in React StrictMode by using sessionStorage
+      if (sessionStorage.getItem('welcomeBonusAwarded') === 'true') {
+        if (searchParams.get('new_user') === 'true') {
+          router.replace('/dashboard', { scroll: false });
+        }
+        return;
+      }
+
       // 1. Apply the welcome bonus to local storage so the UI updates instantly.
       const earned = applyRewards(100, 5, "Welcome Bonus!");
       setNewUserInfo(earned);
       setShowRewardDialog(true);
       
-      // 2. The local storage has been updated by applyRewards.
-      //    We don't need to sync here, as the user profile and any previous
-      //    guest data were already created/synced on the signup page.
-      //    The welcome bonus will be part of their local data now.
+      // Mark bonus as awarded for this session
+      sessionStorage.setItem('welcomeBonusAwarded', 'true');
       
       // 3. Clean up the URL to prevent the dialog from showing again on refresh
       router.replace('/dashboard', { scroll: false });

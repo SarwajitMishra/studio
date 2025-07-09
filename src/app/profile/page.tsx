@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
@@ -437,7 +438,7 @@ export default function ProfilePage() {
 
                         return (
                             <TableRow key={event.id}>
-                            <TableCell className="font-medium">{index + 1}</TableCell>
+                            <TableCell className="font-medium">{rewardHistory.length - index}</TableCell>
                             <TableCell>
                                 <div className="font-medium text-foreground">{event.description}</div>
                                 <div className="text-xs text-muted-foreground">
