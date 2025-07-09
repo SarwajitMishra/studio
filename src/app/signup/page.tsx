@@ -23,7 +23,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -46,7 +45,6 @@ import { getGuestData, clearGuestData } from '@/lib/sync';
 
 const passwordRegex = new RegExp("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$");
 
-// Username uniqueness will be checked in the submit handler, not in the schema itself.
 const emailFormSchema = z.object({
   username: z.string()
     .min(3, "Username must be at least 3 characters.")
@@ -99,12 +97,12 @@ export default function SignupPage() {
     },
   });
 
+  // Removed async refine from the schema definition.
   const profileFormSchema = useMemo(() => z.object({
     username: z.string()
       .min(3, "Username must be at least 3 characters.")
       .max(20, "Username must be 20 characters or less.")
-      .regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores.")
-      .refine(checkUsernameUnique, "This username is already taken."),
+      .regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores."),
     name: z.string().min(2, "Name must be at least 2 characters."),
     country: z.string().min(1, "Please select a country."),
     birthday: z.date({ required_error: "A date of birth is required." })
@@ -114,7 +112,7 @@ export default function SignupPage() {
 
   const profileForm = useForm<z.infer<typeof profileFormSchema>>({
     resolver: zodResolver(profileFormSchema),
-    mode: 'onChange', // Validate on change to give real-time feedback for username
+    mode: 'onChange',
   });
 
 
@@ -131,10 +129,9 @@ export default function SignupPage() {
   }, [completingUser, profileForm]);
 
   async function onEmailSubmit(values: z.infer<typeof emailFormSchema>) {
+    console.log("onEmailSubmit triggered.");
     setIsLoading(true);
-    console.log("Signup submission started with values:", values);
     
-    // Explicitly check for username uniqueness on submit
     const isUnique = await checkUsernameUnique(values.username);
     if (!isUnique) {
       emailForm.setError("username", {
@@ -142,14 +139,11 @@ export default function SignupPage() {
         message: "This username is already taken. Please choose another.",
       });
       setIsLoading(false);
-      console.log(`Username "${values.username}" is not unique. Halting signup.`);
       return;
     }
-    console.log(`Username "${values.username}" is unique. Proceeding...`);
 
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
-      
       await updateProfile(userCredential.user, { displayName: values.name });
 
       const additionalData = {
@@ -169,7 +163,7 @@ export default function SignupPage() {
       toast({ title: "Account Created!", description: "Welcome to Shravya Playhouse!" });
       router.push('/dashboard?new_user=true');
     } catch (error: any) {
-      console.error("Error signing up:", error);
+      console.error("Error signing up with email:", error);
       let description = error.message || "An unexpected error occurred.";
       if (error.code === 'auth/operation-not-allowed') {
         description = "Email/Password sign-up is not enabled. Please enable it in the Firebase console.";
@@ -182,7 +176,19 @@ export default function SignupPage() {
 
   async function onProfileSubmit(values: z.infer<typeof profileFormSchema>) {
       if (!completingUser) return;
+      console.log("onProfileSubmit triggered for social/phone signup.");
       setIsLoading(true);
+
+      const isUnique = await checkUsernameUnique(values.username);
+      if (!isUnique) {
+        profileForm.setError("username", {
+          type: "manual",
+          message: "This username is already taken. Please choose another.",
+        });
+        setIsLoading(false);
+        return;
+      }
+
       try {
         await updateProfile(completingUser, { displayName: values.name });
 
@@ -213,7 +219,7 @@ export default function SignupPage() {
 
   const handleAuthError = (error: any) => {
     if (error.code === 'auth/popup-closed-by-user') {
-      return; // Do nothing, user cancelled intentionally
+      return; 
     }
     console.error("Authentication error", error);
     toast({
@@ -232,9 +238,6 @@ export default function SignupPage() {
       if (additionalInfo?.isNewUser) {
         setCompletingUser(result.user);
       } else {
-        // This is a login to an existing account, not a new signup.
-        // The sync dialog should appear on the login page for this case.
-        // For now, we just log them in. The user should ideally use the login page.
         toast({ title: "Welcome Back!", description: "You've been successfully logged in." });
         router.push('/dashboard');
       }
@@ -254,7 +257,6 @@ export default function SignupPage() {
     setPhoneLoading(true);
     try {
       const fullPhoneNumber = `${phoneDialogCountryCode}${phoneDialogNumber}`;
-       // Create a new verifier each time to avoid stale state issues
       const recaptchaVerifier = new RecaptchaVerifier(auth, recaptchaContainerRef.current, { 'size': 'invisible' });
       const confirmationResult = await signInWithPhoneNumber(auth, fullPhoneNumber, recaptchaVerifier);
       
@@ -365,9 +367,9 @@ export default function SignupPage() {
                 Continue with Google
               </Button>
                <Dialog open={isPhoneDialogOpen} onOpenChange={setIsPhoneDialogOpen}>
-                <DialogTrigger asChild>
+                 <DialogTrigger asChild>
                   <Button variant="outline" className="w-full" disabled={isLoading}>Sign up with Phone</Button>
-                </DialogTrigger>
+                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Sign Up with Phone</DialogTitle>
