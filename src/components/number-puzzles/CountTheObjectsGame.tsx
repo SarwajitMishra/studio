@@ -144,7 +144,7 @@ export default function CountTheObjectsGame({ onBack, difficulty }: CountTheObje
     });
     setUserAnswer("");
     setFeedback(null);
-  }, [difficulty, sessionKey]);
+  }, [difficulty]);
 
   const startNewRound = useCallback(() => {
     if (questionsAnswered > 0 && !isRoundOver) {
@@ -178,32 +178,29 @@ export default function CountTheObjectsGame({ onBack, difficulty }: CountTheObje
     }
 
     const isCorrect = answerNum === currentProblem.count;
-    let currentFeedbackMsg = "";
-    let newScore = score;
+
+    setFeedback(isCorrect ? "Correct!" : `Not quite. There were ${currentProblem.count} ${currentProblem.iconName.toLowerCase()}s.`);
 
     if (isCorrect) {
-      newScore++;
-      setScore(newScore);
-      currentFeedbackMsg = "Correct!";
+      setScore(prev => prev + 1);
       toast({ title: "Correct!", className: "bg-green-500 text-white" });
     } else {
-      currentFeedbackMsg = `Not quite. There were ${currentProblem.count} ${currentProblem.iconName.toLowerCase()}s.`;
       toast({ variant: "destructive", title: "Incorrect!", description: `The correct count was ${currentProblem.count}.` });
     }
     
-    setFeedback(currentFeedbackMsg);
-
     setTimeout(() => {
-      const newQuestionsAnswered = questionsAnswered + 1;
-      setQuestionsAnswered(newQuestionsAnswered);
-      if (newQuestionsAnswered >= QUESTIONS_PER_ROUND) {
-        const finalScore = isCorrect ? newScore : score;
-        handleGameOver(finalScore);
-        setFeedback(isCorrect ? `Correct! Final Score: ${finalScore}/${QUESTIONS_PER_ROUND}` : `Not quite. There were ${currentProblem.count} ${currentProblem.iconName.toLowerCase()}s. Final Score: ${finalScore}/${QUESTIONS_PER_ROUND}`);
-        setCurrentProblem(null);
-      } else {
-        loadNewProblem();
-      }
+        setQuestionsAnswered(prev => {
+            const newTotalAnswered = prev + 1;
+            if (newTotalAnswered >= QUESTIONS_PER_ROUND) {
+                const finalScore = score + (isCorrect ? 1 : 0);
+                handleGameOver(finalScore);
+                setFeedback(`Round Over! Final Score: ${finalScore}/${QUESTIONS_PER_ROUND}`);
+                setCurrentProblem(null);
+            } else {
+                loadNewProblem();
+            }
+            return newTotalAnswered;
+        });
     }, isCorrect ? 1500 : 3000);
   };
   

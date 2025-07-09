@@ -159,28 +159,28 @@ export default function NumberSequenceGame({ onBack, difficulty }: NumberSequenc
     }
 
     const isCorrect = answerNum === currentSequence.nextNumber;
-    let newScore = score;
+    
+    setFeedback(isCorrect ? "Correct!" : `Not quite. The next number was ${currentSequence.nextNumber}.`);
+
     if (isCorrect) {
-      newScore++;
-      setScore(newScore);
-      setFeedback("Correct!");
+      setScore(prev => prev + 1);
       toast({ title: "Correct!", className: "bg-green-500 text-white" });
     } else {
-      setFeedback(`Not quite. The next number was ${currentSequence.nextNumber}. ${currentSequence.description || ''}`);
       toast({ variant: "destructive", title: "Incorrect!", description: `The correct answer was ${currentSequence.nextNumber}.` });
     }
 
-    const newQuestionsAnswered = questionsAnswered + 1;
-
     setTimeout(() => {
-      setQuestionsAnswered(newQuestionsAnswered);
-      if (newQuestionsAnswered >= QUESTIONS_PER_ROUND) {
-        const finalScore = isCorrect ? newScore : score;
-        handleGameOver(finalScore);
-        setFeedback(isCorrect ? `Correct! Final Score: ${finalScore}/${QUESTIONS_PER_ROUND}` : `Not quite. The next number was ${currentSequence.nextNumber}. ${currentSequence.description || ''} Final Score: ${finalScore}/${QUESTIONS_PER_ROUND}`);
-      } else {
-        loadNewSequence();
-      }
+      setQuestionsAnswered(prev => {
+        const newTotalAnswered = prev + 1;
+        if (newTotalAnswered >= QUESTIONS_PER_ROUND) {
+          const finalScore = score + (isCorrect ? 1 : 0);
+          handleGameOver(finalScore);
+          setFeedback(`Round Over! Final Score: ${finalScore}/${QUESTIONS_PER_ROUND}`);
+        } else {
+          loadNewSequence();
+        }
+        return newTotalAnswered;
+      });
     }, isCorrect ? 1500 : 3000);
   };
   

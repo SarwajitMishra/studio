@@ -151,30 +151,28 @@ export default function MissingNumberGame({ onBack, difficulty }: MissingNumberG
     }
 
     const isCorrect = answerNum === currentProblem.answer;
-    let currentFeedbackMsg = "";
-    let newScore = score;
+
+    setFeedback(isCorrect ? "Correct!" : `Not quite. The missing number was ${currentProblem.answer}.`);
+
     if (isCorrect) {
-      newScore++;
-      setScore(newScore);
-      currentFeedbackMsg = "Correct!";
+      setScore(prev => prev + 1);
       toast({ title: "Correct!", className: "bg-green-500 text-white" });
     } else {
-      currentFeedbackMsg = `Not quite. The missing number was ${currentProblem.answer}. ${currentProblem.description || ''}`;
       toast({ variant: "destructive", title: "Incorrect!", description: `The correct answer was ${currentProblem.answer}.` });
     }
     
-    setFeedback(currentFeedbackMsg);
-    const newQuestionsAnswered = questionsAnswered + 1;
-
     setTimeout(() => {
-      setQuestionsAnswered(newQuestionsAnswered);
-      if (newQuestionsAnswered >= QUESTIONS_PER_ROUND) {
-        const finalScore = isCorrect ? newScore : score;
-        handleGameOver(finalScore);
-        setFeedback(isCorrect ? `Correct! Final Score: ${finalScore}/${QUESTIONS_PER_ROUND}` : `Not quite. The missing number was ${currentProblem.answer}. ${currentProblem.description || ''} Final Score: ${finalScore}/${QUESTIONS_PER_ROUND}`);
-      } else {
-        loadNewProblem();
-      }
+      setQuestionsAnswered(prev => {
+        const newTotalAnswered = prev + 1;
+        if (newTotalAnswered >= QUESTIONS_PER_ROUND) {
+          const finalScore = score + (isCorrect ? 1 : 0);
+          handleGameOver(finalScore);
+          setFeedback(`Round Over! Final Score: ${finalScore}/${QUESTIONS_PER_ROUND}`);
+        } else {
+          loadNewProblem();
+        }
+        return newTotalAnswered;
+      });
     }, isCorrect ? 1500 : 3000);
   };
   

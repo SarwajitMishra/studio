@@ -126,7 +126,7 @@ export default function ArithmeticChallengeGame({ onBack, difficulty }: Arithmet
 
   const handleSubmitAnswer = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!currentProblem || isGameOver || feedback) return; 
+    if (!currentProblem || isGameOver || feedback) return;
 
     const answerNum = parseInt(userAnswer, 10);
     if (isNaN(answerNum)) {
@@ -136,28 +136,28 @@ export default function ArithmeticChallengeGame({ onBack, difficulty }: Arithmet
     }
 
     const isCorrect = answerNum === currentProblem.answer;
-    let newScore = score;
+
+    setFeedback(isCorrect ? "Correct!" : `Not quite. The answer was ${currentProblem.answer}.`);
+
     if (isCorrect) {
-      newScore++;
-      setScore(newScore);
-      setFeedback("Correct!");
+      setScore(prev => prev + 1);
       toast({ title: "Correct!", className: "bg-green-500 text-white" });
     } else {
-      setFeedback(`Not quite. The answer was ${currentProblem.answer}.`);
       toast({ variant: "destructive", title: "Incorrect!", description: `The correct answer was ${currentProblem.answer}.` });
     }
 
-    const newQuestionsAnswered = questionsAnswered + 1;
-    
     setTimeout(() => {
-      setQuestionsAnswered(newQuestionsAnswered);
-      if (newQuestionsAnswered >= QUESTIONS_PER_ROUND) {
-        const finalScore = isCorrect ? newScore : score;
-        handleGameOver(finalScore);
-        setFeedback(isCorrect ? `Correct! Final Score: ${finalScore}/${QUESTIONS_PER_ROUND}` : `Not quite. The answer was ${currentProblem.answer}. Final Score: ${finalScore}/${QUESTIONS_PER_ROUND}`);
-      } else {
-        generateProblem();
-      }
+      setQuestionsAnswered(prev => {
+        const newTotalAnswered = prev + 1;
+        if (newTotalAnswered >= QUESTIONS_PER_ROUND) {
+          const finalScore = score + (isCorrect ? 1 : 0);
+          handleGameOver(finalScore);
+          setFeedback(`Round Over! Final Score: ${finalScore}/${QUESTIONS_PER_ROUND}`);
+        } else {
+          generateProblem();
+        }
+        return newTotalAnswered;
+      });
     }, isCorrect ? 1000 : 2000);
   };
   
