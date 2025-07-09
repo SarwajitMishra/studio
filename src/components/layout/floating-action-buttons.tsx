@@ -7,7 +7,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faBolt, faXmark, faLightbulb, faEnvelope, faHeart } from '@fortawesome/free-solid-svg-icons';
+import { faBolt, faXmark, faEnvelope, faHeart, faGear } from '@fortawesome/free-solid-svg-icons';
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 
 export default function FloatingActionButtons() {
@@ -16,7 +16,7 @@ export default function FloatingActionButtons() {
     useEffect(() => setIsMounted(true), []);
 
     const menuItems: { href: string; label: string; icon: IconDefinition }[] = [
-        { href: '#', label: 'Request New Feature', icon: faLightbulb },
+        { href: '#', label: 'Spin the Wheel', icon: faGear },
         { href: '#', label: 'Contact Us', icon: faEnvelope },
         { href: '#', label: 'Donate / Support', icon: faHeart },
     ];

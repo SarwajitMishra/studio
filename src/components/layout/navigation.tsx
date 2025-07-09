@@ -14,6 +14,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Settings, Home, Store, BookOpen, Bell, BookText, LogOut, Shield } from 'lucide-react';
 import { SETTINGS_MENU_ITEMS } from '@/lib/constants';
 import { auth, signOut as firebaseSignOut, onAuthStateChanged, type User } from '@/lib/firebase';
@@ -86,76 +92,109 @@ export default function Navigation({ side }: NavigationProps) {
   
   if (side === 'left') {
     return (
-       <nav className="flex items-center space-x-1 sm:space-x-2">
-         <Link href="/dashboard" aria-label="Go to Homepage">
-           <Button
-             variant="ghost"
-             size="icon"
-             className={cn(commonButtonClasses, pathname === '/dashboard' && "bg-accent text-accent-foreground hover:bg-accent/90")}
-           >
-             <Home size={24} />
-           </Button>
-         </Link>
-         
-         <Link href="/shop" aria-label="Go to Shop">
-           <Button
-             variant="ghost"
-             size="icon"
-             className={cn(commonButtonClasses, pathname === '/shop' && "bg-accent text-accent-foreground hover:bg-accent/90")}
-           >
-             <Store size={24} />
-           </Button>
-         </Link>
-
-         <Link href="/blogs" aria-label="Go to Blogs">
-           <Button
-             variant="ghost"
-             size="icon"
-             className={cn(commonButtonClasses, pathname === '/blogs' && "bg-accent text-accent-foreground hover:bg-accent/90")}
-           >
-             <BookOpen size={24} />
-           </Button>
-         </Link>
+       <TooltipProvider>
+        <nav className="flex items-center space-x-1 sm:space-x-2">
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <Link href="/dashboard" aria-label="Go to Homepage">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className={cn(commonButtonClasses, pathname === '/dashboard' && "bg-accent text-accent-foreground hover:bg-accent/90")}
+                    >
+                        <Home size={24} />
+                    </Button>
+                    </Link>
+                </TooltipTrigger>
+                <TooltipContent><p>Homepage</p></TooltipContent>
+            </Tooltip>
+            
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <Link href="/shop" aria-label="Go to Shop">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className={cn(commonButtonClasses, pathname === '/shop' && "bg-accent text-accent-foreground hover:bg-accent/90")}
+                    >
+                        <Store size={24} />
+                    </Button>
+                    </Link>
+                </TooltipTrigger>
+                <TooltipContent><p>Shop</p></TooltipContent>
+            </Tooltip>
+            
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <Link href="/blogs" aria-label="Go to Blogs">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className={cn(commonButtonClasses, pathname === '/blogs' && "bg-accent text-accent-foreground hover:bg-accent/90")}
+                    >
+                        <BookOpen size={24} />
+                    </Button>
+                    </Link>
+                </TooltipTrigger>
+                <TooltipContent><p>Blogs</p></TooltipContent>
+            </Tooltip>
        </nav>
+      </TooltipProvider>
     )
   }
 
   if (side === 'right') {
     return (
+      <TooltipProvider>
       <nav className="flex items-center space-x-1 sm:space-x-2">
-        <Link href="/profile" aria-label="View Profile">
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn(
-                "rounded-full p-0", // Remove padding for avatar to fill the button
-                commonButtonClasses, 
-                pathname === '/profile' && "ring-2 ring-accent ring-offset-primary ring-offset-2"
-            )}
-          >
-            <Avatar className="h-full w-full">
-              <AvatarImage src={avatarUrl} alt={`${userName}'s avatar`} />
-              <AvatarFallback>{userName.charAt(0).toUpperCase()}</AvatarFallback>
-            </Avatar>
-          </Button>
-        </Link>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Link href="/profile" aria-label="View Profile">
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn(
+                    "rounded-full p-0",
+                    commonButtonClasses, 
+                    pathname === '/profile' && "ring-2 ring-accent ring-offset-primary ring-offset-2"
+                )}
+              >
+                <Avatar className="h-full w-full">
+                  <AvatarImage src={avatarUrl} alt={`${userName}'s avatar`} />
+                  <AvatarFallback>{userName.charAt(0).toUpperCase()}</AvatarFallback>
+                </Avatar>
+              </Button>
+            </Link>
+          </TooltipTrigger>
+          <TooltipContent><p>{userName}</p></TooltipContent>
+        </Tooltip>
         
-        <Link href="/info" aria-label="Game Info">
-           <Button
-             variant="ghost"
-             size="icon"
-             className={cn(commonButtonClasses, pathname === '/info' && "bg-accent text-accent-foreground hover:bg-accent/90")}
-           >
-             <BookText size={24} />
-           </Button>
-        </Link>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Link href="/info" aria-label="Game Info">
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn(commonButtonClasses, pathname === '/info' && "bg-accent text-accent-foreground hover:bg-accent/90")}
+              >
+                <BookText size={24} />
+              </Button>
+            </Link>
+          </TooltipTrigger>
+          <TooltipContent><p>Game Info</p></TooltipContent>
+        </Tooltip>
 
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className={commonButtonClasses} aria-label="Notifications">
-              <Bell size={24} />
-            </Button>
-          </DropdownMenuTrigger>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className={commonButtonClasses} aria-label="Notifications">
+                  <Bell size={24} />
+                </Button>
+              </DropdownMenuTrigger>
+            </TooltipTrigger>
+            <TooltipContent><p>Notifications</p></TooltipContent>
+          </Tooltip>
           <DropdownMenuContent align="end" className="w-56 mt-2">
             <DropdownMenuLabel>Notifications</DropdownMenuLabel>
             <DropdownMenuSeparator />
@@ -164,11 +203,16 @@ export default function Navigation({ side }: NavigationProps) {
         </DropdownMenu>
 
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className={commonButtonClasses} aria-label="Settings Menu">
-              <Settings size={24} />
-            </Button>
-          </DropdownMenuTrigger>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className={commonButtonClasses} aria-label="Settings Menu">
+                  <Settings size={24} />
+                </Button>
+              </DropdownMenuTrigger>
+            </TooltipTrigger>
+            <TooltipContent><p>Settings</p></TooltipContent>
+          </Tooltip>
           <DropdownMenuContent align="end" className="w-56 mt-2">
             <DropdownMenuLabel>Settings & More</DropdownMenuLabel>
             <DropdownMenuSeparator />
@@ -203,6 +247,7 @@ export default function Navigation({ side }: NavigationProps) {
           </DropdownMenuContent>
         </DropdownMenu>
       </nav>
+      </TooltipProvider>
     );
   }
 
