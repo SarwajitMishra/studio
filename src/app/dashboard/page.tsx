@@ -20,8 +20,6 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { applyRewards } from '@/lib/rewards';
-import { syncLocalDataToFirebase } from '@/lib/users';
-import { clearGuestData } from '@/lib/sync';
 
 
 const CATEGORIES_ORDER: GameCategory[] = ['Strategy', 'Puzzles', 'Learning'];
@@ -48,23 +46,18 @@ export default function DashboardPage() {
 
   // Effect to handle the new user welcome reward
   useEffect(() => {
-    const handleNewUser = async () => {
+    const handleNewUser = () => {
       // 1. Apply the welcome bonus to local storage so the UI updates instantly.
       const earned = applyRewards(100, 5, "Welcome Bonus!");
       setNewUserInfo(earned);
       setShowRewardDialog(true);
       
-      // 2. Sync this new "local data" to their empty Firebase profile.
-      try {
-        await syncLocalDataToFirebase();
-        // 3. Clear the local data now that it's saved online.
-        clearGuestData();
-        console.log("Welcome bonus synced to Firebase and local data cleared.");
-      } catch (error) {
-        console.error("Failed to sync welcome bonus:", error);
-      }
+      // 2. The local storage has been updated by applyRewards.
+      //    We don't need to sync here, as the user profile and any previous
+      //    guest data were already created/synced on the signup page.
+      //    The welcome bonus will be part of their local data now.
       
-      // 4. Clean up the URL to prevent the dialog from showing again on refresh
+      // 3. Clean up the URL to prevent the dialog from showing again on refresh
       router.replace('/dashboard', { scroll: false });
     };
 
