@@ -100,29 +100,8 @@ export async function createUserProfile(user: User, additionalData: any, guestDa
     // If there's guest data, sync it in a separate batch write after the profile is created.
     if (guestData) {
       console.log(`Syncing guest data for user ${user.uid}...`);
-      const batch = writeBatch(db);
-      
-      if (guestData.gameStats && guestData.gameStats.length > 0) {
-        const statsRef = collection(db, 'users', user.uid, 'gameStats');
-        guestData.gameStats.forEach(stat => {
-          const statDocRef = doc(statsRef, stat.gameId);
-          batch.set(statDocRef, stat);
-        });
-      }
-
-      if (guestData.rewardHistory && guestData.rewardHistory.length > 0) {
-        const historyRef = collection(db, 'users', user.uid, 'rewardHistory');
-        guestData.rewardHistory.forEach(event => {
-          const eventDocRef = doc(historyRef, event.id);
-          batch.set(eventDocRef, event);
-        });
-      }
-
-      const hasDataToCommit = (guestData.gameStats?.length > 0) || (guestData.rewardHistory?.length > 0);
-      if (hasDataToCommit) {
-          await batch.commit();
-          console.log(`Guest data sync complete for ${user.uid}.`);
-      }
+      await syncGuestDataToProfile(user.uid, guestData);
+      console.log(`Guest data sync complete for ${user.uid}.`);
     }
 
   } catch (error) {

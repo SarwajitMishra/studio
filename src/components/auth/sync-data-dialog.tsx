@@ -38,24 +38,24 @@ export default function SyncDataDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-4">
-            <Button 
-                variant="outline" 
+            <Button
+                variant="outline"
                 className="h-auto py-4 flex flex-col items-center justify-center gap-2 text-base text-center"
                 onClick={onKeepOnline}
                 disabled={isSyncing}
             >
                 <Cloud className="h-8 w-8 text-blue-500" />
-                <span className="font-semibold">Keep Online Data</span>
-                <span className="text-xs font-normal text-muted-foreground">Your cloud save will be used. Local data on this device will be deleted.</span>
+                <span className="font-semibold">Keep Cloud Save</span>
+                <span className="text-xs font-normal text-muted-foreground">Progress on this device will be deleted.</span>
             </Button>
-            <Button 
-                variant="outline" 
+            <Button
+                variant="outline"
                 className="h-auto py-4 flex flex-col items-center justify-center gap-2 text-base text-center"
                 onClick={onKeepLocal}
                 disabled={isSyncing}
             >
                 <HardDrive className="h-8 w-8 text-green-500" />
-                <span className="font-semibold">Use Local Data</span>
+                <span className="font-semibold">Use Local Progress</span>
                 <span className="text-xs font-normal text-muted-foreground">Your online save will be overwritten with the data from this device.</span>
             </Button>
         </div>
