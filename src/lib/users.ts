@@ -1,9 +1,10 @@
 
 'use client';
 
-import { db, type User } from './firebase';
+import { db, auth, type User } from './firebase';
 import { doc, setDoc, getDocs, collection, query, where, serverTimestamp, getDoc, writeBatch } from 'firebase/firestore';
 import type { GuestData } from './sync';
+import { getGuestData } from './sync';
 
 export interface UserProfile {
     uid: string;
@@ -101,7 +102,7 @@ export async function createUserProfile(user: User, additionalData: any, guestDa
       });
     }
 
-    if (guestData.gameStats.length > 0 || guestData.rewardHistory.length > 0) {
+    if ((guestData.gameStats && guestData.gameStats.length > 0) || (guestData.rewardHistory && guestData.rewardHistory.length > 0)) {
         await batch.commit();
     }
   }
@@ -139,6 +140,23 @@ export async function syncGuestDataToProfile(userId: string, guestData: GuestDat
 
     await batch.commit();
 }
+
+
+/**
+ * Syncs locally stored guest data to the currently logged-in user's Firebase profile.
+ */
+export async function syncLocalDataToFirebase() {
+    const user = auth.currentUser;
+    if (!user) {
+        console.warn("syncLocalDataToFirebase called but no user is logged in.");
+        return;
+    }
+    const guestData = getGuestData();
+    if (guestData) {
+        await syncGuestDataToProfile(user.uid, guestData);
+    }
+}
+
 
 /**
  * Checks if a user has admin privileges.

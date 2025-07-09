@@ -11,11 +11,7 @@ import {
   type GameCategory,
   S_POINTS_ICON as SPointsIcon,
   S_COINS_ICON as SCoinsIcon,
-  LOCAL_STORAGE_S_POINTS_KEY,
-  LOCAL_STORAGE_S_COINS_KEY,
-  LOCAL_STORAGE_REWARD_HISTORY_KEY,
 } from '@/lib/constants';
-import { LOCAL_STORAGE_GAME_STATS_KEY } from '@/lib/progress';
 import { cn } from '@/lib/utils';
 import GameCard from '@/components/game-card';
 import { onAuthStateChanged, type User } from '@/lib/firebase';
@@ -24,6 +20,9 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { applyRewards } from '@/lib/rewards';
+import { syncLocalDataToFirebase } from '@/lib/users';
+import { clearGuestData } from '@/lib/sync';
+
 
 const CATEGORIES_ORDER: GameCategory[] = ['Strategy', 'Puzzles', 'Learning'];
 
@@ -49,22 +48,28 @@ export default function DashboardPage() {
 
   // Effect to handle the new user welcome reward
   useEffect(() => {
-    const isNewUser = searchParams.get('new_user') === 'true';
-    if (isNewUser) {
-      // Clear local storage to ensure a fresh start. This prevents guest data from carrying over.
-      localStorage.removeItem(LOCAL_STORAGE_S_POINTS_KEY);
-      localStorage.removeItem(LOCAL_STORAGE_S_COINS_KEY);
-      localStorage.removeItem(LOCAL_STORAGE_REWARD_HISTORY_KEY);
-      localStorage.removeItem(LOCAL_STORAGE_GAME_STATS_KEY);
-      window.dispatchEvent(new CustomEvent('storageUpdated')); // Notify other components
-
-      // Apply welcome bonus
+    const handleNewUser = async () => {
+      // 1. Apply the welcome bonus to local storage so the UI updates instantly.
       const earned = applyRewards(100, 5, "Welcome Bonus!");
       setNewUserInfo(earned);
       setShowRewardDialog(true);
       
-      // Clean up the URL to prevent the dialog from showing again on refresh
+      // 2. Sync this new "local data" to their empty Firebase profile.
+      try {
+        await syncLocalDataToFirebase();
+        // 3. Clear the local data now that it's saved online.
+        clearGuestData();
+        console.log("Welcome bonus synced to Firebase and local data cleared.");
+      } catch (error) {
+        console.error("Failed to sync welcome bonus:", error);
+      }
+      
+      // 4. Clean up the URL to prevent the dialog from showing again on refresh
       router.replace('/dashboard', { scroll: false });
+    };
+
+    if (searchParams.get('new_user') === 'true') {
+      handleNewUser();
     }
   }, [searchParams, router]);
 
