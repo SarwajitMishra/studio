@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useCallback, FormEvent } from "react";
@@ -5,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 import { Swords, RotateCcw, Award, ArrowLeft, CheckCircle, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Difficulty } from "@/lib/constants";
