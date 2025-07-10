@@ -13,9 +13,10 @@ import { useToast } from "@/hooks/use-toast";
 import { applyRewards, calculateRewards } from "@/lib/rewards";
 import { S_COINS_ICON as SCoinsIcon, S_POINTS_ICON as SPointsIcon } from '@/lib/constants';
 import type { Difficulty } from '@/lib/constants';
-import { CROSSWORD_PUZZLES, type CrosswordPuzzle, type CrosswordWord } from '@/lib/crossword-puzzles';
+import { type CrosswordPuzzle, type CrosswordWord } from '@/lib/crossword-puzzles';
 import { updateGameStats } from '@/lib/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { generateCrossword } from '@/ai/flows/generate-crossword-flow';
 
 
 interface Cell {
@@ -46,6 +47,7 @@ export default function CrosswordGame({ difficulty, onBack }: CrosswordGameProps
     const [isCalculatingReward, setIsCalculatingReward] = useState(false);
     const [lastReward, setLastReward] = useState<{points: number, coins: number, stars: number} | null>(null);
     const [isGameOver, setIsGameOver] = useState(false);
+    const [isGenerating, setIsGenerating] = useState(true);
     const { toast } = useToast();
     const inputRefs = useRef<(HTMLInputElement | null)[][]>([]);
 
@@ -68,38 +70,44 @@ export default function CrosswordGame({ difficulty, onBack }: CrosswordGameProps
                 const c = word.col + (word.direction === 'across' ? i : 0);
                 if (newGrid[r] && newGrid[r][c]) {
                     newGrid[r][c].isBlock = false;
-                    newGrid[r][c].words[word.direction] = index;
+                    newGrid[r][c].char = word.answer[i];
+                    if (word.direction === 'across') newGrid[r][c].words.across = index;
+                    else newGrid[r][c].words.down = index;
                 }
             }
         });
         return newGrid;
     }, []);
 
-    const restartGame = useCallback(() => {
-        const puzzlesForDiff = CROSSWORD_PUZZLES.filter(p => p.difficulty === difficulty);
-        if (puzzlesForDiff.length === 0) {
+    const restartGame = useCallback(async () => {
+        setIsGenerating(true);
+        setPuzzle(null);
+        setGrid([]);
+        try {
+            const generatedPuzzle = await generateCrossword({ difficulty });
+            const newGrid = createGridFromPuzzle(generatedPuzzle);
+
+            setPuzzle(generatedPuzzle);
+            setGrid(newGrid);
+            setUserGrid(Array(generatedPuzzle.gridSize).fill(null).map(() => Array(generatedPuzzle.gridSize).fill('')));
+            inputRefs.current = Array(generatedPuzzle.gridSize).fill(null).map(() => Array(generatedPuzzle.gridSize).fill(null));
+            setHintsUsed(0);
+            setMistakesMade(false);
+            setActiveCell(null);
+            setLastReward(null);
+            setIsCalculatingReward(false);
+            setIsGameOver(false);
+        } catch (error) {
+             console.error("Failed to generate crossword:", error);
             toast({
                 variant: "destructive",
-                title: "No Puzzles Found",
-                description: `We couldn't find any crosswords for the '${difficulty}' level.`,
+                title: "Puzzle Generation Failed",
+                description: "Could not create a new crossword. Please try again.",
             });
             onBack();
-            return;
+        } finally {
+            setIsGenerating(false);
         }
-
-        const selectedPuzzle = puzzlesForDiff[Math.floor(Math.random() * puzzlesForDiff.length)];
-        const newGrid = createGridFromPuzzle(selectedPuzzle);
-        
-        setPuzzle(selectedPuzzle);
-        setGrid(newGrid);
-        setUserGrid(Array(selectedPuzzle.gridSize).fill(null).map(() => Array(selectedPuzzle.gridSize).fill('')));
-        inputRefs.current = Array(selectedPuzzle.gridSize).fill(null).map(() => Array(selectedPuzzle.gridSize).fill(null));
-        setHintsUsed(0);
-        setMistakesMade(false);
-        setActiveCell(null);
-        setLastReward(null);
-        setIsCalculatingReward(false);
-        setIsGameOver(false);
     }, [difficulty, createGridFromPuzzle, onBack, toast]);
 
     useEffect(() => {
@@ -267,9 +275,10 @@ export default function CrosswordGame({ difficulty, onBack }: CrosswordGameProps
         }
     };
 
-    if(!puzzle || grid.length === 0) return (
-        <div className="flex items-center justify-center h-96">
+    if(isGenerating || !puzzle || grid.length === 0) return (
+        <div className="flex flex-col items-center justify-center h-96 w-full max-w-lg">
             <Loader2 className="animate-spin text-primary h-12 w-12" />
+            <p className="mt-4 text-muted-foreground">The AI is creating a new crossword...</p>
         </div>
     );
     
