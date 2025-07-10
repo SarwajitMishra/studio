@@ -99,7 +99,7 @@ export async function createBlogPost(
     // Revalidate paths to show new data
     revalidatePath('/admin/blogs');
     revalidatePath('/blogs');
-    revalidatePath('/blogs/[slug]');
+    revalidatePath(`/blogs/${postData.slug}`);
 
     return { success: true, id: docRef.id };
   } catch (error: any) {
