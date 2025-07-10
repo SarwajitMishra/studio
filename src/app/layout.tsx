@@ -14,7 +14,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   const pathname = usePathname();
-  const isWelcomePage = pathname === '/';
+  // Define all pages that should not have the main layout
+  const standalonePages = ['/', '/login', '/signup'];
+  const isStandalonePage = standalonePages.includes(pathname);
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -30,7 +32,7 @@ export default function RootLayout({
       {/* The body tag no longer needs the font variable */}
       <body className="font-sans antialiased" suppressHydrationWarning>
         <ThemeProvider>
-          {isWelcomePage ? (
+          {isStandalonePage ? (
             <>{children}</>
           ) : (
             <MainLayout>
