@@ -28,8 +28,9 @@ export default function SupportUsPage() {
         });
       }
     } catch (error) {
-      // Don't show an error if the user cancels the share sheet
-      if (error instanceof DOMException && error.name === 'AbortError') {
+      // Don't show an error if the user cancels the share sheet.
+      // Both 'AbortError' and 'NotAllowedError' can be thrown on cancellation.
+      if (error instanceof DOMException && (error.name === 'AbortError' || error.name === 'NotAllowedError')) {
         console.log('Share action was cancelled by the user.');
         return;
       }
