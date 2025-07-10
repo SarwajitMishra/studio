@@ -63,10 +63,9 @@ export default function PatternBuilderPage() {
   const [score, setScore] = useState(0);
   const [isCalculatingReward, setIsCalculatingReward] = useState(false);
   
-  // New state for peek functionality
   const [peekChances, setPeekChances] = useState(3);
   const [isPeeking, setIsPeeking] = useState(false);
-  const [peekUsedThisRound, setPeekUsedThisRound] = useState(false);
+  const [peeksUsedThisRound, setPeeksUsedThisRound] = useState(0);
   
   const { toast } = useToast();
 
@@ -78,7 +77,7 @@ export default function PatternBuilderPage() {
     setPattern(newPattern);
     setUserPattern(Array(config.gridSize * config.gridSize).fill(null));
     setGameState('memorize');
-    setPeekUsedThisRound(false); // Reset peek status for the new level
+    setPeeksUsedThisRound(0); // Reset peek status for the new level
 
     setTimeout(() => {
       setGameState('build');
@@ -95,7 +94,7 @@ export default function PatternBuilderPage() {
     setUserPattern(Array(newConfig.gridSize * newConfig.gridSize).fill(null));
     setGameState('memorize');
     setPeekChances(3); // Reset peek chances on new difficulty
-    setPeekUsedThisRound(false);
+    setPeeksUsedThisRound(0);
     
     setTimeout(() => {
       setGameState('build');
@@ -113,7 +112,7 @@ export default function PatternBuilderPage() {
       if (peekChances <= 0 || isPeeking || gameState !== 'build') return;
       
       setPeekChances(prev => prev - 1);
-      setPeekUsedThisRound(true);
+      setPeeksUsedThisRound(prev => prev + 1);
       setIsPeeking(true);
       
       toast({ title: 'Peeking!', description: 'The pattern will be shown for 5 seconds.' });
@@ -129,44 +128,54 @@ export default function PatternBuilderPage() {
     setIsCalculatingReward(true);
 
     let correctCells = 0;
+    let totalCellsWithIcons = 0;
     for(let i = 0; i < pattern.length; i++) {
-      if(pattern[i]?.name === userPattern[i]?.name) {
-        correctCells++;
-      }
+        // Only count a cell if it was supposed to have an icon
+        if (pattern[i] !== null) {
+            totalCellsWithIcons++;
+            // Check if the user's pattern has the same icon in that cell
+            if(pattern[i]?.name === userPattern[i]?.name) {
+                correctCells++;
+            }
+        } else {
+            // If the original pattern was empty, the user's should also be empty
+            if (userPattern[i] === null) {
+                correctCells++;
+            }
+        }
     }
-    const accuracy = (correctCells / (config.gridSize * config.gridSize)) * 100;
+    // Accuracy is now based on all cells, correctly matching icons and empty spaces.
+    const accuracy = pattern.length > 0 ? (correctCells / pattern.length) * 100 : 0;
     setScore(accuracy);
-
-    // If a peek was used, no rewards are earned.
-    if (peekUsedThisRound) {
-        toast({
-            title: "Round Complete!",
-            description: `Your accuracy was ${accuracy.toFixed(0)}%. No rewards earned because a peek was used.`,
-            duration: 5000,
-        });
-        updateGameStats({ gameId: 'patternBuilder', didWin: accuracy >= 75, score: 0 }); // Score 0 for stat if peek was used
-        setIsCalculatingReward(false);
-        setGameState('result');
-        return;
-    }
     
-    // If no peek was used, calculate rewards.
     updateGameStats({ gameId: 'patternBuilder', didWin: accuracy >= 75, score: accuracy });
 
     try {
         const rewards = await calculateRewards({
             gameId: 'patternBuilder',
             difficulty,
-            performanceMetrics: { accuracy, peekUsed: peekUsedThisRound }
+            performanceMetrics: { 
+                accuracy, 
+                peeksUsed: peeksUsedThisRound 
+            }
         });
         
-        // If accuracy is not 100%, award only points, no coins, as per user request.
-        const coinsToAward = accuracy < 100 ? 0 : rewards.sCoins;
+        // Calculate penalty based on peeks used
+        let penaltyMultiplier = 0;
+        if (peeksUsedThisRound === 1) penaltyMultiplier = 0.3; // 30% penalty
+        else if (peeksUsedThisRound === 2) penaltyMultiplier = 0.6; // 60% penalty
+        else if (peeksUsedThisRound >= 3) penaltyMultiplier = 1; // 100% penalty
+        
+        const finalPoints = Math.round(rewards.sPoints * (1 - penaltyMultiplier));
+        const finalCoins = Math.round(rewards.sCoins * (1 - penaltyMultiplier));
 
-        applyRewards(rewards.sPoints, coinsToAward, `Pattern Builder round (${difficulty}, ${accuracy.toFixed(0)}% accuracy)`);
+        // As per rule, no coins if accuracy is less than 100%
+        const coinsToAward = accuracy < 100 ? 0 : finalCoins;
+        
+        applyRewards(finalPoints, coinsToAward, `Pattern Builder round (${difficulty}, ${accuracy.toFixed(0)}% accuracy, ${peeksUsedThisRound} peeks)`);
         toast({
             title: "Round Complete!",
-            description: `You earned ${rewards.sPoints} S-Points and ${coinsToAward} S-Coins!`,
+            description: `You earned ${finalPoints} S-Points and ${coinsToAward} S-Coins!`,
         });
     } catch(error) {
         console.error("Error calculating rewards:", error);
@@ -178,7 +187,7 @@ export default function PatternBuilderPage() {
   };
 
   const getResultContent = () => {
-    if (score >= 95) return { title: "Perfect!", description: "Incredible memory!", Icon: Award };
+    if (score >= 99) return { title: "Perfect!", description: "Incredible memory!", Icon: Award };
     if (score >= 75) return { title: "Great Job!", description: "You have a sharp memory!", Icon: Star };
     if (score >= 50) return { title: "Good Try!", description: "Keep practicing to improve!", Icon: Check };
     return { title: "Keep Going!", description: "Practice makes perfect!", Icon: X };
@@ -304,7 +313,11 @@ export default function PatternBuilderPage() {
                     })()}
                       <h3 className="text-2xl font-bold">{getResultContent().title}</h3>
                       <p className="text-lg">Accuracy: <span className="font-bold text-accent">{score.toFixed(0)}%</span></p>
-                      <p>{peekUsedThisRound ? "No rewards this round because a peek was used." : getResultContent().description}</p>
+                      {peeksUsedThisRound > 0 ? (
+                         <p className="text-sm text-destructive">Your reward was reduced for using {peeksUsedThisRound} peek(s).</p>
+                      ) : (
+                         <p>{getResultContent().description}</p>
+                      )}
                       <div className="flex justify-center items-center gap-4 pt-4">
                         <div><h4 className='font-semibold'>Original</h4>{renderGrid(pattern, false)}</div>
                         <div><h4 className='font-semibold'>Your Build</h4>{renderGrid(userPattern, false)}</div>
