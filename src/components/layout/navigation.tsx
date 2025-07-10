@@ -20,7 +20,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Settings, Home, Store, BookOpen, Bell, BookText, LogOut, Shield } from 'lucide-react';
+import { Settings, Home, Store, BookOpen, Bell, BookText, LogOut, Shield, Zap } from 'lucide-react';
 import { SETTINGS_MENU_ITEMS } from '@/lib/constants';
 import { auth, signOut as firebaseSignOut, onAuthStateChanged, type User } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
@@ -198,7 +198,13 @@ export default function Navigation({ side }: NavigationProps) {
           <DropdownMenuContent align="end" className="w-56 mt-2">
             <DropdownMenuLabel>Notifications</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>No new notifications</DropdownMenuItem>
+             <DropdownMenuItem asChild className="cursor-pointer">
+              <Link href="/upcoming-features">
+                <Zap className="mr-2 h-4 w-4" />
+                <span>See Upcoming Features!</span>
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem disabled>No other notifications</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
 

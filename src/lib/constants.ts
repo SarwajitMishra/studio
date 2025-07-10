@@ -8,7 +8,7 @@ import {
     Keyboard, Gamepad2, Languages, Mail, Heart, Hash, CircleDot,
     Grid3x3, Route, Blocks, KeyRound, LayoutGrid, XCircle, Dice6, Users, FileText,
     Trophy, Award, Compass, BrainCircuit, Shield, Palette, Volume2, PenSquare, 
-    CalendarDays, Lightbulb, Ticket, Wand, Eye, FunctionSquare
+    CalendarDays, Lightbulb, Ticket, Wand, Eye, FunctionSquare, Rocket
 } from 'lucide-react';
 
 export type GameCategory = 'Strategy' | 'Puzzles' | 'Learning';
@@ -119,6 +119,7 @@ export interface SettingsMenuItem {
 
 export const SETTINGS_MENU_ITEMS: SettingsMenuItem[] = [
   { href: '/contest', label: 'Monthly Contest', Icon: Ticket },
+  { href: '/upcoming-features', label: 'Upcoming Features', Icon: Rocket },
   { href: '#', label: 'Live Events', Icon: CalendarDays },
   { href: '/settings/preferences', label: 'Theme & Preferences', Icon: Palette },
   { href: '#', label: 'Volume Control', Icon: Volume2 },
