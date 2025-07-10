@@ -193,7 +193,10 @@ export default function ChessPage() {
     setIsCalculatingReward(true);
 
     const didWin = winnerColor === 'w'; // Assuming player is always white vs AI
-    updateGameStats({ gameId: 'chess', didWin });
+    setTimeout(() => {
+        updateGameStats({ gameId: 'chess', didWin });
+    }, 0);
+
 
     try {
         const rewards = await calculateRewards({
@@ -407,7 +410,7 @@ export default function ChessPage() {
     playerColor: PlayerColor,
     currentKingPositions: Record<PlayerColor, SquarePosition>
   ): Move[] => {
-    let allMoves: Move[] = [];
+    const allMoves: Move[] = [];
     for (let r_idx = 0; r_idx < 8; r_idx++) {
       for (let c_idx = 0; c_idx < 8; c_idx++) {
         const piece = getPieceAt(currentBoard, r_idx, c_idx);
@@ -437,11 +440,11 @@ export default function ChessPage() {
         tempBoard[move.to.row][move.to.col] = piece;
         tempBoard[move.from.row][move.from.col] = null;
         
-        let tempKingPositions = {...kingPositions};
+        const tempKingPositions = {...kingPositions};
         if(piece?.type === 'K') tempKingPositions[aiColor] = move.to;
 
         const opponentColor = aiColor === 'w' ? 'b' : 'w';
-        if(getAllLegalMovesForPlayer(tempBoard, opponentColor, tempKingPositions).length === 0 && isSquareAttacked(tempBoard, tempKingPositions[opponentColor].row, tempKingPositions[opponentColor].col, aiColor)) {
+        if(getAllLegalMovesForPlayer(tempBoard, opponentColor, tempKingPositions).length === 0 && isSquareAttacked(tempBoard, kingPositions[opponentColor].row, kingPositions[opponentColor].col, aiColor)) {
             handleSquareClick(move.from.row, move.from.col);
             setTimeout(() => handleSquareClick(move.to.row, move.to.col), 100);
             return;
@@ -629,8 +632,8 @@ export default function ChessPage() {
   };
 
   const resetGame = () => {
-    if (gameState === 'playing') {
-        updateGameStats({ gameId: 'chess', didWin: false });
+    if (gameState === 'playing' && gameMode === 'ai') {
+        setTimeout(() => updateGameStats({ gameId: 'chess', didWin: false }), 0);
     }
     const newInitialSetup = initialBoardSetup();
     setBoard(newInitialSetup.board);
