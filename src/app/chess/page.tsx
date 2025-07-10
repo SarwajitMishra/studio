@@ -144,7 +144,7 @@ const ChessSquare = ({
           )}
           style={{ textShadow: piece.color === 'w' ? '0 0 3px black, 0 0 5px black' : '0 0 3px white, 0 0 5px white' }}
         >
-          {PIECE_UNICODE[piece.color][piece.type]}
+          {PIECE_UNICODE[piece.color][p.type]}
         </span>
       )}
       {isPossibleMove && !piece && (
@@ -377,21 +377,21 @@ export default function ChessPage() {
     piece: Piece,
     r: number,
     c: number,
-    playerColor: PlayerColor,
     currentKingPositions: Record<PlayerColor, SquarePosition>
   ): SquarePosition[] => {
     const rawMoves = _calculateRawPossibleMoves(currentBoard, piece, r, c);
     const legalMoves: SquarePosition[] = [];
+    const playerColor = piece.color;
     const opponentColor = playerColor === 'w' ? 'b' : 'w';
-
+  
     for (const move of rawMoves) {
       const tempBoard = currentBoard.map(rowArr => rowArr.map(p => p ? { ...p } : null));
       const pieceToMove = tempBoard[r][c];
       
-      if(pieceToMove) {
+      if (pieceToMove) {
           tempBoard[move.row][move.col] = pieceToMove;
           tempBoard[r][c] = null;
-
+  
           let kingPos = currentKingPositions[playerColor];
           if (pieceToMove.type === 'K') {
             kingPos = { row: move.row, col: move.col };
@@ -415,7 +415,7 @@ export default function ChessPage() {
       for (let c_idx = 0; c_idx < 8; c_idx++) {
         const piece = getPieceAt(currentBoard, r_idx, c_idx);
         if (piece && piece.color === playerColor) {
-          const legalMoves = calculateLegalMoves(currentBoard, piece, r_idx, c_idx, playerColor, currentKingPositions);
+          const legalMoves = calculateLegalMoves(currentBoard, piece, r_idx, c_idx, currentKingPositions);
           for(const move of legalMoves) {
               allMoves.push({ from: {row: r_idx, col: c_idx}, to: move });
           }
@@ -581,7 +581,7 @@ export default function ChessPage() {
       } else {
         if (clickedSquarePiece && clickedSquarePiece.color === currentPlayer) {
           setSelectedPiece({ row, col });
-          setPossibleMoves(calculateLegalMoves(board, clickedSquarePiece, row, col, currentPlayer, kingPositions));
+          setPossibleMoves(calculateLegalMoves(board, clickedSquarePiece, row, col, kingPositions));
         } else {
           setSelectedPiece(null);
           setPossibleMoves([]);
@@ -590,7 +590,7 @@ export default function ChessPage() {
     } else {
       if (clickedSquarePiece && clickedSquarePiece.color === currentPlayer) {
         setSelectedPiece({ row, col });
-        setPossibleMoves(calculateLegalMoves(board, clickedSquarePiece, row, col, currentPlayer, kingPositions));
+        setPossibleMoves(calculateLegalMoves(board, clickedSquarePiece, row, col, kingPositions));
       }
     }
   };
@@ -683,7 +683,19 @@ export default function ChessPage() {
                         </DialogTrigger>
                         <SetupDialog mode="player" onStart={startGame} />
                     </Dialog>
-                    <Button onClick={() => startGame('ai', { w: 'You', b: 'Shravya AI' })} className="w-full text-lg py-6"><Cpu className="mr-2"/> Player vs AI</Button>
+                    <Dialog>
+                        <DialogTrigger asChild>
+                            <Button className="w-full text-lg py-6"><Cpu className="mr-2"/> Player vs AI</Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Feature Coming Soon!</DialogTitle>
+                                <DialogDescription>
+                                The "Player vs Shravya AI" mode is currently under development. Please check back later!
+                                </DialogDescription>
+                            </DialogHeader>
+                        </DialogContent>
+                    </Dialog>
                 </CardContent>
             </Card>
         </div>
