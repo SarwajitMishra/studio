@@ -379,6 +379,7 @@ export default function ChessPage() {
   ): SquarePosition[] => {
     const rawMoves = _calculateRawPossibleMoves(currentBoard, piece, r, c);
     const legalMoves: SquarePosition[] = [];
+    const opponentColor = playerColor === 'w' ? 'b' : 'w';
 
     for (const move of rawMoves) {
       const tempBoard = currentBoard.map(rowArr => rowArr.map(p => p ? { ...p } : null));
@@ -392,8 +393,8 @@ export default function ChessPage() {
           if (pieceToMove.type === 'K') {
             kingPos = { row: move.row, col: move.col };
           }
-
-          if (kingPos.row !== -1 && !isSquareAttacked(tempBoard, kingPos.row, kingPos.col, playerColor === 'w' ? 'b' : 'w')) {
+          
+          if (kingPos.row !== -1 && !isSquareAttacked(tempBoard, kingPos.row, kingPos.col, opponentColor)) {
             legalMoves.push(move);
           }
       }
@@ -435,8 +436,12 @@ export default function ChessPage() {
         const piece = tempBoard[move.from.row][move.from.col];
         tempBoard[move.to.row][move.to.col] = piece;
         tempBoard[move.from.row][move.from.col] = null;
+        
+        let tempKingPositions = {...kingPositions};
+        if(piece?.type === 'K') tempKingPositions[aiColor] = move.to;
+
         const opponentColor = aiColor === 'w' ? 'b' : 'w';
-        if(getAllLegalMovesForPlayer(tempBoard, opponentColor, kingPositions).length === 0 && isSquareAttacked(tempBoard, kingPositions[opponentColor].row, kingPositions[opponentColor].col, aiColor)) {
+        if(getAllLegalMovesForPlayer(tempBoard, opponentColor, tempKingPositions).length === 0 && isSquareAttacked(tempBoard, tempKingPositions[opponentColor].row, tempKingPositions[opponentColor].col, aiColor)) {
             handleSquareClick(move.from.row, move.from.col);
             setTimeout(() => handleSquareClick(move.to.row, move.to.col), 100);
             return;
