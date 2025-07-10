@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { Eye, Hash, RotateCw, Award, ArrowLeft, Loader2, Star as StarIcon, Mountain, Sprout } from "lucide-react";
+import { Eye, Hash, RotateCw, Award, ArrowLeft, Loader2, Star as StarIcon, Mountain, Sprout, Heart, Sun, Moon, Cloud, Flower2, Leaf, Bug, Bone, Fish, Smile, Anchor, KeyRound, Gem, Gift, Plane, CarFront, Ship, Pizza, CakeSlice, Apple, Banana, Bell, Bomb, Book } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -27,6 +27,29 @@ const DIFFICULTY_CONFIG: Record<Difficulty, { gridSize: number, maxTarget: numbe
 const TARGET_ICONS: { name: string; Icon: LucideIcon; color: string }[] = [
   { name: "Star", Icon: StarIcon, color: "text-yellow-400" },
   { name: "Sprout", Icon: Sprout, color: "text-green-500" },
+  { name: "Heart", Icon: Heart, color: "text-red-500" },
+  { name: "Sun", Icon: Sun, color: "text-orange-400" },
+  { name: "Moon", Icon: Moon, color: "text-slate-400" },
+  { name: "Cloud", Icon: Cloud, color: "text-sky-400" },
+  { name: "Flower", Icon: Flower2, color: "text-pink-500" },
+  { name: "Leaf", Icon: Leaf, color: "text-lime-600" },
+  { name: "Bug", Icon: Bug, color: "text-red-600" },
+  { name: "Bone", Icon: Bone, color: "text-stone-300" },
+  { name: "Fish", Icon: Fish, color: "text-blue-500" },
+  { name: "Smile", Icon: Smile, color: "text-yellow-500" },
+  { name: "Anchor", Icon: Anchor, color: "text-gray-600" },
+  { name: "Key", Icon: KeyRound, color: "text-amber-500" },
+  { name: "Gem", Icon: Gem, color: "text-purple-500" },
+  { name: "Gift", Icon: Gift, color: "text-rose-500" },
+  { name: "Plane", Icon: Plane, color: "text-indigo-500" },
+  { name: "Car", Icon: CarFront, color: "text-cyan-500" },
+  { name: "Ship", Icon: Ship, color: "text-orange-800" },
+  { name: "Pizza", Icon: Pizza, color: "text-yellow-600" },
+  { name: "Cake", Icon: CakeSlice, color: "text-pink-400" },
+  { name: "Apple", Icon: Apple, color: "text-red-500" },
+  { name: "Banana", Icon: Banana, color: "text-yellow-300" },
+  { name: "Bell", Icon: Bell, color: "text-amber-400" },
+  { name: "Bomb", Icon: Bomb, color: "text-neutral-800" },
 ];
 
 const DISTRACTOR_ICONS: { name: string; Icon: LucideIcon; color: string }[] = [
@@ -290,4 +313,3 @@ export default function CountTheObjectsGame({ onBack, difficulty }: CountGamePro
     </Card>
   );
 }
-
