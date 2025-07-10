@@ -121,7 +121,6 @@ export interface SettingsMenuItem {
 export const SETTINGS_MENU_ITEMS: SettingsMenuItem[] = [
   { href: '/contest', label: 'Monthly Contest', Icon: Ticket },
   { href: '/upcoming-features', label: 'Upcoming Features', Icon: Rocket },
-  { href: '/info', label: 'Game Info & Rules', Icon: Info },
   { href: '/settings/preferences', label: 'Theme & Preferences', Icon: Palette },
   { href: '#', label: 'Parental Controls', Icon: Shield },
 ];
