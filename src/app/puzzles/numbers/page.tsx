@@ -4,7 +4,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Hash, Brain, ArrowLeft, Shield, Star, Gem, CheckCircle } from "lucide-react";
+import { Hash, Brain, ArrowLeft, Shield, Star, Gem, CheckCircle, Wand } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MATH_PUZZLE_TYPES, type MathPuzzleType, type Difficulty } from "@/lib/constants";
@@ -12,8 +12,7 @@ import { MATH_PUZZLE_TYPES, type MathPuzzleType, type Difficulty } from "@/lib/c
 // Import the refactored components
 import GuessTheNumberGame from "@/components/number-puzzles/GuessTheNumberGame";
 import ArithmeticChallengeGame from "@/components/number-puzzles/ArithmeticChallengeGame";
-import NumberSequenceGame from "@/components/number-puzzles/NumberSequenceGame";
-import MissingNumberGame from "@/components/number-puzzles/MissingNumberGame";
+import WhatComesNextGame from "@/components/number-puzzles/WhatComesNextGame";
 import CountTheObjectsGame from "@/components/number-puzzles/CountTheObjectsGame";
 import PlaceholderPuzzleGame from "@/components/number-puzzles/PlaceholderPuzzleGame";
 import CodeBreakerGame from "@/components/number-puzzles/CodeBreakerGame";
@@ -78,10 +77,8 @@ export default function NumberPuzzlesPage() {
         return <GuessTheNumberGame {...gameProps} />;
       case "arithmeticChallenge":
         return <ArithmeticChallengeGame {...gameProps} />;
-      case "numberSequence":
-        return <NumberSequenceGame {...gameProps} />;
-      case "missingNumber":
-        return <MissingNumberGame {...gameProps} />;
+      case "whatComesNext":
+        return <WhatComesNextGame {...gameProps} />;
       case "countTheObjects":
         return <CountTheObjectsGame {...gameProps} />;
       case "codeBreaker":

@@ -8,7 +8,7 @@ import {
     Keyboard, Gamepad2, Languages, Mail, Heart, Hash, CircleDot,
     Grid3x3, Route, Blocks, KeyRound, LayoutGrid, XCircle, Dice6, Users, FileText,
     Trophy, Award, Compass, BrainCircuit, Shield, Palette, Volume2, PenSquare, 
-    CalendarDays, Lightbulb, Ticket
+    CalendarDays, Lightbulb, Ticket, Wand
 } from 'lucide-react';
 
 export type GameCategory = 'Strategy' | 'Puzzles' | 'Learning';
@@ -189,18 +189,11 @@ export const MATH_PUZZLE_TYPES: MathPuzzleType[] = [
     color: "text-green-500",
   },
   {
-    id: "numberSequence",
-    name: "Number Sequence",
-    description: "What comes next? Figure out the pattern in the number sequence.",
-    Icon: ListOrdered,
+    id: "whatComesNext",
+    name: "What Comes Next?",
+    description: "Find the next or missing number by discovering the sequence's pattern.",
+    Icon: Wand,
     color: "text-purple-500",
-  },
-  {
-    id: "missingNumber",
-    name: "Missing Number",
-    description: "Find the missing number in the sequence or equation.",
-    Icon: Search,
-    color: "text-orange-500",
   },
   {
     id: "countTheObjects",
