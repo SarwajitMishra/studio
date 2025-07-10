@@ -5,12 +5,20 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, PlusCircle, User } from 'lucide-react';
+import { ArrowRight, PlusCircle, User, Wrench } from 'lucide-react';
 import { getPublishedBlogs, type BlogPost } from '@/lib/blogs';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { onAuthStateChanged, type User as FirebaseUser } from '@/lib/firebase';
 import { auth } from '@/lib/firebase';
 import { format } from 'date-fns';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 export default function BlogsPage() {
     const [blogs, setBlogs] = useState<BlogPost[]>([]);
@@ -48,12 +56,24 @@ export default function BlogsPage() {
                     Articles, stories, and tips from the Shravya Playhouse community.
                 </p>
                 {currentUser && (
-                    <Button asChild className="mt-6">
-                        <Link href="/blogs/create">
-                            <PlusCircle className="mr-2 h-4 w-4" />
-                            Write a Post
-                        </Link>
-                    </Button>
+                    <Dialog>
+                        <DialogTrigger asChild>
+                             <Button className="mt-6">
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                Write a Post
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle className="flex items-center gap-2">
+                                    <Wrench className="text-primary"/> Feature Under Maintenance
+                                </DialogTitle>
+                                <DialogDescription className="pt-2">
+                                    The blog creation feature is currently being improved and is temporarily unavailable. Please check back soon!
+                                </DialogDescription>
+                            </DialogHeader>
+                        </DialogContent>
+                    </Dialog>
                 )}
             </header>
 
