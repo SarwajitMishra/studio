@@ -57,9 +57,9 @@ const getInitialBoard = (size: number): { lines: Line[], boxes: Box[] } => {
 };
 
 const DIFFICULTY_CONFIG: Record<Difficulty, { boardSize: number; label: string; }> = {
-  easy: { boardSize: 3, label: "Easy (4x4 Dots)" },
-  medium: { boardSize: 4, label: "Medium (5x5 Dots)" },
-  hard: { boardSize: 5, label: "Hard (6x6 Dots)" },
+  easy: { boardSize: 4, label: "Easy (5x5 Dots)" },
+  medium: { boardSize: 5, label: "Medium (6x6 Dots)" },
+  hard: { boardSize: 7, label: "Hard (8x8 Dots)" },
 };
 
 const COLOR_OPTIONS = [
@@ -75,7 +75,7 @@ export default function DotsAndBoxesPage() {
   const [gameState, setGameState] = useState<GameState>('setup');
   const [gameMode, setGameMode] = useState<GameMode>(null);
   const [difficulty, setDifficulty] = useState<Difficulty>('medium');
-  const [boardSize, setBoardSize] = useState(4);
+  const [boardSize, setBoardSize] = useState(5);
   
   const [lines, setLines] = useState<Line[]>([]);
   const [boxes, setBoxes] = useState<Box[]>([]);
@@ -367,7 +367,7 @@ export default function DotsAndBoxesPage() {
             </Card>
           </div>
 
-          <div className="relative p-2 bg-muted rounded-lg" style={{ width: "clamp(300px, 90vw, 400px)", height: "clamp(300px, 90vw, 400px)" }}>
+          <div className="relative p-2 bg-muted rounded-lg" style={{ width: "clamp(300px, 90vw, 500px)", height: "clamp(300px, 90vw, 500px)" }}>
             <div className="grid w-full h-full" style={{gridTemplateColumns: `repeat(${boardSize}, 1fr)`, gridTemplateRows: `repeat(${boardSize}, 1fr)`}}>
                {boxes.map((box, i) => (
                     <div key={i} className={cn("w-full h-full flex items-center justify-center transition-colors duration-300")}
@@ -406,7 +406,7 @@ export default function DotsAndBoxesPage() {
   );
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] p-4">
+    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-150px)] p-4 overflow-hidden h-screen">
       {gameState === 'setup' ? renderSetupScreen() : renderGameScreen()}
        <SetupDialog 
         isOpen={isSetupDialogOpen} 
