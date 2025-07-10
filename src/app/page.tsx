@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -5,13 +6,14 @@ import Link from 'next/link';
 export default function WelcomePage() {
   return (
     // Updated container for better cross-device consistency
-    <div className="relative flex items-center justify-center w-screen h-screen overflow-hidden">
+    <div className="fixed inset-0 overflow-hidden">
       {/* Video Background */}
       <video
         autoPlay
         loop
+        muted // Muted is often required for autoplay on mobile
         playsInline // Important for mobile browsers
-        className="absolute top-0 left-0 w-full h-full object-cover z-0"
+        className="absolute top-0 left-0 w-full h-full object-fill z-0" // Changed object-cover to object-fill
         poster="/videos/loading-screen-poster.jpg" // Optional: a poster image for before the video loads
       >
         <source src="/videos/loading-screen.mp4" type="video/mp4" />
