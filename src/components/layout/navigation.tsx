@@ -20,7 +20,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Settings, Home, Store, BookOpen, Bell, BookText, LogOut, Shield, Zap, CheckCheck } from 'lucide-react';
+import { Settings, Home, Store, BookOpen, Bell, BookText, LogOut, Shield, Zap, CheckCheck, Lightbulb } from 'lucide-react';
 import { SETTINGS_MENU_ITEMS } from '@/lib/constants';
 import { auth, signOut as firebaseSignOut, onAuthStateChanged, type User } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
@@ -251,6 +251,12 @@ export default function Navigation({ side }: NavigationProps) {
                 </Link>
               </DropdownMenuItem>
             ))}
+             <DropdownMenuItem asChild className="cursor-pointer">
+              <Link href="/request-a-feature">
+                <Lightbulb className="mr-2 h-4 w-4" />
+                <span>Request a Feature</span>
+              </Link>
+            </DropdownMenuItem>
             {isAdmin && (
               <>
                 <DropdownMenuSeparator />
