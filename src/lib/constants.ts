@@ -8,7 +8,8 @@ import {
     Keyboard, Gamepad2, Languages, Mail, Heart, Hash, CircleDot,
     Grid3x3, Route, Blocks, KeyRound, LayoutGrid, XCircle, Dice6, Users, FileText,
     Trophy, Award, Compass, BrainCircuit, Shield, Palette, Volume2, PenSquare, 
-    CalendarDays, Lightbulb, Ticket, Wand, Eye, FunctionSquare, Rocket
+    CalendarDays, Lightbulb, Ticket, Wand, Eye, FunctionSquare, Rocket, Globe,
+    Spade, Flag, Dna
 } from 'lucide-react';
 
 export type GameCategory = 'Strategy' | 'Puzzles' | 'Learning';
@@ -281,6 +282,15 @@ export const ENGLISH_PUZZLE_TYPES: EnglishPuzzleType[] = [
         Icon: FileText,
         color: "text-gray-500"
     }
+];
+
+export const ODD_ONE_OUT_THEMES = [
+    { id: 'colors', name: 'Colors', Icon: Palette, color: 'text-rose-500' },
+    { id: 'cricket', name: 'Cricket', Icon: Trophy, color: 'text-blue-500' },
+    { id: 'flowers', name: 'Flowers', Icon: Spade, color: 'text-pink-500' },
+    { id: 'countries', name: 'Countries', Icon: Flag, color: 'text-green-500' },
+    { id: 'science', name: 'Science', Icon: Dna, color: 'text-purple-500' },
+    { id: 'general', name: 'General Knowledge', Icon: Globe, color: 'text-orange-500' },
 ];
 
 interface EnglishPuzzleItemBase {

@@ -30,11 +30,12 @@ interface EnglishPuzzleGameProps {
   onBack: () => void;
   puzzleName: string;
   Icon: LucideIcon;
+  theme?: string;
 }
 
 const MAX_QUESTIONS = 5;
 
-export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzzleName, Icon }: EnglishPuzzleGameProps) {
+export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzzleName, Icon, theme }: EnglishPuzzleGameProps) {
   const [currentPuzzle, setCurrentPuzzle] = useState<EnglishPuzzleItem | null>(null);
   const [score, setScore] = useState(0);
   const [questionsAnswered, setQuestionsAnswered] = useState(0);
@@ -52,7 +53,7 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
   const [scrambledWordsBank, setScrambledWordsBank] = useState<string[]>([]);
 
   const { toast } = useToast();
-  const sessionKey = `usedEnglishWords_${puzzleType}_${difficulty}`;
+  const sessionKey = `usedEnglishWords_${puzzleType}_${difficulty}_${theme || 'general'}`;
 
   const getUsedWordsFromSession = (): string[] => {
     if (typeof window === 'undefined') return [];
@@ -68,7 +69,7 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
   };
   
   const resetSessionHistory = () => {
-    if (typeof window !== 'undefined') {
+    if (typeof window === 'undefined') {
       sessionStorage.removeItem(sessionKey);
     }
   };
@@ -84,6 +85,7 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
       const input: GenerateEnglishPuzzleInput = {
         puzzleType,
         difficulty,
+        theme: theme as any, // Cast because the enum is string[]
         wordsToExclude: usedWords,
       };
 
@@ -122,7 +124,7 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
     } finally {
       setIsGenerating(false);
     }
-  }, [puzzleType, difficulty, sessionKey, toast]);
+  }, [puzzleType, difficulty, theme, sessionKey, toast]);
 
   const StarRating = ({ rating }: { rating: number }) => (
     <div className="flex justify-center">
@@ -235,7 +237,7 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
   useEffect(() => {
     startNewRound();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [difficulty]); // This effect should only re-run when difficulty changes. startNewRound is stable.
+  }, [difficulty, theme]); // This effect should only re-run when difficulty or theme changes.
 
 
   const handleOptionSelect = (selectedOption: string) => {
@@ -364,7 +366,7 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
         {currentPuzzle.type === 'oddOneOut' && (
             <div className="mt-2 mb-4 p-3 bg-yellow-100/70 border border-yellow-400/50 rounded-lg text-yellow-800 text-sm flex items-center justify-center">
               <Lightbulb size={18} className="mr-2 flex-shrink-0" />
-              <span><strong>Hint:</strong> Three of the words are related.</span>
+              <span><strong>Hint:</strong> {currentPuzzle.category}</span>
             </div>
         )}
 

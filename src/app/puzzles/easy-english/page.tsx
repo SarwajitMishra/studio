@@ -4,9 +4,9 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { BookMarked, ArrowLeft, Shield, Star, Gem, CheckCircle } from "lucide-react";
+import { BookMarked, ArrowLeft, Shield, Star, Gem, CheckCircle, Package } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ENGLISH_PUZZLE_TYPES, type EnglishPuzzleSubtype, type Difficulty, type EnglishPuzzleType } from "@/lib/constants";
+import { ENGLISH_PUZZLE_TYPES, ODD_ONE_OUT_THEMES, type EnglishPuzzleSubtype, type Difficulty, type EnglishPuzzleType } from "@/lib/constants";
 import EnglishPuzzleGame from "@/components/english-puzzles/EnglishPuzzleGame";
 import TypingRushGame from "@/components/english-puzzles/TypingRushGame";
 import PlaceholderPuzzleGame from "@/components/number-puzzles/PlaceholderPuzzleGame";
@@ -35,9 +35,10 @@ const DIFFICULTY_LEVELS: { level: Difficulty, label: string, Icon: React.Element
 ];
 
 export default function EasyEnglishPuzzlesPage() {
-  const [view, setView] = useState<'selectPuzzle' | 'selectDifficulty' | 'playing'>('selectPuzzle');
+  const [view, setView] = useState<'selectPuzzle' | 'selectDifficulty' | 'selectTheme' | 'playing'>('selectPuzzle');
   const [selectedPuzzleType, setSelectedPuzzleType] = useState<EnglishPuzzleType | null>(null);
   const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty | null>(null);
+  const [selectedTheme, setSelectedTheme] = useState<string | null>(null);
 
   const handlePuzzleSelect = (puzzleType: EnglishPuzzleType) => {
     setSelectedPuzzleType(puzzleType);
@@ -46,15 +47,32 @@ export default function EasyEnglishPuzzlesPage() {
 
   const handleDifficultySelect = (difficulty: Difficulty) => {
     setSelectedDifficulty(difficulty);
+    if (selectedPuzzleType?.id === 'oddOneOut') {
+        setView('selectTheme');
+    } else {
+        setView('playing');
+    }
+  };
+  
+  const handleThemeSelect = (themeId: string) => {
+    setSelectedTheme(themeId);
     setView('playing');
   };
 
   const handleBack = () => {
     if (view === 'playing') {
-      setView('selectDifficulty');
+      if(selectedPuzzleType?.id === 'oddOneOut') {
+        setView('selectTheme');
+      } else {
+        setView('selectDifficulty');
+      }
+    } else if (view === 'selectTheme') {
+        setView('selectDifficulty');
+        setSelectedTheme(null);
     } else if (view === 'selectDifficulty') {
       setView('selectPuzzle');
       setSelectedPuzzleType(null);
+      setSelectedDifficulty(null);
     }
   };
 
@@ -74,11 +92,20 @@ export default function EasyEnglishPuzzlesPage() {
       case 'matchWord':
       case 'missingLetter':
       case 'sentenceScramble':
+        gameComponent = <EnglishPuzzleGame 
+          puzzleType={selectedPuzzleType.id}
+          puzzleName={selectedPuzzleType.name}
+          Icon={selectedPuzzleType.Icon}
+          {...commonProps} 
+        />;
+        break;
+      
       case 'oddOneOut':
         gameComponent = <EnglishPuzzleGame 
           puzzleType={selectedPuzzleType.id}
           puzzleName={selectedPuzzleType.name}
           Icon={selectedPuzzleType.Icon}
+          theme={selectedTheme || undefined}
           {...commonProps} 
         />;
         break;
@@ -104,6 +131,50 @@ export default function EasyEnglishPuzzlesPage() {
       <>
         <HeadMetadata puzzleName={selectedPuzzleType.name} />
         {gameComponent}
+      </>
+    );
+  }
+
+  if (view === 'selectTheme' && selectedPuzzleType?.id === 'oddOneOut' && selectedDifficulty) {
+    return (
+      <>
+        <HeadMetadata puzzleName={selectedPuzzleType.name} />
+        <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] py-8">
+            <Card className="w-full max-w-lg shadow-xl">
+                 <CardHeader className="bg-primary/10">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                            <selectedPuzzleType.Icon size={28} className={cn("text-primary", selectedPuzzleType.color)} />
+                            <CardTitle className="text-2xl font-bold text-primary">{selectedPuzzleType.name}</CardTitle>
+                        </div>
+                        <Button variant="outline" size="sm" onClick={() => setView('selectDifficulty')}>
+                            <ArrowLeft size={16} className="mr-1" /> Back
+                        </Button>
+                    </div>
+                    <CardDescription className="text-center text-lg text-foreground/80 pt-3">
+                        Select a Theme
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                     {ODD_ONE_OUT_THEMES.map((theme) => (
+                        <Button
+                            key={theme.id}
+                            variant="outline"
+                            className="h-auto py-4 text-left flex items-start space-y-1 hover:bg-accent/10 group"
+                            onClick={() => handleThemeSelect(theme.id)}
+                        >
+                             <div className="flex items-center w-full">
+                                <theme.Icon size={24} className={cn("mr-3 transition-colors duration-200", theme.color)}/>
+                                <div className="flex-grow">
+                                    <p className="text-lg font-semibold">{theme.name}</p>
+                                </div>
+                                <CheckCircle size={24} className="text-transparent group-hover:text-accent transition-colors duration-200" />
+                            </div>
+                        </Button>
+                     ))}
+                </CardContent>
+            </Card>
+        </div>
       </>
     );
   }

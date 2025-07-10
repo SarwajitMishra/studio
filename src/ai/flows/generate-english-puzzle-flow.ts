@@ -7,6 +7,7 @@
  * - GenerateEnglishPuzzleInput - The input type for the puzzle generation.
  *   - puzzleType: 'matchWord', 'missingLetter', 'sentenceScramble', or 'oddOneOut'.
  *   - difficulty: 'easy', 'medium', or 'hard'.
+ *   - theme: Optional theme for 'oddOneOut' puzzles.
  *   - wordsToExclude: An optional array of words to avoid repetition.
  * - EnglishPuzzleItem - The output type, representing a single puzzle.
  */
@@ -14,13 +15,17 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import type { EnglishPuzzleItem } from '@/lib/constants';
+import { ODD_ONE_OUT_THEMES } from '@/lib/constants';
 import { searchImages } from '@/services/pixabay';
 import { generatePuzzleImage } from './generate-puzzle-image-flow';
+
+const themeEnum = ODD_ONE_OUT_THEMES.map(theme => theme.id) as [string, ...string[]];
 
 // Define Zod schemas that match the existing types for validation and structured output.
 const GenerateEnglishPuzzleInputSchema = z.object({
   puzzleType: z.enum(['matchWord', 'missingLetter', 'sentenceScramble', 'oddOneOut']),
   difficulty: z.enum(['easy', 'medium', 'hard']),
+  theme: z.enum(themeEnum).optional().describe("The theme for 'oddOneOut' puzzles, like 'cricket' or 'flowers'."),
   wordsToExclude: z
     .array(z.string())
     .optional()
@@ -135,9 +140,9 @@ const puzzleGenerationPrompt = ai.definePrompt({
 **Crucially, for 'matchWord' puzzles, all words you generate must be simple, common, concrete nouns that can be easily represented by a picture (e.g., 'apple', 'house', 'dog', 'car'). Avoid abstract concepts, verbs, or adjectives (e.g., 'bright', 'happy', 'run'). For all other puzzles, words can be more varied but should still be age-appropriate.**
 
 - **Difficulty levels:**
-  - **easy:** Simple, common words (3-4 letters). Short sentences (3-4 words).
-  - **medium:** Slightly more complex words (5-7 letters). Medium sentences (5-6 words).
-  - **hard:** Longer or less common words (8+ letters). Longer sentences (7-8 words).
+  - **easy:** Simple, common words (3-5 letters). Short sentences (3-4 words). Related concepts for 'oddOneOut'.
+  - **medium:** Slightly more complex words (5-8 letters). Medium sentences (5-6 words). More nuanced concepts for 'oddOneOut'.
+  - **hard:** Longer or less common words (8+ letters). Longer sentences (7-8 words). Abstract or subtle concepts for 'oddOneOut'.
 
 - **Word Exclusion:**
   - If a list of words to exclude is provided, you MUST NOT use any of those words.
@@ -159,8 +164,11 @@ const puzzleGenerationPrompt = ai.definePrompt({
     - **Task:** Generate a simple, grammatically correct sentence appropriate for the difficulty. Then provide the words of that sentence in a scrambled array. The sentence should NOT end with punctuation.
     - **Your output JSON 'type' field must be 'sentenceScramble'.**
   - If the puzzle type is 'oddOneOut':
-    - **Task:** Generate a set of 4 words where 3 belong to a common, simple category and one is the "odd one out". Provide the category of the other three words. All words should be appropriate for the difficulty level.
-    - **Example:** Options: ["Apple", "Car", "Banana", "Orange"], Odd Word Out: "Car", Category: "The others are fruits".
+    {{#if theme}}
+    - **Theme:** You MUST generate a puzzle related to the theme of '{{theme}}'.
+    {{/if}}
+    - **Task:** Generate a set of 4 words where 3 belong to a common, simple category and one is the "odd one out". Provide the category of the other three words. All words should be appropriate for the difficulty level and the specified theme.
+    - **Example (Theme: 'fruits'):** Options: ["Apple", "Car", "Banana", "Orange"], Odd Word Out: "Car", Category: "The others are fruits".
     - **Your output JSON 'type' field must be 'oddOneOut'.**
 
 - **Final Output:** Your response must be a single JSON object matching the requested output schema.
@@ -168,6 +176,9 @@ const puzzleGenerationPrompt = ai.definePrompt({
 **Puzzle Request:**
 - **Puzzle Type:** {{puzzleType}}
 - **Difficulty:** {{difficulty}}
+{{#if theme}}
+- **Theme:** {{theme}}
+{{/if}}
 `,
 });
 
