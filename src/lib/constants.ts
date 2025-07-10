@@ -8,7 +8,7 @@ import {
     Keyboard, Gamepad2, Languages, Mail, Heart, Hash, CircleDot,
     Grid3x3, Route, Blocks, KeyRound, LayoutGrid, XCircle, Dice6, Users, FileText,
     Trophy, Award, Compass, BrainCircuit, Shield, Palette, Volume2, PenSquare, 
-    CalendarDays, Lightbulb, Ticket, Wand
+    CalendarDays, Lightbulb, Ticket, Wand, Eye
 } from 'lucide-react';
 
 export type GameCategory = 'Strategy' | 'Puzzles' | 'Learning';
@@ -197,9 +197,9 @@ export const MATH_PUZZLE_TYPES: MathPuzzleType[] = [
   },
   {
     id: "countTheObjects",
-    name: "Count the Objects",
-    description: "How many items can you count on the screen?",
-    Icon: Sigma,
+    name: "Count me if you can",
+    description: "Find the target object among a field of distractors before time runs out.",
+    Icon: Eye,
     color: "text-pink-500",
   },
   {
