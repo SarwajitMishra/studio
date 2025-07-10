@@ -7,7 +7,7 @@ export type ColorTheme = {
 
 // HSL values as strings
 export const COLOR_THEMES: Record<string, ColorTheme> = {
-  default: { // New Theme: Playful Pastel
+  default: { // Playful Sky Blue
     light: {
       'background-h': '200', 'background-s': '100%', 'background-l': '97%',
       'primary-h': '220', 'primary-s': '70%', 'primary-l': '75%',
