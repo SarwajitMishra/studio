@@ -14,10 +14,21 @@ import {
     serverTimestamp,
     collection,
     query,
-    where,
-    getDocs,
-    Timestamp,
+    orderBy,
+    limit,
+    onSnapshot,
+    addDoc,
+    type Timestamp,
 } from 'firebase/firestore';
+
+export interface ChatMessage {
+    id: string;
+    text: string;
+    uid: string;
+    name: string;
+    photoURL: string | null;
+    createdAt: Timestamp;
+}
 
 export interface OnlineSession {
     id: string;
@@ -93,4 +104,46 @@ export async function joinOnlineSession(sessionId: string, user: User): Promise<
     
     const updatedDoc = await getDoc(sessionRef);
     return updatedDoc.data() as OnlineSession;
+}
+
+
+/**
+ * Sends a chat message to a session.
+ * @param sessionId The ID of the session.
+ * @param user The user sending the message.
+ * @param text The message content.
+ */
+export async function sendMessage(sessionId: string, user: User, text: string): Promise<void> {
+    const messagesColRef = collection(db, 'sessions', sessionId, 'messages');
+    await addDoc(messagesColRef, {
+        text,
+        uid: user.uid,
+        name: user.displayName || 'Anonymous',
+        photoURL: user.photoURL,
+        createdAt: serverTimestamp(),
+    });
+}
+
+/**
+ * Listens for new messages in a session and calls a callback with the messages.
+ * @param sessionId The ID of the session.
+ * @param callback The function to call with the array of messages.
+ * @returns An unsubscribe function for the listener.
+ */
+export function onNewMessage(sessionId: string, callback: (messages: ChatMessage[]) => void): () => void {
+    const messagesQuery = query(
+        collection(db, 'sessions', sessionId, 'messages'),
+        orderBy('createdAt', 'asc'),
+        limit(50)
+    );
+
+    const unsubscribe = onSnapshot(messagesQuery, (querySnapshot) => {
+        const messages: ChatMessage[] = [];
+        querySnapshot.forEach((doc) => {
+            messages.push({ id: doc.id, ...doc.data() } as ChatMessage);
+        });
+        callback(messages);
+    });
+
+    return unsubscribe;
 }

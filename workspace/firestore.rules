@@ -1,50 +1,64 @@
 
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Allow read-only access to a user's own profile.
+    
+    // Users can only read their own profile, but anyone can create one.
+    // Admins can read all user profiles.
     match /users/{userId} {
-      allow read: if request.auth != null && request.auth.uid == userId;
-      // Creation is handled by a backend function or a more complex rule.
-      allow create: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null && request.auth.uid == userId
+                  || (get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.isAdmin == true);
+      allow create: if request.auth != null;
       allow update: if request.auth != null && request.auth.uid == userId;
     }
-
-    // Allow creation of a username document only if the user is authenticated and the doc doesn't exist.
+    
+    // Usernames can only be created, not updated or deleted, to ensure uniqueness.
+    // This is part of a transaction in the createUserProfile function.
     match /usernames/{username} {
       allow read: if true;
-      allow create: if request.auth != null && !exists(path);
+      allow create: if request.auth != null;
+      allow update, delete: if false;
     }
 
-    // Allow admins to read/write to the roles collection.
+    // Admins have their role defined in a 'roles' collection.
+    // Only other admins can read or write roles (for security).
     match /roles/{userId} {
       allow read, write: if get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.isAdmin == true;
     }
-
-    // For user-specific subcollections like gameStats and rewardHistory
-    match /users/{userId}/{collection}/{docId} {
-      // Only the user themselves or an admin can access their own subcollections.
-      allow read, write: if request.auth != null && (request.auth.uid == userId || get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.isAdmin == true);
-    }
-
-    // Rules for Online Sessions
-    match /sessions/{sessionId} {
-      // Anyone authenticated can read a session to see who is in it.
-      allow read: if request.auth != null;
-      // Anyone authenticated can create a new session document.
+    
+    // Blog posts can only be read if they are 'published'.
+    // Authenticated users can create 'pending' or 'draft' posts.
+    // Admins can manage all blog posts.
+    match /blogs/{blogId} {
+      allow read: if resource.data.status == 'published'
+                  || (request.auth != null && get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.isAdmin == true);
       allow create: if request.auth != null;
-      // Only participants can update a session (e.g., to join it).
-      allow update: if request.auth != null && resource.data.participants.hasAny([request.auth.uid]);
+      allow update: if request.auth != null && (
+                      (resource.data.authorId == request.auth.uid && request.resource.data.authorId == resource.data.authorId)
+                      || get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.isAdmin == true
+                    );
     }
+    
+    // SESSIONS (for multiplayer/chat)
+    match /sessions/{sessionId} {
+      // Anyone authenticated can create a session.
+      allow create: if request.auth != null;
+      
+      // Only participants of the session can read or update it (e.g., join).
+      allow read, update: if request.auth != null && request.auth.uid in resource.data.participants.map(p => p.uid);
 
-    // Rules for Session Chat (Future)
-    match /sessions/{sessionId}/messages/{messageId} {
-        // Anyone in the session can read messages.
-        allow read: if request.auth != null && get(/databases/$(database)/documents/sessions/$(sessionId)).data.participants.hasAny([request.auth.uid]);
-        // Only participants can write messages, and they must be the author of the message.
-        allow create: if request.auth != null && get(/databases/$(database)/documents/sessions/$(sessionId)).data.participants.hasAny([request.auth.uid]) && request.resource.data.uid == request.auth.uid;
+      // --- CHAT MESSAGES SUBCOLLECTION ---
+      match /messages/{messageId} {
+        // Anyone in the session can read all messages.
+        allow read: if request.auth != null && get(/databases/$(database)/documents/sessions/$(sessionId)).data.participants.map(p => p.uid).hasAny([request.auth.uid]);
+        
+        // You can only create a message if you are in the session, and you are the author of the message.
+        allow create: if request.auth != null && get(/databases/$(database)/documents/sessions/$(sessionId)).data.participants.map(p => p.uid).hasAny([request.auth.uid])
+                       && request.resource.data.uid == request.auth.uid;
+                       
+        // Messages are immutable.
+        allow update, delete: if false;
+      }
     }
   }
 }
