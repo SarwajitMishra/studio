@@ -3,11 +3,10 @@
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { useState, useEffect, useCallback, useRef } from "react";
-import Link from "next/link";
 import { useRouter } from 'next/navigation';
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { Crown, AlertTriangle, Timer, ListChecks, ArrowRight, ArrowLeft, Brain, Gamepad2, Award, Loader2 } from "lucide-react";
+import { Crown, AlertTriangle, Timer, ListChecks, ArrowRight, ArrowLeft, Brain, Gamepad2, Award, Loader2, Users, Cpu, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -15,6 +14,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { S_POINTS_ICON as SPointsIcon, S_COINS_ICON as SCoinsIcon } from '@/lib/constants';
 import { applyRewards, calculateRewards } from "@/lib/rewards";
 import { updateGameStats } from "@/lib/progress";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 
 interface Piece {
@@ -28,7 +29,8 @@ interface SquarePosition {
 }
 
 type PlayerColor = "w" | "b";
-type GameState = 'playing';
+type GameState = 'setup' | 'playing' | 'gameOver';
+type GameMode = 'player' | 'ai' | null;
 
 const PIECE_UNICODE: Record<PlayerColor, Record<Piece["type"], string>> = {
   w: { K: "♔", Q: "♕", R: "♖", B: "♗", N: "♘", P: "♙" },
@@ -71,20 +73,19 @@ const formatTime = (seconds: number) => {
 const getAlgebraicNotation = ({ row, col }: SquarePosition): string => `${'abcdefgh'[col]}${'87654321'[row]}`;
 
 const PlayerInfoPanel = ({
-    color,
+    name,
     timer,
     capturedPieces,
     isCurrentTurn
 }: {
-    color: PlayerColor;
+    name: string;
     timer: number;
     capturedPieces: Piece[];
     isCurrentTurn: boolean;
 }) => (
     <div className={cn("p-2 sm:p-4 flex justify-between items-center transition-colors", isCurrentTurn ? "bg-primary/20" : "")}>
         <div className="flex items-center gap-3">
-            <Crown className={cn("h-6 w-6", color === 'w' ? "text-yellow-400" : "text-neutral-700")} />
-            <span className="font-semibold text-lg">{color === 'w' ? 'White' : 'Black'}</span>
+            <span className="font-semibold text-lg truncate" title={name}>{name}</span>
         </div>
         <div className="flex items-center gap-2 sm:gap-4">
             <div className="flex gap-1 flex-wrap-reverse items-center min-h-[24px]">
@@ -149,7 +150,10 @@ const ChessSquare = ({
 };
 
 export default function ChessPage() {
-  const [gameState, setGameState] = useState<GameState>('playing');
+  const [gameState, setGameState] = useState<GameState>('setup');
+  const [gameMode, setGameMode] = useState<GameMode>(null);
+  const [playerNames, setPlayerNames] = useState({ w: 'White', b: 'Black' });
+  const [isSetupDialogOpen, setIsSetupDialogOpen] = useState(false);
   const router = useRouter();
 
   const initialSetup = initialBoardSetup();
@@ -159,7 +163,6 @@ export default function ChessPage() {
   const [currentPlayer, setCurrentPlayer] = useState<PlayerColor>('w');
   const [possibleMoves, setPossibleMoves] = useState<SquarePosition[]>([]);
   const [gameStatusMessage, setGameStatusMessage] = useState<string>("White's turn to move.");
-  const [gameOver, setGameOver] = useState<boolean>(false);
   const [winner, setWinner] = useState<PlayerColor | 'draw' | null>(null);
   const [kingUnderAttack, setKingUnderAttack] = useState<PlayerColor | null>(null);
   const [promotionSquare, setPromotionSquare] = useState<SquarePosition | null>(null);
@@ -176,22 +179,25 @@ export default function ChessPage() {
   const { toast } = useToast();
   
   const handleGameEnd = useCallback(async (winnerColor: PlayerColor | 'draw' | null, reason: string) => {
-    setGameOver(true);
+    setGameState('gameOver');
     setWinner(winnerColor);
     setGameStatusMessage(reason);
+    
+    if (gameMode !== 'ai') return; // No rewards for PvP
+
     setIsCalculatingReward(true);
 
-    const didWin = winnerColor === 'w' || winnerColor === 'b';
+    const didWin = winnerColor === 'w'; // Assuming player is always white vs AI
     updateGameStats({ gameId: 'chess', didWin });
 
     try {
         const rewards = await calculateRewards({
             gameId: 'chess',
-            difficulty: winnerColor === 'draw' ? 'medium' : 'hard', // Simplified logic for reward call
-            performanceMetrics: { result: winnerColor }
+            difficulty: winnerColor === 'w' ? 'hard' : (winnerColor === 'b' ? 'easy' : 'medium'),
+            performanceMetrics: { result: winnerColor === 'w' ? 'win' : 'loss' }
         });
 
-        const earned = applyRewards(rewards.sPoints, rewards.sCoins, `Chess Game: ${reason}`);
+        const earned = applyRewards(rewards.sPoints, rewards.sCoins, `Chess Game vs AI: ${reason}`);
         setLastReward(earned);
 
         toast({
@@ -207,11 +213,11 @@ export default function ChessPage() {
     } finally {
         setIsCalculatingReward(false);
     }
-  }, [toast]);
+  }, [toast, gameMode]);
 
 
   useEffect(() => {
-    if (gameOver || gameState !== 'playing') return;
+    if (gameState !== 'playing') return;
 
     const timer = setInterval(() => {
       setPlayerTimers(prevTimers => {
@@ -222,7 +228,7 @@ export default function ChessPage() {
         const newTimers = { ...prevTimers, [currentPlayer]: prevTimers[currentPlayer] - 1 };
         if (newTimers[currentPlayer] === 0) {
           const winnerColor = currentPlayer === 'w' ? 'b' : 'w';
-          handleGameEnd(winnerColor, `Time's up! ${winnerColor === 'w' ? 'White' : 'Black'} wins!`);
+          handleGameEnd(winnerColor, `Time's up! ${winnerColor === 'w' ? playerNames.w : playerNames.b} wins!`);
           clearInterval(timer);
         }
         return newTimers;
@@ -230,7 +236,7 @@ export default function ChessPage() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [currentPlayer, gameOver, toast, gameState, handleGameEnd]);
+  }, [currentPlayer, gameState, handleGameEnd, playerNames]);
 
   const isSquareOnBoard = (row: number, col: number): boolean => row >= 0 && row < 8 && col >= 0 && col < 8;
 
@@ -396,7 +402,9 @@ export default function ChessPage() {
         const piece = getPieceAt(currentBoard, r_idx, c_idx);
         if (piece && piece.color === playerColor) {
           const legalMoves = calculateLegalMoves(currentBoard, piece, r_idx, c_idx, playerColor, currentKingPositions);
-          allMoves.push(...legalMoves.map(move => ({ ...move })));
+          for(const move of legalMoves) {
+              allMoves.push({ from: {row: r_idx, col: c_idx}, to: move });
+          }
         }
       }
     }
@@ -404,12 +412,53 @@ export default function ChessPage() {
   }, [calculateLegalMoves, getPieceAt]);
 
 
-  const handleSquareClick = (row: number, col: number) => {
-    if (promotionSquare) return;
-    if (gameOver) {
-      toast({ title: "Game Over", description: "Please reset the game to play again." });
-      return;
+  const makeAIMove = useCallback(() => {
+    const aiColor = 'b';
+    if(currentPlayer !== aiColor || gameState !== 'playing') return;
+    
+    const allMoves = getAllLegalMovesForPlayer(board, aiColor, kingPositions);
+    if(allMoves.length === 0) return;
+
+    // 1. Prioritize checkmating moves
+    for(const move of allMoves) {
+        const tempBoard = board.map(r => [...r]);
+        const piece = tempBoard[move.from.row][move.from.col];
+        tempBoard[move.to.row][move.to.col] = piece;
+        tempBoard[move.from.row][move.from.col] = null;
+        const opponentColor = aiColor === 'w' ? 'b' : 'w';
+        if(getAllLegalMovesForPlayer(tempBoard, opponentColor, kingPositions).length === 0 && isSquareAttacked(tempBoard, kingPositions[opponentColor].row, kingPositions[opponentColor].col, aiColor)) {
+            handleSquareClick(move.from.row, move.from.col);
+            setTimeout(() => handleSquareClick(move.to.row, move.to.col), 100);
+            return;
+        }
     }
+
+    // 2. Prioritize captures
+    const captureMoves = allMoves.filter(move => getPieceAt(board, move.to.row, move.to.col) !== null);
+    if(captureMoves.length > 0) {
+        const randomCapture = captureMoves[Math.floor(Math.random() * captureMoves.length)];
+        handleSquareClick(randomCapture.from.row, randomCapture.from.col);
+        setTimeout(() => handleSquareClick(randomCapture.to.row, randomCapture.to.col), 100);
+        return;
+    }
+
+    // 3. Simple random move
+    const randomMove = allMoves[Math.floor(Math.random() * allMoves.length)];
+    handleSquareClick(randomMove.from.row, randomMove.from.col);
+    setTimeout(() => handleSquareClick(randomMove.to.row, randomMove.to.col), 100);
+
+  }, [board, currentPlayer, gameState, getAllLegalMovesForPlayer, kingPositions, getPieceAt]);
+
+  useEffect(() => {
+    if(gameMode === 'ai' && currentPlayer === 'b' && gameState === 'playing' && winner === null) {
+      const aiMoveTimeout = setTimeout(makeAIMove, 1000);
+      return () => clearTimeout(aiMoveTimeout);
+    }
+  }, [currentPlayer, gameState, winner, gameMode, makeAIMove]);
+
+  const handleSquareClick = (row: number, col: number) => {
+    if (promotionSquare || gameState !== 'playing' || winner) return;
+    if (gameMode === 'ai' && currentPlayer === 'b') return; // Prevent user from moving AI pieces
 
     const clickedSquarePiece = getPieceAt(board, row, col);
 
@@ -499,13 +548,13 @@ export default function ChessPage() {
 
         if (isOpponentInCheck && !opponentHasLegalMoves) {
           finalMoveNotation += '#'; // Checkmate
-          handleGameEnd(currentPlayer, `Checkmate! ${currentPlayer === 'w' ? 'White' : 'Black'} wins!`);
+          handleGameEnd(currentPlayer, `Checkmate! ${currentPlayer === 'w' ? playerNames.w : playerNames.b} wins!`);
         } else if (!isOpponentInCheck && !opponentHasLegalMoves) {
           handleGameEnd('draw', "Stalemate! It's a draw.");
         } else {
           if (isOpponentInCheck) finalMoveNotation += '+'; // Check
           setCurrentPlayer(opponentColor);
-          setGameStatusMessage(`${isOpponentInCheck ? "Check! " : ""}${opponentColor === 'w' ? "White" : "Black"}'s turn.`);
+          setGameStatusMessage(`${isOpponentInCheck ? "Check! " : ""}${opponentColor === 'w' ? playerNames.w : playerNames.b}'s turn.`);
         }
         setMoveHistory(prev => [...prev, finalMoveNotation]);
         setSelectedPiece(null);
@@ -551,12 +600,12 @@ export default function ChessPage() {
     const opponentHasLegalMoves = getAllLegalMovesForPlayer(finalBoard, opponentColor, kingPositions).length > 0;
 
     if (isOpponentInCheck && !opponentHasLegalMoves) {
-        handleGameEnd(currentPlayer, `Checkmate! ${currentPlayer === 'w' ? 'White' : 'Black'} wins!`);
+        handleGameEnd(currentPlayer, `Checkmate! ${currentPlayer === 'w' ? playerNames.w : playerNames.b} wins!`);
     } else if (!isOpponentInCheck && !opponentHasLegalMoves) {
         handleGameEnd('draw', "Stalemate! It's a draw.");
     } else {
         setCurrentPlayer(opponentColor);
-        setGameStatusMessage(`${isOpponentInCheck ? "Check! " : ""}${opponentColor === 'w' ? "White" : "Black"}'s turn.`);
+        setGameStatusMessage(`${isOpponentInCheck ? "Check! " : ""}${opponentColor === 'w' ? playerNames.w : playerNames.b}'s turn.`);
     }
 
     setPromotionSquare(null);
@@ -565,15 +614,14 @@ export default function ChessPage() {
   };
 
   const resetGame = () => {
-    updateGameStats({ gameId: 'chess', didWin: false }); // Log a reset as a non-win
+    updateGameStats({ gameId: 'chess', didWin: false });
     const newInitialSetup = initialBoardSetup();
     setBoard(newInitialSetup.board);
     setKingPositions(newInitialSetup.kings);
     setSelectedPiece(null);
     setCurrentPlayer('w');
     setPossibleMoves([]);
-    setGameStatusMessage("White's turn to move.");
-    setGameOver(false);
+    setGameStatusMessage(`${playerNames.w}'s turn to move.`);
     setWinner(null);
     setKingUnderAttack(null);
     setPromotionSquare(null);
@@ -591,10 +639,42 @@ export default function ChessPage() {
   for (let i = 0; i < moveHistory.length; i += 2) {
     movePairs.push(moveHistory.slice(i, i + 2));
   }
+  
+  const startGame = (mode: GameMode, names: { w: string, b: string }) => {
+    setGameMode(mode);
+    setPlayerNames(names);
+    setGameState('playing');
+    setGameStatusMessage(`${names.w}'s turn to move.`);
+    resetGame();
+  }
+
+  if (gameState === 'setup') {
+    return (
+        <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
+            <Card className="w-full max-w-md text-center shadow-xl">
+                <CardHeader>
+                    <CardTitle className="text-3xl font-bold">Chess</CardTitle>
+                    <CardDescription>Select a game mode.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <Dialog open={isSetupDialogOpen} onOpenChange={setIsSetupDialogOpen}>
+                        <DialogTrigger asChild>
+                            <Button className="w-full text-lg py-6"><Users className="mr-2"/> Player vs Player</Button>
+                        </DialogTrigger>
+                        <SetupDialog mode="player" onStart={startGame} />
+                    </Dialog>
+                    <DialogTrigger asChild>
+                       <Button onClick={() => startGame('ai', { w: 'You', b: 'Shravya AI' })} className="w-full text-lg py-6"><Cpu className="mr-2"/> Player vs AI</Button>
+                    </DialogTrigger>
+                </CardContent>
+            </Card>
+        </div>
+    );
+  }
 
   return (
     <div className="flex flex-col lg:flex-row gap-4 lg:gap-8 items-start justify-center p-2 md:p-4">
-      <AlertDialog open={gameOver && !!lastReward}>
+      <AlertDialog open={gameState === 'gameOver'}>
         <AlertDialogContent>
             <AlertDialogHeader>
             <AlertDialogTitle className="text-2xl text-primary flex items-center justify-center gap-2">
@@ -602,12 +682,12 @@ export default function ChessPage() {
             </AlertDialogTitle>
             </AlertDialogHeader>
             <div className="py-4 text-center">
-                {isCalculatingReward ? (
+                {(isCalculatingReward && gameMode === 'ai') ? (
                     <div className="flex flex-col items-center justify-center gap-2 pt-4">
                         <Loader2 className="h-8 w-8 animate-spin text-primary" />
                         <p className="text-sm text-muted-foreground">Calculating your rewards...</p>
                     </div>
-                ) : lastReward ? (
+                ) : (lastReward && gameMode === 'ai') ? (
                     <div className="flex flex-col items-center gap-3 text-center">
                         <AlertDialogDescription className="text-center text-base pt-2">
                            Congratulations on finishing the game!
@@ -621,18 +701,18 @@ export default function ChessPage() {
                             </span>
                         </div>
                     </div>
-                ) : null}
+                ) : <p className="text-lg">Well played!</p>}
             </div>
             <AlertDialogFooter>
              <Button onClick={resetGame} disabled={isCalculatingReward}>Play Again</Button>
-             <Button onClick={() => router.push('/dashboard')} variant="outline" disabled={isCalculatingReward}>Back to Menu</Button>
+             <Button onClick={() => setGameState('setup')} variant="outline" disabled={isCalculatingReward}>Back to Menu</Button>
             </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
       <div className="w-full lg:max-w-2xl flex-shrink-0">
         <Card className="shadow-xl bg-card/80 backdrop-blur-sm">
-          <PlayerInfoPanel color="b" timer={playerTimers.b} capturedPieces={capturedPieces.w} isCurrentTurn={currentPlayer === 'b' && !gameOver} />
+          <PlayerInfoPanel name={playerNames.b} timer={playerTimers.b} capturedPieces={capturedPieces.w} isCurrentTurn={currentPlayer === 'b' && gameState === 'playing'} />
           <CardContent className="p-1 sm:p-2">
             <div
               className="grid grid-cols-8 w-full max-w-2xl aspect-square border-4 border-primary/50 rounded-md overflow-hidden shadow-lg bg-primary/40 relative"
@@ -645,7 +725,7 @@ export default function ChessPage() {
                   const isPossMove = possibleMoves.some(m => m.row === rowIndex && m.col === colIndex);
                   const isKingSquareInCheck = piece?.type === 'K' && piece.color === kingUnderAttack;
                   return (
-                    <ChessSquare key={`${rowIndex}-${colIndex}`} piece={piece} isLight={isLight} onClick={() => handleSquareClick(rowIndex, colIndex)} isSelected={isSel} isPossibleMove={isPossMove} isInCheck={isKingSquareInCheck} isDisabled={!!promotionSquare || gameOver} />
+                    <ChessSquare key={`${rowIndex}-${colIndex}`} piece={piece} isLight={isLight} onClick={() => handleSquareClick(rowIndex, colIndex)} isSelected={isSel} isPossibleMove={isPossMove} isInCheck={isKingSquareInCheck} isDisabled={!!promotionSquare || gameState !== 'playing'} />
                   );
                 })
               )}
@@ -669,7 +749,7 @@ export default function ChessPage() {
               )}
             </div>
           </CardContent>
-          <PlayerInfoPanel color="w" timer={playerTimers.w} capturedPieces={capturedPieces.b} isCurrentTurn={currentPlayer === 'w' && !gameOver} />
+          <PlayerInfoPanel name={playerNames.w} timer={playerTimers.w} capturedPieces={capturedPieces.b} isCurrentTurn={currentPlayer === 'w' && gameState === 'playing'} />
         </Card>
       </div>
 
@@ -737,5 +817,47 @@ export default function ChessPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Setup Dialog Component for PvP
+interface SetupDialogProps {
+  mode: 'player';
+  onStart: (mode: GameMode, names: { w: string; b: string }) => void;
+}
+
+function SetupDialog({ mode, onStart }: SetupDialogProps) {
+  const [p1Name, setP1Name] = useState('Player 1 (White)');
+  const [p2Name, setP2Name] = useState('Player 2 (Black)');
+  
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!p1Name.trim() || !p2Name.trim()) {
+      alert("Player names cannot be empty.");
+      return;
+    }
+    onStart(mode, { w: p1Name, b: p2Name });
+  };
+  
+  return (
+    <DialogContent>
+        <DialogHeader>
+            <DialogTitle>Setup: Player vs Player</DialogTitle>
+            <DialogDescription>Enter player names to begin.</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4 py-4">
+            <div className="space-y-2">
+                <Label htmlFor="p1Name">Player 1 (White)</Label>
+                <Input id="p1Name" value={p1Name} onChange={(e) => setP1Name(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="p2Name">Player 2 (Black)</Label>
+                <Input id="p2Name" value={p2Name} onChange={(e) => setP2Name(e.target.value)} />
+            </div>
+            <DialogFooter>
+                <Button type="submit">Start Game</Button>
+            </DialogFooter>
+        </form>
+    </DialogContent>
   );
 }
