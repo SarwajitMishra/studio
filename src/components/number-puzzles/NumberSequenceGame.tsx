@@ -170,17 +170,22 @@ export default function NumberSequenceGame({ onBack, difficulty }: NumberSequenc
     }
 
     setTimeout(() => {
-        const newTotalAnswered = questionsAnswered + 1;
+      setQuestionsAnswered(prevQuestionsAnswered => {
+        const newTotalAnswered = prevQuestionsAnswered + 1;
         if (newTotalAnswered >= QUESTIONS_PER_ROUND) {
-          const finalScore = score + (isCorrect ? 1 : 0);
-          handleGameOver(finalScore);
-          setFeedback(`Round Over! Final Score: ${finalScore}/${QUESTIONS_PER_ROUND}`);
+          setScore(prevScore => {
+            const finalScore = prevScore;
+            handleGameOver(finalScore);
+            setFeedback(`Round Over! Final Score: ${finalScore}/${QUESTIONS_PER_ROUND}`);
+            return finalScore;
+          });
         } else {
-          setQuestionsAnswered(newTotalAnswered);
           loadNewSequence();
         }
+        return newTotalAnswered;
+      });
     }, isCorrect ? 1500 : 3000);
-  }, [currentSequence, userAnswer, isGameOver, feedback, toast, score, questionsAnswered, handleGameOver, loadNewSequence]);
+  }, [currentSequence, userAnswer, isGameOver, feedback, toast, handleGameOver, loadNewSequence]);
   
   const renderGameOverView = () => (
     <div className="text-center p-6 bg-purple-100 rounded-lg shadow-inner">

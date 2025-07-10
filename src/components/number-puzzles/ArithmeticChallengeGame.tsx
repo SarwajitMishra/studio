@@ -147,17 +147,24 @@ export default function ArithmeticChallengeGame({ onBack, difficulty }: Arithmet
     }
 
     setTimeout(() => {
-        const newTotalAnswered = questionsAnswered + 1;
+      setQuestionsAnswered(prevQuestionsAnswered => {
+        const newTotalAnswered = prevQuestionsAnswered + 1;
+        
         if (newTotalAnswered >= QUESTIONS_PER_ROUND) {
-          const finalScore = score + (isCorrect ? 1 : 0);
-          handleGameOver(finalScore);
-          setFeedback(`Round Over! Final Score: ${finalScore}/${QUESTIONS_PER_ROUND}`);
+          // Use a functional update for score here as well to ensure we have the final correct score
+          setScore(prevScore => {
+            const finalScore = prevScore; // The score has already been updated
+            handleGameOver(finalScore);
+            setFeedback(`Round Over! Final Score: ${finalScore}/${QUESTIONS_PER_ROUND}`);
+            return finalScore;
+          });
         } else {
-          setQuestionsAnswered(newTotalAnswered);
           generateProblem();
         }
+        return newTotalAnswered;
+      });
     }, isCorrect ? 1000 : 2000);
-  }, [currentProblem, userAnswer, isGameOver, feedback, toast, score, questionsAnswered, handleGameOver, generateProblem]);
+  }, [currentProblem, userAnswer, isGameOver, feedback, toast, handleGameOver, generateProblem]);
   
   const renderGameOverView = () => (
      <div className="text-center p-6 bg-blue-100 rounded-lg shadow-inner">

@@ -144,7 +144,7 @@ export default function CountTheObjectsGame({ onBack, difficulty }: CountTheObje
     });
     setUserAnswer("");
     setFeedback(null);
-  }, [difficulty, sessionKey]);
+  }, [difficulty]);
 
   const startNewRound = useCallback(() => {
     if (questionsAnswered > 0 && !isRoundOver) {
@@ -189,18 +189,23 @@ export default function CountTheObjectsGame({ onBack, difficulty }: CountTheObje
     }
     
     setTimeout(() => {
-        const newTotalAnswered = questionsAnswered + 1;
+      setQuestionsAnswered(prevQuestionsAnswered => {
+        const newTotalAnswered = prevQuestionsAnswered + 1;
         if (newTotalAnswered >= QUESTIONS_PER_ROUND) {
-            const finalScore = score + (isCorrect ? 1 : 0);
-            handleGameOver(finalScore);
-            setFeedback(`Round Over! Final Score: ${finalScore}/${QUESTIONS_PER_ROUND}`);
-            setCurrentProblem(null);
+            setScore(prevScore => {
+              const finalScore = prevScore;
+              handleGameOver(finalScore);
+              setFeedback(`Round Over! Final Score: ${finalScore}/${QUESTIONS_PER_ROUND}`);
+              setCurrentProblem(null);
+              return finalScore;
+            });
         } else {
-            setQuestionsAnswered(newTotalAnswered);
             loadNewProblem();
         }
+        return newTotalAnswered;
+      });
     }, isCorrect ? 1500 : 3000);
-  }, [currentProblem, userAnswer, isRoundOver, feedback, toast, score, questionsAnswered, handleGameOver, loadNewProblem]);
+  }, [currentProblem, userAnswer, isRoundOver, feedback, toast, handleGameOver, loadNewProblem]);
   
   const renderGameOverView = () => (
      <div className="text-center p-6 bg-pink-100 rounded-lg shadow-inner">

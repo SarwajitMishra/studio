@@ -162,17 +162,22 @@ export default function MissingNumberGame({ onBack, difficulty }: MissingNumberG
     }
     
     setTimeout(() => {
-        const newTotalAnswered = questionsAnswered + 1;
+      setQuestionsAnswered(prevQuestionsAnswered => {
+        const newTotalAnswered = prevQuestionsAnswered + 1;
         if (newTotalAnswered >= QUESTIONS_PER_ROUND) {
-          const finalScore = score + (isCorrect ? 1 : 0);
-          handleGameOver(finalScore);
-          setFeedback(`Round Over! Final Score: ${finalScore}/${QUESTIONS_PER_ROUND}`);
+            setScore(prevScore => {
+              const finalScore = prevScore;
+              handleGameOver(finalScore);
+              setFeedback(`Round Over! Final Score: ${finalScore}/${QUESTIONS_PER_ROUND}`);
+              return finalScore;
+            });
         } else {
-          setQuestionsAnswered(newTotalAnswered);
-          loadNewProblem();
+            loadNewProblem();
         }
+        return newTotalAnswered;
+      });
     }, isCorrect ? 1500 : 3000);
-  }, [currentProblem, userAnswer, isGameOver, feedback, toast, score, questionsAnswered, handleGameOver, loadNewProblem]);
+  }, [currentProblem, userAnswer, isGameOver, feedback, toast, handleGameOver, loadNewProblem]);
   
   const renderGameOverView = () => (
     <div className="text-center p-6 bg-orange-100 rounded-lg shadow-inner">
