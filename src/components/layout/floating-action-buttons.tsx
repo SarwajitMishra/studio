@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
-import { Zap, X, Mail, Heart, Lightbulb } from 'lucide-react';
+import { Zap, X, Mail, Heart, Lightbulb, Info } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export default function FloatingActionButtons() {
@@ -15,6 +15,7 @@ export default function FloatingActionButtons() {
     useEffect(() => setIsMounted(true), []);
 
     const menuItems: { href: string; label: string; Icon: LucideIcon }[] = [
+        { href: '/info', label: 'Game Info', Icon: Info },
         { href: '/request-a-feature', label: 'Request a Feature', Icon: Lightbulb },
         { href: '/contact-us', label: 'Contact Us', Icon: Mail },
         { href: '/support-us', label: 'Support Us', Icon: Heart },
