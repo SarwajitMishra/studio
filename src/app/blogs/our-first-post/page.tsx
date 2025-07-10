@@ -2,44 +2,88 @@
 import { Metadata } from 'next';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { User, Calendar } from 'lucide-react';
+import { User, Calendar, Mail, Phone, Bot } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 // Static data for the blog post
 const blog = {
-  title: "Welcome to the Playhouse Chronicles!",
-  authorName: "Shravya AI",
+  title: "Welcome to Shravya Playhouse – A Magical World of Learning & Fun!",
+  authorName: "Team Shravya Playhouse",
   authorAvatar: "/images/custom-chat-icon.png",
-  publishedAt: new Date().toISOString(),
+  publishedAt: "2025-07-10T12:00:00.000Z",
   content: `
-## Welcome to Our New Blog!
+👋 **Hello Parents, Guardians, and our Little Superstars!**
 
-Hello and welcome to the **Shravya Playhouse Chronicles**! We are so excited to launch this new space where we can share stories, learning tips, game updates, and so much more with our wonderful community of parents and kids.
+We are incredibly excited to welcome you to Shravya Playhouse, a safe, playful, and learning-focused digital playground designed especially for children aged 3 to 12.
 
-### What to Expect
+Born out of love and creativity on the occasion of our little angel Shravya turning 6 months old, this platform is crafted to make screen time productive, engaging, and educational.
 
-Here’s a little sneak peek of what you can expect to find here:
+---
 
--   **Learning Through Play:** Discover how our games like Chess, Sudoku, and Pattern Builder help develop critical thinking and problem-solving skills.
--   **Creative Corner:** Get ideas for fun offline activities that complement the learning your child does in the app.
--   **Behind the Scenes:** Meet the team and learn about how we create the magical world of Shravya Playhouse.
--   **Community Spotlights:** We'll be featuring amazing stories and creations from our users.
+### 🌟 What is Shravya Playhouse?
+Shravya Playhouse is a game-based learning hub packed with:
 
-### Our Mission
+-   🧩 Brain-tickling puzzles
+-   🎮 Classic and modern strategy games
+-   🎨 Creative challenges
+-   📚 Easy English fun activities
+-   🧠 Memory and logic games
 
-Our goal has always been to create a safe, engaging, and educational environment for kids. We believe that learning should be a joyful adventure, and this blog is another step towards that goal.
+All designed to help kids learn while having fun!
 
-We can't wait to embark on this new journey with you. Stay tuned for our first official article next week!
+### 🎮 Current Games You Can Explore:
+- Chess ♟️
+- 2048 🔢
+- Tower of Hanoi
+- Memory Maze
+- Pattern Builder
+- Sudoku Challenge
+- Guess the Number, Fast Math, Code Breaker
+- Memory Matching, Easy English Image Games, and more!
 
-Happy playing,
+We’ve also introduced two special rewards:
+-   🥇 **S-Points** – Earned via daily play and achievements.
+-   💰 **S-Coins** – Valuable coins for contests, shop items, and more!
 
-**The Shravya Playhouse Team**
+---
+
+### 🧩 Upcoming Features to Watch Out For:
+-   🌍 Online Multiplayer Mode with parental safety controls
+-   🏆 Global Leaderboards and progress cards
+-   🎁 Monthly Gifting Contest – win real goodies!
+-   🎨 Spin the Wheel & Daily Login Rewards
+-   ✨ New Puzzle Packs, Skins, and Avatars
+-   ✉️ Parent-Child Dashboard for safe monitoring and rewards
+
+---
+
+### 🛡️ Our Policies
+Your child’s safety is our top priority. Please review our updated policies:
+-   [Privacy Policy](/privacy-policy)
+-   [Terms and Conditions](/terms-and-conditions)
+-   [Cookies Policy](/cookies-policy)
+
+We also give guardians complete control over their child’s profile, progress reports, gameplay time, and visibility of games.
+
+---
+
+### 📬 Contact Us
+We love hearing from our community! Have a suggestion, issue, or just want to say hi?
+
+-   **📧 Email:** [help.shravyaplayhouse@gmail.com](mailto:help.shravyaplayhouse@gmail.com)
+-   **📱 Instagram:** [@shravyaplayhouse](https://instagram.com/shravyaplayhouse)
+-   **📞 WhatsApp Support:** [Message us on WhatsApp](https://wa.me/message/4XRZPF6RLB6KC1)
+
+🎈 Thank you for joining this journey with us. Let's make learning joyful and magical – together!
+
+With love,  
+**Team Shravya Playhouse** 💖
   `,
 };
 
 export const metadata: Metadata = {
   title: blog.title,
-  description: blog.content.substring(0, 160),
+  description: "Welcome to Shravya Playhouse, a safe, playful, and learning-focused digital playground designed especially for children.",
 };
 
 export default function StaticBlogPostPage() {
@@ -65,7 +109,11 @@ export default function StaticBlogPostPage() {
       </header>
       
       <div className="prose dark:prose-invert lg:prose-xl max-w-none mx-auto bg-card p-6 rounded-lg shadow-sm">
-        <ReactMarkdown>{blog.content}</ReactMarkdown>
+        <ReactMarkdown
+          components={{
+            a: ({node, ...props}) => <a {...props} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline" />,
+          }}
+        >{blog.content}</ReactMarkdown>
       </div>
 
        <section className="space-y-6">

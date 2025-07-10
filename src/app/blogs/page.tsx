@@ -20,9 +20,9 @@ const staticBlog = {
   id: 'static-1',
   slug: 'our-first-post',
   title: 'Welcome to the Playhouse Chronicles!',
-  authorName: 'Shravya AI',
+  authorName: 'Team Shravya Playhouse',
   authorAvatar: '/images/custom-chat-icon.png',
-  publishedAt: '2024-07-26T12:00:00.000Z',
+  publishedAt: '2024-07-10T12:00:00.000Z',
   content: 'Welcome to our brand new blog! This is a place for fun stories, learning tips, and updates from the Shravya Playhouse team...'
 };
 
