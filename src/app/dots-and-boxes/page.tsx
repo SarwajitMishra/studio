@@ -303,14 +303,14 @@ export default function DotsAndBoxesPage() {
           <CardContent className="space-y-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Difficulty</label>
-                <div className="flex justify-center gap-2">
+                <div className="flex justify-center gap-2 flex-wrap">
                   {(['easy', 'medium', 'hard'] as Difficulty[]).map(d => (
                     <Button key={d} variant={difficulty === d ? 'default' : 'outline'} onClick={() => setDifficulty(d)}>{DIFFICULTY_CONFIG[d].label}</Button>
                   ))}
                 </div>
               </div>
-              <Button onClick={() => openSetupDialog('player', difficulty)} className="w-full text-lg"><Users className="mr-2"/> Player vs Player</Button>
-              <Button onClick={() => openSetupDialog('ai', difficulty)} className="w-full text-lg"><Cpu className="mr-2"/> Player vs AI</Button>
+              <Button onClick={() => openSetupDialog('player', difficulty)} className="w-full text-md sm:text-lg"><Users className="mr-2"/> Player vs Player</Button>
+              <Button onClick={() => openSetupDialog('ai', difficulty)} className="w-full text-md sm:text-lg"><Cpu className="mr-2"/> Player vs AI</Button>
           </CardContent>
       </Card>
   );
@@ -406,7 +406,7 @@ export default function DotsAndBoxesPage() {
   );
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)]">
+    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] p-4">
       {gameState === 'setup' ? renderSetupScreen() : renderGameScreen()}
        <SetupDialog 
         isOpen={isSetupDialogOpen} 
