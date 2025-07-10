@@ -19,6 +19,18 @@ export const COLOR_THEMES: Record<string, ColorTheme> = {
       'accent-h': '40', 'accent-s': '95%', 'accent-l': '55%',
     }
   },
+  pink: { // Playful Pink Theme
+    light: {
+      'background-h': '340', 'background-s': '100%', 'background-l': '97%',
+      'primary-h': '340', 'primary-s': '80%', 'primary-l': '70%',
+      'accent-h': '320', 'accent-s': '90%', 'accent-l': '65%',
+    },
+    dark: {
+      'background-h': '340', 'background-s': '20%', 'background-l': '15%',
+      'primary-h': '340', 'primary-s': '70%', 'primary-l': '65%',
+      'accent-h': '320', 'accent-s': '80%', 'accent-l': '60%',
+    }
+  },
   red: { // Sunset Theme
     light: {
       'background-h': '25', 'background-s': '50%', 'background-l': '95%',
