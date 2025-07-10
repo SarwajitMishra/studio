@@ -33,9 +33,17 @@ const DISTRACTOR_ICONS: { name: string; Icon: LucideIcon; color: string }[] = [
     { name: "Rock", Icon: Mountain, color: "text-gray-400" },
 ];
 
+interface GridItem {
+  Icon: LucideIcon;
+  color: string;
+  rotation: number;
+  top: number;
+  left: number;
+}
+
 interface Problem {
   id: string;
-  grid: { Icon: LucideIcon; color: string; rotation: number }[];
+  grid: GridItem[];
   target: { name: string; Icon: LucideIcon; color: string; count: number };
 }
 
@@ -64,16 +72,17 @@ export default function CountTheObjectsGame({ onBack, difficulty }: CountGamePro
     const targetCount = Math.floor(Math.random() * (config.maxTarget - 5 + 1)) + 5;
     const distractorCount = Math.floor(Math.random() * (config.maxDistractors - 10 + 1)) + 10;
     
-    const gridItems = [
-      ...Array(targetCount).fill(0).map(() => ({ ...targetIcon, rotation: Math.random() * 360 })),
-      ...Array(distractorCount).fill(0).map(() => ({ ...distractorIcon, rotation: Math.random() * 360 }))
+    const itemsToPlace = [
+      ...Array(targetCount).fill(0).map(() => ({ ...targetIcon })),
+      ...Array(distractorCount).fill(0).map(() => ({ ...distractorIcon }))
     ];
-
-    // Shuffle the items for random placement
-    for (let i = gridItems.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [gridItems[i], gridItems[j]] = [gridItems[j], gridItems[i]];
-    }
+    
+    const gridItems = itemsToPlace.map(item => ({
+        ...item,
+        rotation: Math.random() * 360,
+        top: Math.random() * 90,
+        left: Math.random() * 90,
+    }));
 
     setProblem({
       id: `problem-${Date.now()}`,
@@ -92,7 +101,7 @@ export default function CountTheObjectsGame({ onBack, difficulty }: CountGamePro
     </div>
   );
 
-  const calculateStars = (finalScore: number): number => {
+  const calculateStars = useCallback((finalScore: number): number => {
     const thresholds: Record<Difficulty, {oneStar: number, twoStars: number, threeStars: number}> = {
       easy: { oneStar: 5, twoStars: 8, threeStars: 12 },
       medium: { oneStar: 4, twoStars: 7, threeStars: 10 },
@@ -103,7 +112,7 @@ export default function CountTheObjectsGame({ onBack, difficulty }: CountGamePro
     if (finalScore >= twoStars) return 2;
     if (finalScore >= oneStar) return 1;
     return 0;
-  };
+  }, [difficulty]);
   
   const handleGameOver = useCallback(async (finalScore: number) => {
     setIsGameOver(true);
@@ -175,7 +184,7 @@ export default function CountTheObjectsGame({ onBack, difficulty }: CountGamePro
   };
   
   const renderGameOverView = () => (
-     <div className="text-center p-6 bg-pink-100 rounded-lg shadow-inner">
+     <div className="text-center p-6 bg-pink-100 dark:bg-pink-900/20 rounded-lg shadow-inner">
         {isCalculatingReward ? (
             <div className="flex flex-col items-center justify-center gap-2 pt-4 min-h-[150px]">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -245,8 +254,8 @@ export default function CountTheObjectsGame({ onBack, difficulty }: CountGamePro
                         className={cn("absolute", item.color)} 
                         size={Math.random() * (35-20) + 20}
                         style={{
-                            top: `${Math.random()*90}%`,
-                            left: `${Math.random()*90}%`,
+                            top: `${item.top}%`,
+                            left: `${item.left}%`,
                             transform: `rotate(${item.rotation}deg)`
                         }}
                     />
@@ -281,3 +290,4 @@ export default function CountTheObjectsGame({ onBack, difficulty }: CountGamePro
     </Card>
   );
 }
+
