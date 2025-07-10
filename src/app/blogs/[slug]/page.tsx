@@ -7,8 +7,14 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { User, Calendar } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
-export async function generateMetadata({ params }: { params: { slug: string } }) {
-  const blog = await getBlogBySlug(params.slug);
+type Props = {
+  params: { slug: string };
+};
+
+export async function generateMetadata({ params }: Props) {
+  const slug = params.slug;
+  const blog = await getBlogBySlug(slug);
+
   if (!blog) {
     return {
       title: 'Post Not Found',
@@ -20,7 +26,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   };
 }
 
-export default async function BlogPostPage({ params }: { params: { slug: string } }) {
+export default async function BlogPostPage({ params }: Props) {
   const blog = await getBlogBySlug(params.slug);
 
   if (!blog) {
