@@ -140,31 +140,25 @@ export default function ArithmeticChallengeGame({ onBack, difficulty }: Arithmet
     setFeedback(isCorrect ? "Correct!" : `Not quite. The answer was ${currentProblem.answer}.`);
 
     if (isCorrect) {
-      setScore(prev => prev + 1);
+      setScore(prevScore => prevScore + 1);
       toast({ title: "Correct!", className: "bg-green-500 text-white" });
     } else {
       toast({ variant: "destructive", title: "Incorrect!", description: `The correct answer was ${currentProblem.answer}.` });
     }
-
+    
     setTimeout(() => {
-      setQuestionsAnswered(prevQuestionsAnswered => {
-        const newTotalAnswered = prevQuestionsAnswered + 1;
+        const finalScore = isCorrect ? score + 1 : score;
+        const newTotalAnswered = questionsAnswered + 1;
+        setQuestionsAnswered(newTotalAnswered);
         
         if (newTotalAnswered >= QUESTIONS_PER_ROUND) {
-          // Use a functional update for score here as well to ensure we have the final correct score
-          setScore(prevScore => {
-            const finalScore = prevScore; // The score has already been updated
             handleGameOver(finalScore);
-            setFeedback(`Round Over! Final Score: ${finalScore}/${QUESTIONS_PER_ROUND}`);
-            return finalScore;
-          });
         } else {
-          generateProblem();
+            generateProblem();
         }
-        return newTotalAnswered;
-      });
     }, isCorrect ? 1000 : 2000);
-  }, [currentProblem, userAnswer, isGameOver, feedback, toast, handleGameOver, generateProblem]);
+
+  }, [currentProblem, userAnswer, isGameOver, feedback, toast, handleGameOver, generateProblem, score, questionsAnswered]);
   
   const renderGameOverView = () => (
      <div className="text-center p-6 bg-blue-100 rounded-lg shadow-inner">
@@ -192,7 +186,7 @@ export default function ArithmeticChallengeGame({ onBack, difficulty }: Arithmet
              <div className="min-h-[150px]">
                 <Award className="mx-auto h-16 w-16 text-yellow-500 mb-3" />
                 <h2 className="text-2xl font-bold text-blue-700">Round Over!</h2>
-                <p className="text-lg text-blue-600 mt-1">{feedback || `Your final score is ${score}/${QUESTIONS_PER_ROUND}.`}</p>
+                <p className="text-lg text-blue-600 mt-1">{`Your final score is ${score}/${QUESTIONS_PER_ROUND}.`}</p>
              </div>
         )}
         <Button onClick={resetGame} className="mt-6 w-full sm:w-auto bg-accent text-accent-foreground hover:bg-accent/90" disabled={isCalculatingReward}>
