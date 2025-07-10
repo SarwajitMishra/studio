@@ -28,6 +28,11 @@ interface SquarePosition {
   col: number;
 }
 
+interface Move {
+    from: SquarePosition;
+    to: SquarePosition;
+}
+
 type PlayerColor = "w" | "b";
 type GameState = 'setup' | 'playing' | 'gameOver';
 type GameMode = 'player' | 'ai' | null;
@@ -395,8 +400,8 @@ export default function ChessPage() {
     currentBoard: (Piece | null)[][],
     playerColor: PlayerColor,
     currentKingPositions: Record<PlayerColor, SquarePosition>
-  ): SquarePosition[] => {
-    let allMoves: SquarePosition[] = [];
+  ): Move[] => {
+    let allMoves: Move[] = [];
     for (let r_idx = 0; r_idx < 8; r_idx++) {
       for (let c_idx = 0; c_idx < 8; c_idx++) {
         const piece = getPieceAt(currentBoard, r_idx, c_idx);
@@ -447,7 +452,7 @@ export default function ChessPage() {
     handleSquareClick(randomMove.from.row, randomMove.from.col);
     setTimeout(() => handleSquareClick(randomMove.to.row, randomMove.to.col), 100);
 
-  }, [board, currentPlayer, gameState, getAllLegalMovesForPlayer, kingPositions, getPieceAt]);
+  }, [board, currentPlayer, gameState, getAllLegalMovesForPlayer, kingPositions, getPieceAt, isSquareAttacked]);
 
   useEffect(() => {
     if(gameMode === 'ai' && currentPlayer === 'b' && gameState === 'playing' && winner === null) {
