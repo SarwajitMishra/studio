@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -6,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { FunctionSquare, RotateCw, ArrowLeft, Loader2, Award, Star as StarIcon } from 'lucide-react';
+import { FunctionSquare, RotateCw, ArrowLeft, Loader2, Award, Star as StarIcon, Lightbulb, CheckCircle } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import type { Difficulty } from "@/lib/constants";
 import { useToast } from "@/hooks/use-toast";
@@ -33,9 +32,38 @@ const getMagicSum = (size: number): number => {
     return size * (size * size + 1) / 2;
 };
 
+// This will be used to generate a valid, solved solution for the hint system.
+const generateSolution = (n: number): number[][] => {
+    const magicSquare: number[][] = Array(n).fill(0).map(() => Array(n).fill(0));
+    let i = Math.floor(n / 2);
+    let j = n - 1;
+
+    for (let num = 1; num <= n * n;) {
+        if (i === -1 && j === n) {
+            j = n - 2;
+            i = 0;
+        } else {
+            if (j === n) j = 0;
+            if (i < 0) i = n - 1;
+        }
+        if (magicSquare[i][j] !== 0) {
+            j -= 2;
+            i++;
+            continue;
+        } else {
+            magicSquare[i][j] = num++;
+        }
+        j++;
+        i--;
+    }
+    return magicSquare;
+};
+
+
 export default function MagicSquareGame({ onBack, difficulty }: MagicSquareGameProps) {
   const [config, setConfig] = useState(DIFFICULTY_CONFIG[difficulty]);
   const [grid, setGrid] = useState<(number | null)[][]>(generateInitialGrid(config.size));
+  const [solution, setSolution] = useState<number[][]>([]);
   const [availableNumbers, setAvailableNumbers] = useState<number[]>([]);
   const [selectedNumber, setSelectedNumber] = useState<number | null>(null);
   const [isGameOver, setIsGameOver] = useState(false);
@@ -53,6 +81,7 @@ export default function MagicSquareGame({ onBack, difficulty }: MagicSquareGameP
     const newSize = newConfig.size;
     setConfig(newConfig);
     setGrid(generateInitialGrid(newSize));
+    setSolution(generateSolution(newSize));
     setAvailableNumbers(Array.from({ length: newSize * newSize }, (_, i) => i + 1));
     setSelectedNumber(null);
     setIsGameOver(false);
@@ -112,15 +141,20 @@ export default function MagicSquareGame({ onBack, difficulty }: MagicSquareGameP
     if (!isGameOver && timeLeft > 0) {
       const timer = setTimeout(() => setTimeLeft(t => t - 1), 1000);
       return () => clearTimeout(timer);
-    } else if (timeLeft <= 0) {
+    } else if (timeLeft <= 0 && !isGameOver) {
       handleGameOver(false);
     }
   }, [timeLeft, isGameOver, handleGameOver]);
 
   const checkWinCondition = useCallback((currentGrid: (number | null)[][]) => {
-    if (currentGrid.flat().includes(null)) return false;
+    const isFull = !currentGrid.flat().includes(null);
+    if (!isFull) {
+        toast({ variant: "destructive", title: "Incomplete", description: "Please fill all cells before submitting." });
+        return false;
+    }
 
     const sum = getMagicSum(config.size);
+    let isCorrect = true;
 
     // Check rows and columns
     for (let i = 0; i < config.size; i++) {
@@ -130,7 +164,7 @@ export default function MagicSquareGame({ onBack, difficulty }: MagicSquareGameP
         rowSum += currentGrid[i][j]!;
         colSum += currentGrid[j][i]!;
       }
-      if (rowSum !== sum || colSum !== sum) return false;
+      if (rowSum !== sum || colSum !== sum) isCorrect = false;
     }
 
     // Check diagonals
@@ -140,25 +174,38 @@ export default function MagicSquareGame({ onBack, difficulty }: MagicSquareGameP
       diag1Sum += currentGrid[i][i]!;
       diag2Sum += currentGrid[i][config.size - 1 - i]!;
     }
-    if (diag1Sum !== sum || diag2Sum !== sum) return false;
+    if (diag1Sum !== sum || diag2Sum !== sum) isCorrect = false;
+    
+    return isCorrect;
+  }, [config.size, toast]);
 
-    return true;
-  }, [config.size]);
+  const handleSubmit = () => {
+    const isCorrect = checkWinCondition(grid);
+    if (isCorrect) {
+        handleGameOver(true);
+    } else {
+        toast({ variant: "destructive", title: "Not Quite", description: "The sums are not correct. Keep trying!" });
+    }
+  };
+
 
   const handleCellClick = (row: number, col: number) => {
-    if (isGameOver || grid[row][col] !== null) return;
+    if (isGameOver) return;
     
-    if (selectedNumber !== null) {
-        const newGrid = grid.map(r => [...r]);
+    const newGrid = grid.map(r => [...r]);
+    const numberInCell = newGrid[row][col];
+
+    if (numberInCell !== null) {
+        // Return the number to available numbers and clear the cell
+        newGrid[row][col] = null;
+        setGrid(newGrid);
+        setAvailableNumbers(prev => [...prev, numberInCell].sort((a,b) => a-b));
+    } else if (selectedNumber !== null) {
+        // Place the selected number in the empty cell
         newGrid[row][col] = selectedNumber;
         setGrid(newGrid);
-
         setAvailableNumbers(prev => prev.filter(n => n !== selectedNumber));
         setSelectedNumber(null);
-        
-        if (checkWinCondition(newGrid)) {
-            handleGameOver(true);
-        }
     }
   };
 
@@ -166,6 +213,38 @@ export default function MagicSquareGame({ onBack, difficulty }: MagicSquareGameP
     setSelectedNumber(num === selectedNumber ? null : num);
   };
   
+  const handleHint = () => {
+    if (isGameOver) return;
+    
+    const emptyCells: {r: number, c: number}[] = [];
+    grid.forEach((row, r_idx) => {
+        row.forEach((cell, c_idx) => {
+            if (cell === null) {
+                emptyCells.push({r: r_idx, c: c_idx});
+            }
+        });
+    });
+
+    if (emptyCells.length === 0) {
+        toast({ title: "No hints needed", description: "The grid is full!"});
+        return;
+    }
+
+    const randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+    const correctNumber = solution[randomCell.r][randomCell.c];
+
+    const newGrid = grid.map(r => [...r]);
+    newGrid[randomCell.r][randomCell.c] = correctNumber;
+    setGrid(newGrid);
+
+    setAvailableNumbers(prev => prev.filter(n => n !== correctNumber));
+    if (selectedNumber === correctNumber) {
+        setSelectedNumber(null);
+    }
+
+    toast({ title: "Hint Used!", description: `The number ${correctNumber} has been placed for you.`});
+  };
+
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -234,7 +313,7 @@ export default function MagicSquareGame({ onBack, difficulty }: MagicSquareGameP
                     <button
                         key={`${r}-${c}`}
                         onClick={() => handleCellClick(r, c)}
-                        disabled={isGameOver || cell !== null}
+                        disabled={isGameOver}
                         className={cn(
                           "w-14 h-14 sm:w-16 sm:h-16 text-2xl font-bold border-2 rounded-lg flex items-center justify-center transition-colors",
                           cell === null && selectedNumber !== null ? "bg-blue-100 hover:bg-blue-200 border-blue-400" : "bg-muted border-transparent",
@@ -263,7 +342,17 @@ export default function MagicSquareGame({ onBack, difficulty }: MagicSquareGameP
                 </div>
             </div>
             
-            <Button onClick={resetGame} variant="destructive" className="w-full mt-2"><RotateCw className="mr-2"/>Reset Game</Button>
+            <div className="grid grid-cols-2 gap-2 mt-4">
+                <Button onClick={handleSubmit} disabled={isGameOver} className="bg-green-600 hover:bg-green-700">
+                    <CheckCircle className="mr-2"/>Check Answer
+                </Button>
+                <Button onClick={handleHint} disabled={isGameOver} variant="outline">
+                    <Lightbulb className="mr-2"/>Hint
+                </Button>
+                <Button onClick={resetGame} variant="destructive" className="col-span-2">
+                    <RotateCw className="mr-2"/>Reset Game
+                </Button>
+            </div>
         </CardContent>
     </Card>
   );
