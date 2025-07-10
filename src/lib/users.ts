@@ -18,11 +18,11 @@ import { getGuestData } from './sync';
 
 export interface UserProfile {
     uid: string;
-    displayName: string;
-    email: string;
-    username: string;
-    country: string;
-    phoneNumber?: string;
+    displayName: string | null;
+    email: string | null;
+    username: string | null;
+    country: string | null;
+    phoneNumber?: string | null;
     createdAt?: { seconds: number; toDate: () => Date }; // Firestore timestamp
 }
 
@@ -81,14 +81,20 @@ export async function createUserProfile(user: User, additionalData: any, guestDa
       }
 
       // If the username is free, create both the user profile and the username document
-      const userProfileData = {
+      const userProfileData: UserProfile = {
         uid: user.uid,
         displayName: user.displayName,
         email: user.email,
-        photoURL: user.photoURL,
+        username: additionalData.username,
+        country: additionalData.country,
+        phoneNumber: user.phoneNumber || additionalData.phoneNumber || null,
         createdAt: serverTimestamp(),
-        ...additionalData,
+        ...additionalData, // This will overwrite fields if they exist, which is fine
       };
+      
+      // Remove undefined keys to avoid Firestore errors
+      Object.keys(userProfileData).forEach(key => userProfileData[key as keyof UserProfile] === undefined && delete userProfileData[key as keyof UserProfile]);
+
       transaction.set(userRef, userProfileData);
       console.log("User profile document queued for creation.");
       transaction.set(usernameRef, { uid: user.uid });

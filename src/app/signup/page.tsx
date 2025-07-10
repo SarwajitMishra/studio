@@ -563,7 +563,7 @@ export default function SignupPage() {
                     </SelectContent>
                   </Select><FormMessage /></FormItem>
               )} />
-              <Button type="submit" className="w-full md:col-span-2" disabled={emailLoading || googleLoading}>
+              <Button type="submit" className="w-full md:col-span-2" disabled={isLoading || googleLoading}>
                  {emailLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Sign Up"}
               </Button>
             </form>
