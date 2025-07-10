@@ -10,6 +10,7 @@ import { Palette, Sun, Moon } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { applyColorTheme } from '@/components/theme-provider';
+import { addNotification } from '@/lib/notifications';
 
 const THEME_OPTIONS = [
   { value: 'light', label: 'Light Mode', Icon: Sun },
@@ -44,6 +45,7 @@ export default function PreferencesPage() {
         } else {
           document.documentElement.classList.remove('dark');
         }
+        addNotification(`Theme changed to ${newTheme} mode.`, `theme-${newTheme}`, '/settings/preferences');
         toast({ title: "Theme Changed", description: `Switched to ${newTheme === 'dark' ? 'Dark' : 'Light'} Mode.` });
     };
 
@@ -51,7 +53,9 @@ export default function PreferencesPage() {
         setFavoriteColor(newColor);
         localStorage.setItem('favoriteColor', newColor);
         applyColorTheme(newColor);
-        toast({ title: "Favorite Color Set", description: `Your favorite color is now ${FAVORITE_COLOR_OPTIONS.find(c => c.value === newColor)?.label || newColor}.` });
+        const colorName = FAVORITE_COLOR_OPTIONS.find(c => c.value === newColor)?.label || newColor;
+        addNotification(`Favorite color set to ${colorName}.`, `color-${newColor}`, '/settings/preferences');
+        toast({ title: "Favorite Color Set", description: `Your favorite color is now ${colorName}.` });
     };
 
     return (

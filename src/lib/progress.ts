@@ -2,8 +2,9 @@
 'use client';
 
 // Import all game definitions
-import { GAMES, MATH_PUZZLE_TYPES, ENGLISH_PUZZLE_TYPES } from './constants';
+import { GAMES, MATH_PUZZLE_TYPES, ENGLISH_PUZZLE_TYPES, BADGES } from './constants';
 import { applyRewards } from './rewards';
+import { addNotification } from './notifications';
 
 export const LOCAL_STORAGE_GAME_STATS_KEY = 'shravyaPlayhouse_gameStats';
 
@@ -66,6 +67,28 @@ interface UpdateStatsPayload {
     didWin: boolean;
     score?: number; 
 }
+
+export const checkAndTriggerAchievements = (sPoints: number, gameStats: GameStat[]) => {
+    BADGES.forEach(badge => {
+        let isUnlocked = false;
+        switch (badge.id) {
+            case 'beginner-explorer': isUnlocked = sPoints >= 100; break;
+            case 'star-starter': isUnlocked = gameStats.some(stat => stat.wins > 0); break;
+            case 'puzzle-master':
+                const puzzleGames = new Set(GAMES.filter(g => g.category === 'Puzzles').map(g => g.id));
+                isUnlocked = gameStats.filter(stat => puzzleGames.has(stat.gameId) && stat.wins > 0).length >= 3;
+                break;
+            case 'typing-titan': isUnlocked = (gameStats.find(stat => stat.gameId === 'typingRush')?.highScore || 0) >= 150; break;
+            case 'strategy-sovereign': isUnlocked = (gameStats.find(stat => stat.gameId === 'chess')?.wins || 0) >= 5; break;
+            default: break;
+        }
+
+        if (isUnlocked) {
+            addNotification(`Achievement Unlocked: ${badge.title}!`, badge.id, '/profile');
+        }
+    });
+};
+
 
 export const updateGameStats = (payload: UpdateStatsPayload) => {
     if (typeof window === 'undefined') return;

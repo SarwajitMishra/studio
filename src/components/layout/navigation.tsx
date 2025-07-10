@@ -20,12 +20,13 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Settings, Home, Store, BookOpen, Bell, BookText, LogOut, Shield, Zap } from 'lucide-react';
+import { Settings, Home, Store, BookOpen, Bell, BookText, LogOut, Shield, Zap, CheckCheck } from 'lucide-react';
 import { SETTINGS_MENU_ITEMS } from '@/lib/constants';
 import { auth, signOut as firebaseSignOut, onAuthStateChanged, type User } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { isUserAdmin } from '@/lib/users';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { getNotifications, markAsRead, type Notification } from '@/lib/notifications';
 
 const DEFAULT_AVATAR_SRC = '/images/avatars/modern_girl.png';
 const DEFAULT_USER_NAME = "Kiddo";
@@ -44,8 +45,14 @@ export default function Navigation({ side }: NavigationProps) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState(DEFAULT_AVATAR_SRC);
   const [userName, setUserName] = useState(DEFAULT_USER_NAME);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+
+  const fetchNotifications = () => {
+    setNotifications(getNotifications());
+  };
 
   useEffect(() => {
+    fetchNotifications();
     const updateProfileDisplay = () => {
         const user = auth.currentUser;
         if (user) {
@@ -70,10 +77,12 @@ export default function Navigation({ side }: NavigationProps) {
     });
     
     window.addEventListener('profileUpdated', updateProfileDisplay);
+    window.addEventListener('storageUpdated', fetchNotifications);
 
     return () => {
       unsubscribeAuth();
       window.removeEventListener('profileUpdated', updateProfileDisplay);
+      window.removeEventListener('storageUpdated', fetchNotifications);
     };
   }, []);
 
@@ -87,6 +96,16 @@ export default function Navigation({ side }: NavigationProps) {
       toast({ variant: "destructive", title: "Logout Failed", description: error.message || "Could not sign out. Please try again." });
     }
   };
+
+  const handleNotificationClick = (notification: Notification) => {
+    markAsRead(notification.id);
+    fetchNotifications(); // Refresh list after marking as read
+    if (notification.href) {
+      router.push(notification.href);
+    }
+  };
+
+  const unreadCount = notifications.filter(n => !n.isRead).length;
 
   const commonButtonClasses = "text-primary-foreground hover:bg-primary-foreground/10";
   
@@ -144,6 +163,8 @@ export default function Navigation({ side }: NavigationProps) {
   }
 
   if (side === 'right') {
+    const latestUnreadNotification = notifications.find(n => !n.isRead);
+
     return (
       <TooltipProvider>
       <nav className="flex items-center space-x-1 sm:space-x-2">
@@ -173,23 +194,38 @@ export default function Navigation({ side }: NavigationProps) {
           <Tooltip>
             <TooltipTrigger asChild>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className={commonButtonClasses} aria-label="Notifications">
+                <Button variant="ghost" size="icon" className={cn(commonButtonClasses, "relative")} aria-label="Notifications">
                   <Bell size={24} />
+                  {unreadCount > 0 && (
+                    <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs text-white">
+                      {unreadCount}
+                    </span>
+                  )}
                 </Button>
               </DropdownMenuTrigger>
             </TooltipTrigger>
             <TooltipContent><p>Notifications</p></TooltipContent>
           </Tooltip>
-          <DropdownMenuContent align="end" className="w-56 mt-2">
-            <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+          <DropdownMenuContent align="end" className="w-64 mt-2">
+            <DropdownMenuLabel>Latest Notifications</DropdownMenuLabel>
             <DropdownMenuSeparator />
-             <DropdownMenuItem asChild className="cursor-pointer">
-              <Link href="/upcoming-features">
-                <Zap className="mr-2 h-4 w-4" />
-                <span>See Upcoming Features!</span>
+             {latestUnreadNotification ? (
+               <DropdownMenuItem onClick={() => handleNotificationClick(latestUnreadNotification)} className="cursor-pointer whitespace-normal">
+                   <div className="flex flex-col gap-1">
+                       <span className="font-semibold">{latestUnreadNotification.message}</span>
+                       <span className="text-xs text-muted-foreground">Click to view</span>
+                   </div>
+               </DropdownMenuItem>
+             ) : (
+                <DropdownMenuItem disabled>No new notifications</DropdownMenuItem>
+             )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild className="cursor-pointer">
+              <Link href="/notifications">
+                <CheckCheck className="mr-2 h-4 w-4" />
+                <span>View All Notifications</span>
               </Link>
             </DropdownMenuItem>
-            <DropdownMenuItem disabled>No other notifications</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
 

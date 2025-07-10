@@ -41,8 +41,9 @@ import {
   type User
 } from '@/lib/firebase';
 import { ref as storageRef, uploadString, getDownloadURL } from 'firebase/storage';
-import { getGameStats, type GameStat } from '@/lib/progress';
+import { getGameStats, type GameStat, checkAndTriggerAchievements } from '@/lib/progress';
 import { getRewardHistory, type RewardEvent } from '@/lib/rewards';
+import { addNotification } from '@/lib/notifications';
 
 const LOCAL_STORAGE_USER_NAME_KEY = 'shravyaPlayhouse_userName';
 const LOCAL_STORAGE_AVATAR_KEY = 'shravyaPlayhouse_avatar';
@@ -106,35 +107,31 @@ export default function ProfilePage() {
   const [showGuestWarning, setShowGuestWarning] = useState(true);
   
   const updateLocalData = useCallback(() => {
-    setSPoints(getStoredGameCurrency(LOCAL_STORAGE_S_POINTS_KEY));
+    const points = getStoredGameCurrency(LOCAL_STORAGE_S_POINTS_KEY);
+    const stats = getGameStats();
+    setSPoints(points);
     setSCoins(getStoredGameCurrency(LOCAL_STORAGE_S_COINS_KEY));
     setRewardHistory(getRewardHistory());
-    setGameStats(getGameStats());
+    setGameStats(stats);
+    checkAndTriggerAchievements(points, stats);
   }, []);
 
   const unlockedBadges = useMemo(() => {
-    const checkBadgeCriteria = (badge: Badge): boolean => {
+    return BADGES.filter(badge => {
+        const stats = getGameStats();
+        const points = getStoredGameCurrency(LOCAL_STORAGE_S_POINTS_KEY);
         switch (badge.id) {
-            case 'beginner-explorer':
-                return sPoints >= 100;
-            case 'star-starter':
-                return gameStats.some(stat => stat.wins > 0);
+            case 'beginner-explorer': return points >= 100;
+            case 'star-starter': return stats.some(stat => stat.wins > 0);
             case 'puzzle-master':
                 const puzzleGames = new Set(GAMES.filter(g => g.category === 'Puzzles').map(g => g.id));
-                const puzzleWins = gameStats.filter(stat => puzzleGames.has(stat.gameId) && stat.wins > 0).length;
-                return puzzleWins >= 3;
-            case 'typing-titan':
-                const typingStat = gameStats.find(stat => stat.gameId === 'typingRush');
-                return (typingStat?.highScore || 0) >= 150;
-            case 'strategy-sovereign':
-                const chessStat = gameStats.find(stat => stat.gameId === 'chess');
-                return (chessStat?.wins || 0) >= 5;
-            default:
-                return false;
+                return stats.filter(stat => puzzleGames.has(stat.gameId) && stat.wins > 0).length >= 3;
+            case 'typing-titan': return (stats.find(stat => stat.gameId === 'typingRush')?.highScore || 0) >= 150;
+            case 'strategy-sovereign': return (stats.find(stat => stat.gameId === 'chess')?.wins || 0) >= 5;
+            default: return false;
         }
-    };
-    return BADGES.filter(checkBadgeCriteria);
-  }, [sPoints, gameStats]);
+    });
+  }, [sPoints, gameStats]); // Rerun when local state updates
 
   const primaryBadge = unlockedBadges.length > 0 ? unlockedBadges[unlockedBadges.length - 1] : null;
 
@@ -217,6 +214,7 @@ export default function ProfilePage() {
         await updateProfile(currentUser, { photoURL: photoURLToSave });
         localStorage.setItem(LOCAL_STORAGE_AVATAR_KEY, photoURLToSave);
         setSelectedAvatar(photoURLToSave);
+        addNotification("You updated your avatar!", "profile-avatar", "/profile");
         toast({ title: "Avatar Auto-Saved!", description: "Your new avatar has been saved to your profile." });
       } catch (error: any) {
         console.error("Error auto-saving avatar:", error);
@@ -259,6 +257,7 @@ export default function ProfilePage() {
           await updateProfile(currentUser, { displayName: editingUserName });
           localStorage.setItem(LOCAL_STORAGE_USER_NAME_KEY, editingUserName);
           window.dispatchEvent(new CustomEvent('profileUpdated'));
+          addNotification("You changed your display name!", "profile-name", "/profile");
           toast({ title: "Username Auto-Saved!", description: `Your display name is now ${editingUserName}.` });
         } catch (error: any) {
           console.error("Error auto-saving username:", error);
