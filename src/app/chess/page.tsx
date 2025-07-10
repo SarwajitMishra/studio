@@ -663,9 +663,7 @@ export default function ChessPage() {
                         </DialogTrigger>
                         <SetupDialog mode="player" onStart={startGame} />
                     </Dialog>
-                    <DialogTrigger asChild>
-                       <Button onClick={() => startGame('ai', { w: 'You', b: 'Shravya AI' })} className="w-full text-lg py-6"><Cpu className="mr-2"/> Player vs AI</Button>
-                    </DialogTrigger>
+                    <Button onClick={() => startGame('ai', { w: 'You', b: 'Shravya AI' })} className="w-full text-lg py-6"><Cpu className="mr-2"/> Player vs AI</Button>
                 </CardContent>
             </Card>
         </div>
