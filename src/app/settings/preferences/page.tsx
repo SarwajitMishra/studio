@@ -18,9 +18,10 @@ const THEME_OPTIONS = [
 
 const FAVORITE_COLOR_OPTIONS = [
   { value: 'default', label: 'Default (Sky Blue)', color: '#87CEEB' },
+  { value: 'pink', label: 'Playful Pink', color: '#F472B6' },
   { value: 'red', label: 'Sunset Red', color: '#E55C5C' },
   { value: 'green', label: 'Forest Green', color: '#4CAF50' },
-  { value: 'blue', label: 'Oceanic Blue', color: '#3A8DDE' },
+  { value: 'blue', 'label': 'Oceanic Blue', color: '#3A8DDE' },
   { value: 'purple', label: 'Twilight Purple', color: '#9067C6' },
 ];
 
