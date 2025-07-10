@@ -1,7 +1,6 @@
-
-// This dynamic route has been replaced by a static page
-// at /blogs/our-first-post to resolve database fetching issues.
-// This file is now empty and the surrounding folder can be deleted.
+// This file has been removed to resolve a build error with static exports.
+// The blog post is now served from /blogs/our-first-post.
+// This file and its parent folder can be safely deleted.
 export default function DeprecatedBlogPostPage() {
     return null;
 }
