@@ -33,8 +33,9 @@ export default function ContactUsPage() {
              <div className="flex items-start gap-4">
               <Phone className="h-6 w-6 text-primary mt-1 flex-shrink-0" />
               <div>
-                <h3 className="font-semibold">Phone</h3>
-                <p className="text-muted-foreground">(Coming Soon)</p>
+                <h3 className="font-semibold">WhatsApp</h3>
+                <p className="text-muted-foreground">For support and inquiries:</p>
+                <a href="https://wa.me/message/4XRZPF6RLB6KC1" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Message us on WhatsApp</a>
               </div>
             </div>
              <div className="flex items-start gap-4">
