@@ -20,7 +20,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Settings, Home, Store, BookOpen, Bell, BookText, LogOut, Shield, Zap, CheckCheck, Lightbulb } from 'lucide-react';
+import { Settings, Home, Store, BookOpen, Bell, BookText, LogOut, Shield, Zap, CheckCheck, Lightbulb, LogIn } from 'lucide-react';
 import { SETTINGS_MENU_ITEMS } from '@/lib/constants';
 import { auth, signOut as firebaseSignOut, onAuthStateChanged, type User } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
@@ -243,6 +243,14 @@ export default function Navigation({ side }: NavigationProps) {
           <DropdownMenuContent align="end" className="w-56 mt-2">
             <DropdownMenuLabel>Settings & More</DropdownMenuLabel>
             <DropdownMenuSeparator />
+            {!currentUser && (
+               <DropdownMenuItem asChild className="cursor-pointer">
+                  <Link href="/login">
+                    <LogIn className="mr-2 h-4 w-4" />
+                    <span>Login / Sign Up</span>
+                  </Link>
+                </DropdownMenuItem>
+            )}
             {SETTINGS_MENU_ITEMS.map((item) => (
               <DropdownMenuItem key={item.label} asChild className="cursor-pointer">
                 <Link href={item.href}>

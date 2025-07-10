@@ -104,7 +104,6 @@ export default function ProfilePage() {
   const [gameStats, setGameStats] = useState<GameStat[]>([]);
 
   const [isConfigMissing, setIsConfigMissing] = useState(false);
-  const [showGuestWarning, setShowGuestWarning] = useState(true);
   
   const updateLocalData = useCallback(() => {
     const points = getStoredGameCurrency(LOCAL_STORAGE_S_POINTS_KEY);
@@ -312,19 +311,26 @@ export default function ProfilePage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
-      {isGuest && showGuestWarning && (
-        <Alert variant="default" className="relative bg-accent/20 border-accent/50">
-           <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-6 w-6" onClick={() => setShowGuestWarning(false)}>
-              <X className="h-4 w-4" />
-              <span className="sr-only">Dismiss</span>
-           </Button>
-          <UserIcon className="h-4 w-4" />
-          <AlertTitle>Viewing as Guest!</AlertTitle>
-          <AlertDescription>
-            Your progress and profile changes are saved locally to this device. <Link href="/signup" className="font-bold underline">Sign up</Link> or <Link href="/login" className="font-bold underline">log in</Link> to save your data permanently.
-          </AlertDescription>
-        </Alert>
+       {isGuest && (
+        <Card className="shadow-lg bg-accent/20 border-accent/50 text-center">
+            <CardHeader>
+                <CardTitle>You're Playing as a Guest!</CardTitle>
+                <CardDescription className="text-foreground/80">Your progress is saved on this device only.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <p>Create a free account to save your progress, achievements, and rewards permanently!</p>
+            </CardContent>
+            <CardFooter className="flex justify-center gap-4">
+                <Button asChild>
+                    <Link href="/login">Log In</Link>
+                </Button>
+                <Button asChild variant="secondary">
+                    <Link href="/signup">Sign Up</Link>
+                </Button>
+            </CardFooter>
+        </Card>
       )}
+      
       {currentUser && (
         <Card className="shadow-lg">
             <CardHeader>

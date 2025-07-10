@@ -1,10 +1,9 @@
 
 "use client";
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Separator } from '@/components/ui/separator';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Component, Terminal, X, Award } from 'lucide-react';
 import { 
   GAMES,
@@ -20,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { applyRewards } from '@/lib/rewards';
+import { addNotification } from '@/lib/notifications';
 
 
 const CATEGORIES_ORDER: GameCategory[] = ['Strategy', 'Puzzles', 'Learning'];
@@ -27,7 +27,7 @@ const CATEGORIES_ORDER: GameCategory[] = ['Strategy', 'Puzzles', 'Learning'];
 export default function DashboardContent() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
-  const [showGuestWarning, setShowGuestWarning] = useState(true);
+  const guestNotificationSent = useRef(false);
 
   // New state and hooks for the welcome reward
   const router = useRouter();
@@ -40,6 +40,16 @@ export default function DashboardContent() {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
       setAuthChecked(true);
+
+      // If user is a guest and we haven't sent the notification this session...
+      if (!user && !guestNotificationSent.current) {
+        addNotification(
+          "Playing as a guest! Sign up to save your progress and rewards.",
+          "guest-warning", // A unique type for this notification
+          "/signup"
+        );
+        guestNotificationSent.current = true; // Mark as sent for this session
+      }
     });
     return () => unsubscribe();
   }, []);
@@ -72,8 +82,6 @@ export default function DashboardContent() {
     }
   }, [searchParams, router]);
 
-
-  const isGuest = authChecked && !currentUser;
 
   const groupedGames = useMemo(() => GAMES.reduce((acc, game) => {
     const category = game.category;
@@ -111,20 +119,6 @@ export default function DashboardContent() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {isGuest && showGuestWarning && (
-        <Alert variant="default" className="relative bg-accent/20 border-accent/50">
-           <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-6 w-6" onClick={() => setShowGuestWarning(false)}>
-              <X className="h-4 w-4" />
-              <span className="sr-only">Dismiss</span>
-           </Button>
-          <Terminal className="h-4 w-4" />
-          <AlertTitle>Playing as Guest!</AlertTitle>
-          <AlertDescription>
-            Your progress won&apos;t be saved permanently. <Link href="/signup" className="font-bold underline">Sign up</Link> or <Link href="/login" className="font-bold underline">log in</Link> anytime to sync your rewards and achievements.
-          </AlertDescription>
-        </Alert>
-      )}
 
       <header className="text-center py-8 bg-primary/10 rounded-lg shadow">
         <h1 className="text-4xl font-bold text-primary tracking-tight">Welcome to Shravya Playhouse!</h1>
