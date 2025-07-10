@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview An AI flow for generating crossword puzzles.
@@ -33,7 +34,6 @@ const CrosswordPuzzleSchema = z.object({
   gridSize: z
     .number()
     .int()
-    .gt(0) // Use gt(0) instead of positive() to avoid "exclusiveMinimum" error
     .describe('The size of the square grid (e.g., 7 for a 7x7 grid).'),
   words: z
     .array(CrosswordWordSchema)
