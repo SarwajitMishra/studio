@@ -1,0 +1,10 @@
+# To add a new command, just add a new line to this file.
+# For more information, see: https://github.com/dex-idp/run/
+dev: npm run dev
+build: npm run build
+start: npm run start
+lint: npm run lint
+deps: npm install
+genkit:dev: npm run genkit:dev
+genkit:watch: npm run genkit:watch
+typecheck: npm run typecheck
