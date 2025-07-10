@@ -2,10 +2,10 @@
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Heart, Share2, Star } from 'lucide-react';
+import { Heart, Share2, Star, PenSquare } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import FeedbackForm from "@/components/feedback/FeedbackForm";
+import Link from 'next/link';
 
 export default function SupportUsPage() {
   const { toast } = useToast();
@@ -53,26 +53,36 @@ export default function SupportUsPage() {
         </CardHeader>
         <CardContent className="space-y-8 pt-6">
           <div className="grid md:grid-cols-2 gap-8">
-            <div className="p-6 bg-muted rounded-lg space-y-3">
-                <Share2 className="h-8 w-8 mx-auto text-accent"/>
+            <div className="p-6 bg-muted rounded-lg space-y-3 flex flex-col items-center justify-center">
+                <Share2 className="h-8 w-8 text-accent"/>
                 <h3 className="text-xl font-semibold">Spread the Word</h3>
                 <p className="text-muted-foreground">
                 The best way to support us is by sharing Shravya Playhouse with friends and family who might enjoy it.
                 </p>
                 <Button onClick={handleShare} variant="outline">Share Now</Button>
             </div>
-            <div className="p-6 bg-muted rounded-lg space-y-3">
-                <Star className="h-8 w-8 mx-auto text-accent"/>
+            <div className="p-6 bg-muted rounded-lg space-y-3 flex flex-col items-center justify-center">
+                <Star className="h-8 w-8 text-accent"/>
                 <h3 className="text-xl font-semibold">Future Donations</h3>
                 <p className="text-muted-foreground">
                  We plan to introduce a secure way for those who wish to contribute financially. Stay tuned for updates!
                 </p>
             </div>
           </div>
-          {/* New Feedback Form Section */}
-          <div className="text-left">
-            <h2 className="text-2xl font-bold text-center mb-4">Leave a Review & Feedback</h2>
-            <FeedbackForm />
+          
+          <div className="text-left pt-4">
+            <Card>
+              <CardHeader className="text-center">
+                  <PenSquare className="h-8 w-8 mx-auto text-accent"/>
+                  <CardTitle className="text-2xl font-bold">Leave a Review & Feedback</CardTitle>
+                  <CardDescription>Your detailed feedback helps us make the app better for everyone!</CardDescription>
+              </CardHeader>
+              <CardContent className="flex justify-center">
+                 <Button asChild size="lg">
+                    <Link href="/feedback">Go to Feedback Form</Link>
+                 </Button>
+              </CardContent>
+            </Card>
           </div>
         </CardContent>
       </Card>
