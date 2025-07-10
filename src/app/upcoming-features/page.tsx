@@ -1,7 +1,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Metadata } from 'next';
-import { Rocket, Trophy, Dice6, Store, Bot, ShieldCheck, PaintBrush } from 'lucide-react';
+import { Rocket, Trophy, Dice6, Store, Bot, ShieldCheck, Paintbrush } from 'lucide-react';
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
@@ -37,7 +37,7 @@ const features = [
   {
     title: "Theme Customizer",
     description: "Go beyond preset colors! A new theme customizer will let you pick your own primary and accent colors to make the app truly yours.",
-    Icon: PaintBrush,
+    Icon: Paintbrush,
     color: "text-pink-500",
   },
    {
