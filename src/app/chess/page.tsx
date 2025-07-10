@@ -624,7 +624,9 @@ export default function ChessPage() {
   };
 
   const resetGame = () => {
-    updateGameStats({ gameId: 'chess', didWin: false });
+    if (gameState === 'playing') {
+        updateGameStats({ gameId: 'chess', didWin: false });
+    }
     const newInitialSetup = initialBoardSetup();
     setBoard(newInitialSetup.board);
     setKingPositions(newInitialSetup.kings);
