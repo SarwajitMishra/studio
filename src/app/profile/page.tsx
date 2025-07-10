@@ -502,15 +502,12 @@ export default function ProfilePage() {
       </header>
 
       <Tabs defaultValue="avatar" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 bg-primary/20">
+        <TabsList className="grid w-full grid-cols-3 bg-primary/20">
           <TabsTrigger value="avatar" className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
             <UserCircle className="mr-2 h-5 w-5" /> Avatar
           </TabsTrigger>
           <TabsTrigger value="progress" className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
-            <BarChart3 className="mr-2 h-5 w-5" /> Progress
-          </TabsTrigger>
-           <TabsTrigger value="achievements" className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
-            <Trophy className="mr-2 h-5 w-5" /> Achievements
+            <Trophy className="mr-2 h-5 w-5" /> Progress & Achievements
           </TabsTrigger>
           <TabsTrigger value="leaderboard" className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
             <BarChart3 className="mr-2 h-5 w-5" /> Leaderboard
@@ -580,183 +577,136 @@ export default function ProfilePage() {
           </Card>
         </TabsContent>
         
-        <TabsContent value="achievements">
-            <Card className="shadow-lg">
-                <CardHeader>
-                    <div className="flex items-center space-x-3">
-                        <Trophy size={28} className="text-primary" />
-                        <CardTitle className="text-2xl">Your Achievements</CardTitle>
-                    </div>
-                    <CardDescription>
-                        A summary of your stats, badges, and titles earned in the Playhouse.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-8">
-                    {/* Mini Stats Review */}
-                    <div>
-                        <h3 className="text-lg font-semibold mb-4">Quick Stats</h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="flex items-center p-3 bg-muted/50 rounded-lg">
-                                <Gamepad2 className="mr-3 h-6 w-6 text-primary" />
-                                <div>
-                                <p className="font-semibold">Games Played</p>
-                                <p className="text-2xl font-bold">{totalGamesPlayed}</p>
-                                </div>
-                            </div>
-                            <div className="flex items-center p-3 bg-muted/50 rounded-lg">
-                                <BarChart3 className="mr-3 h-6 w-6 text-primary" />
-                                <div>
-                                <p className="font-semibold">Highest Score</p>
-                                <p className="text-2xl font-bold">{highestScoreInfo.score}</p>
-                                <p className="text-xs text-muted-foreground">in {highestScoreInfo.gameName}</p>
-                                </div>
-                            </div>
-                            <div className="flex items-center p-3 bg-muted/50 rounded-lg">
-                                <BookOpen className="mr-3 h-6 w-6 text-primary" />
-                                <div>
-                                <p className="font-semibold">Blogs Written</p>
-                                <p className="text-2xl font-bold">{blogsWritten}</p>
-                                </div>
-                            </div>
-                            <div className="flex items-center p-3 bg-muted/50 rounded-lg">
-                                <Trophy className="mr-3 h-6 w-6 text-primary" />
-                                <div>
-                                <p className="font-semibold">Challenges Completed</p>
-                                <p className="text-2xl font-bold">{totalWins}</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Titles Earned */}
-                    {primaryBadge && (
-                        <div>
-                        <h3 className="text-lg font-semibold mb-4">Title Earned</h3>
-                        <div className={cn("p-4 rounded-lg border-2", primaryBadge.color.replace('text-', 'border-'))}>
-                            <div className="flex items-center gap-3">
-                                <primaryBadge.Icon size={32} className={cn(primaryBadge.color)} />
-                                <div>
-                                    <p className="text-xl font-bold">{primaryBadge.title}</p>
-                                    <p className="text-sm text-muted-foreground">{primaryBadge.description}</p>
-                                </div>
-                            </div>
-                        </div>
-                        </div>
-                    )}
-
-                    {/* Badges Section */}
-                    <div>
-                        <h3 className="text-lg font-semibold mb-4">Badges Collection</h3>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                            {BADGES.map(badge => {
-                                const isUnlocked = unlockedBadges.some(ub => ub.id === badge.id);
-                                return (
-                                    <TooltipProvider key={badge.id}>
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <Card className={cn(
-                                                    "p-4 text-center transition-all",
-                                                    isUnlocked ? `border-2 ${badge.color.replace('text-', 'border-')}` : 'bg-muted/50'
-                                                )}>
-                                                    <badge.Icon size={40} className={cn("mx-auto", isUnlocked ? badge.color : 'text-muted-foreground')} />
-                                                    <p className="font-bold mt-2 text-sm">{badge.title}</p>
-                                                    {!isUnlocked && <Lock size={16} className="mx-auto mt-1 text-muted-foreground" />}
-                                                </Card>
-                                            </TooltipTrigger>
-                                            <TooltipContent>
-                                                <p className="font-semibold">{badge.title}</p>
-                                                <p className="text-xs">{badge.description}</p>
-                                            </TooltipContent>
-                                        </Tooltip>
-                                    </TooltipProvider>
-                                );
-                            })}
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
-        </TabsContent>
-
-
         <TabsContent value="progress">
           <Card className="shadow-lg">
             <CardHeader>
-              <div className="flex items-center space-x-3">
-                <BarChart3 size={28} className="text-primary" />
-                <CardTitle className="text-2xl">Game Progress</CardTitle>
-              </div>
-              <CardDescription>
-                Your performance across all games. Stats are stored locally in your browser. Only games you've played are shown.
-              </CardDescription>
+                <div className="flex items-center space-x-3">
+                    <Trophy size={28} className="text-primary" />
+                    <CardTitle className="text-2xl">Progress & Achievements</CardTitle>
+                </div>
+                <CardDescription>
+                    A summary of your stats, badges, and game-by-game performance.
+                </CardDescription>
             </CardHeader>
-            <CardContent>
-                {playedGameStats.length > 0 ? (
-                    <ScrollArea className="h-[450px] w-full pr-2">
-                      <div className="space-y-4">
-                        {/* Render Strategy & Puzzle Games */}
-                        {[...strategyStats, ...puzzleStats].map(stat => {
-                            const game = gameDefsMap.get(stat.gameId);
-                            if (!game) return null;
-                            return <GameStatRow key={stat.gameId} stat={stat} game={game} />;
-                        })}
-                      </div>
-
-                      <Accordion type="multiple" className="w-full mt-4 space-y-2">
-                        {/* Number Puzzles Accordion */}
-                        {numberPuzzleStats.length > 0 && (
-                          <AccordionItem value="number-puzzles" className="border rounded-lg bg-muted/20">
-                              <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                                <div className="flex items-center gap-3">
-                                  <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-full">
-                                      <Gamepad2 className="h-6 w-6 text-green-600" />
-                                  </div>
-                                  <div>
-                                    <h3 className="text-lg font-semibold text-left">Number Puzzles</h3>
-                                    <p className="text-xs text-muted-foreground text-left">Click to see your stats for each number game.</p>
-                                  </div>
-                                </div>
-                              </AccordionTrigger>
-                              <AccordionContent className="px-4 pb-4 space-y-2">
-                                {numberPuzzleStats.map(stat => {
-                                  const game = gameDefsMap.get(stat.gameId);
-                                  if (!game) return null;
-                                  return <GameStatRow key={stat.gameId} stat={stat} game={game} />;
-                                })}
-                              </AccordionContent>
-                          </AccordionItem>
-                        )}
-                        {/* Easy English Accordion */}
-                         {englishPuzzleStats.length > 0 && (
-                          <AccordionItem value="easy-english" className="border rounded-lg bg-muted/20">
-                              <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                                 <div className="flex items-center gap-3">
-                                  <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-full">
-                                      <Bookmark className="h-6 w-6 text-indigo-500" />
-                                  </div>
-                                  <div>
-                                    <h3 className="text-lg font-semibold text-left">Easy English Fun</h3>
-                                    <p className="text-xs text-muted-foreground text-left">Click to see your stats for each English game.</p>
-                                  </div>
-                                </div>
-                              </AccordionTrigger>
-                              <AccordionContent className="px-4 pb-4 space-y-2">
-                                {englishPuzzleStats.map(stat => {
-                                  const game = gameDefsMap.get(stat.gameId);
-                                  if (!game) return null;
-                                  return <GameStatRow key={stat.gameId} stat={stat} game={game} />;
-                                })}
-                              </AccordionContent>
-                          </AccordionItem>
-                        )}
-                      </Accordion>
-                    </ScrollArea>
-                ) : (
-                    <div className="text-center py-10">
-                        <BarChart3 size={48} className="mx-auto text-primary/30 mb-3" />
-                        <p className="text-md text-foreground/90">No game stats yet.</p>
-                        <p className="text-sm text-muted-foreground mt-1">Play some games to see your progress!</p>
+            <CardContent className="space-y-8">
+                {/* Achievements Section */}
+                <div>
+                    <h3 className="text-lg font-semibold mb-4 border-b pb-2">Achievement Summary</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="flex items-center p-3 bg-muted/50 rounded-lg">
+                            <Gamepad2 className="mr-3 h-6 w-6 text-primary" />
+                            <div>
+                            <p className="font-semibold">Games Played</p>
+                            <p className="text-2xl font-bold">{totalGamesPlayed}</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center p-3 bg-muted/50 rounded-lg">
+                            <BarChart3 className="mr-3 h-6 w-6 text-primary" />
+                            <div>
+                            <p className="font-semibold">Highest Score</p>
+                            <p className="text-2xl font-bold">{highestScoreInfo.score}</p>
+                            <p className="text-xs text-muted-foreground">in {highestScoreInfo.gameName}</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center p-3 bg-muted/50 rounded-lg col-span-1 sm:col-span-2">
+                           <Trophy className="mr-3 h-6 w-6 text-primary" />
+                            <div>
+                            <p className="font-semibold">Badges Unlocked</p>
+                             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
+                                {unlockedBadges.length > 0 ? (
+                                    unlockedBadges.map(badge => (
+                                        <TooltipProvider key={badge.id}>
+                                            <Tooltip>
+                                                <TooltipTrigger>
+                                                    <badge.Icon size={28} className={cn(badge.color)} />
+                                                </TooltipTrigger>
+                                                <TooltipContent>
+                                                    <p className="font-semibold">{badge.title}</p>
+                                                    <p className="text-xs">{badge.description}</p>
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        </TooltipProvider>
+                                    ))
+                                ) : (
+                                    <p className="text-sm text-muted-foreground">Play games to unlock badges!</p>
+                                )}
+                            </div>
+                            </div>
+                        </div>
                     </div>
-                )}
+                </div>
+
+                {/* Progress Section */}
+                <div>
+                    <h3 className="text-lg font-semibold mb-4 border-b pb-2">Game-by-Game Stats</h3>
+                    {playedGameStats.length > 0 ? (
+                        <ScrollArea className="h-[450px] w-full pr-2">
+                          <div className="space-y-4">
+                            {/* Render Strategy & Puzzle Games */}
+                            {[...strategyStats, ...puzzleStats].map(stat => {
+                                const game = gameDefsMap.get(stat.gameId);
+                                if (!game) return null;
+                                return <GameStatRow key={stat.gameId} stat={stat} game={game} />;
+                            })}
+                          </div>
+    
+                          <Accordion type="multiple" className="w-full mt-4 space-y-2">
+                            {/* Number Puzzles Accordion */}
+                            {numberPuzzleStats.length > 0 && (
+                              <AccordionItem value="number-puzzles" className="border rounded-lg bg-muted/20">
+                                  <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                                    <div className="flex items-center gap-3">
+                                      <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-full">
+                                          <Gamepad2 className="h-6 w-6 text-green-600" />
+                                      </div>
+                                      <div>
+                                        <h3 className="text-lg font-semibold text-left">Number Puzzles</h3>
+                                        <p className="text-xs text-muted-foreground text-left">Click to see your stats for each number game.</p>
+                                      </div>
+                                    </div>
+                                  </AccordionTrigger>
+                                  <AccordionContent className="px-4 pb-4 space-y-2">
+                                    {numberPuzzleStats.map(stat => {
+                                      const game = gameDefsMap.get(stat.gameId);
+                                      if (!game) return null;
+                                      return <GameStatRow key={stat.gameId} stat={stat} game={game} />;
+                                    })}
+                                  </AccordionContent>
+                              </AccordionItem>
+                            )}
+                            {/* Easy English Accordion */}
+                             {englishPuzzleStats.length > 0 && (
+                              <AccordionItem value="easy-english" className="border rounded-lg bg-muted/20">
+                                  <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                                     <div className="flex items-center gap-3">
+                                      <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-full">
+                                          <Bookmark className="h-6 w-6 text-indigo-500" />
+                                      </div>
+                                      <div>
+                                        <h3 className="text-lg font-semibold text-left">Easy English Fun</h3>
+                                        <p className="text-xs text-muted-foreground text-left">Click to see your stats for each English game.</p>
+                                      </div>
+                                    </div>
+                                  </AccordionTrigger>
+                                  <AccordionContent className="px-4 pb-4 space-y-2">
+                                    {englishPuzzleStats.map(stat => {
+                                      const game = gameDefsMap.get(stat.gameId);
+                                      if (!game) return null;
+                                      return <GameStatRow key={stat.gameId} stat={stat} game={game} />;
+                                    })}
+                                  </AccordionContent>
+                              </AccordionItem>
+                            )}
+                          </Accordion>
+                        </ScrollArea>
+                    ) : (
+                        <div className="text-center py-10">
+                            <BarChart3 size={48} className="mx-auto text-primary/30 mb-3" />
+                            <p className="text-md text-foreground/90">No game stats yet.</p>
+                            <p className="text-sm text-muted-foreground mt-1">Play some games to see your progress!</p>
+                        </div>
+                    )}
+                </div>
             </CardContent>
           </Card>
         </TabsContent>
