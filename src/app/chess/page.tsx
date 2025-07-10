@@ -382,15 +382,20 @@ export default function ChessPage() {
 
     for (const move of rawMoves) {
       const tempBoard = currentBoard.map(rowArr => rowArr.map(p => p ? { ...p } : null));
-      tempBoard[move.row][move.col] = piece;
-      tempBoard[r][c] = null;
-      let kingPos = currentKingPositions[playerColor];
-      if (piece.type === 'K') {
-        kingPos = { row: move.row, col: move.col };
-      }
-      if (kingPos.row === -1) continue; 
-      if (!isSquareAttacked(tempBoard, kingPos.row, kingPos.col, playerColor === 'w' ? 'b' : 'w')) {
-        legalMoves.push(move);
+      const pieceToMove = tempBoard[r][c];
+      
+      if(pieceToMove) {
+          tempBoard[move.row][move.col] = pieceToMove;
+          tempBoard[r][c] = null;
+
+          let kingPos = currentKingPositions[playerColor];
+          if (pieceToMove.type === 'K') {
+            kingPos = { row: move.row, col: move.col };
+          }
+
+          if (kingPos.row !== -1 && !isSquareAttacked(tempBoard, kingPos.row, kingPos.col, playerColor === 'w' ? 'b' : 'w')) {
+            legalMoves.push(move);
+          }
       }
     }
     return legalMoves;
