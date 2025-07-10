@@ -251,12 +251,6 @@ export default function Navigation({ side }: NavigationProps) {
                 </Link>
               </DropdownMenuItem>
             ))}
-             <DropdownMenuItem asChild className="cursor-pointer">
-              <Link href="/request-a-feature">
-                <Lightbulb className="mr-2 h-4 w-4" />
-                <span>Request a Feature</span>
-              </Link>
-            </DropdownMenuItem>
             {isAdmin && (
               <>
                 <DropdownMenuSeparator />
