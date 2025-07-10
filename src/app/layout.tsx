@@ -1,3 +1,4 @@
+
 'use client';
 
 import { usePathname } from 'next/navigation';
@@ -6,7 +7,6 @@ import { Toaster } from "@/components/ui/toaster";
 import MainLayout from '@/components/layout/main-layout';
 import PWALoader from '@/components/pwa-loader';
 import ThemeProvider from '@/components/theme-provider';
-import { AppProgressBar as ProgressBar } from 'next-nprogress-bar';
 
 export default function RootLayout({
   children,
@@ -30,12 +30,6 @@ export default function RootLayout({
       {/* The body tag no longer needs the font variable */}
       <body className="font-sans antialiased" suppressHydrationWarning>
         <ThemeProvider>
-          <ProgressBar
-            height="4px"
-            color="hsl(var(--accent))"
-            options={{ showSpinner: false }}
-            shallowRouting
-          />
           {isWelcomePage ? (
             <>{children}</>
           ) : (
