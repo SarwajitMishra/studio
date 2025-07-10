@@ -62,6 +62,12 @@ export default function PatternBuilderPage() {
   const [selectedIcon, setSelectedIcon] = useState<IconData>(ICONS[0]);
   const [score, setScore] = useState(0);
   const [isCalculatingReward, setIsCalculatingReward] = useState(false);
+  
+  // New state for peek functionality
+  const [peekChances, setPeekChances] = useState(3);
+  const [isPeeking, setIsPeeking] = useState(false);
+  const [peekUsedThisRound, setPeekUsedThisRound] = useState(false);
+  
   const { toast } = useToast();
 
   const config = difficulty ? DIFFICULTY_CONFIG[difficulty] : null;
@@ -72,6 +78,7 @@ export default function PatternBuilderPage() {
     setPattern(newPattern);
     setUserPattern(Array(config.gridSize * config.gridSize).fill(null));
     setGameState('memorize');
+    setPeekUsedThisRound(false); // Reset peek status for the new level
 
     setTimeout(() => {
       setGameState('build');
@@ -87,6 +94,8 @@ export default function PatternBuilderPage() {
     setPattern(newPattern);
     setUserPattern(Array(newConfig.gridSize * newConfig.gridSize).fill(null));
     setGameState('memorize');
+    setPeekChances(3); // Reset peek chances on new difficulty
+    setPeekUsedThisRound(false);
     
     setTimeout(() => {
       setGameState('build');
@@ -94,10 +103,24 @@ export default function PatternBuilderPage() {
   };
   
   const handleCellClick = (index: number) => {
-    if (gameState !== 'build') return;
+    if (gameState !== 'build' || isPeeking) return;
     const newUserPattern = [...userPattern];
     newUserPattern[index] = selectedIcon;
     setUserPattern(newUserPattern);
+  };
+
+  const handlePeek = () => {
+      if (peekChances <= 0 || isPeeking || gameState !== 'build') return;
+      
+      setPeekChances(prev => prev - 1);
+      setPeekUsedThisRound(true);
+      setIsPeeking(true);
+      
+      toast({ title: 'Peeking!', description: 'The pattern will be shown for 5 seconds.' });
+
+      setTimeout(() => {
+          setIsPeeking(false);
+      }, 5000);
   };
 
   const checkPattern = async () => {
@@ -114,14 +137,36 @@ export default function PatternBuilderPage() {
     const accuracy = (correctCells / (config.gridSize * config.gridSize)) * 100;
     setScore(accuracy);
 
+    // If a peek was used, no rewards are earned.
+    if (peekUsedThisRound) {
+        toast({
+            title: "Round Complete!",
+            description: `Your accuracy was ${accuracy.toFixed(0)}%. No rewards earned because a peek was used.`,
+            duration: 5000,
+        });
+        updateGameStats({ gameId: 'patternBuilder', didWin: accuracy >= 75, score: 0 }); // Score 0 for stat if peek was used
+        setIsCalculatingReward(false);
+        setGameState('result');
+        return;
+    }
+    
+    // If no peek was used, calculate rewards.
     updateGameStats({ gameId: 'patternBuilder', didWin: accuracy >= 75, score: accuracy });
 
     try {
-        const rewards = await calculateRewards({ gameId: 'patternBuilder', difficulty, performanceMetrics: { accuracy } });
-        applyRewards(rewards.sPoints, rewards.sCoins, `Pattern Builder round (${difficulty}, ${accuracy.toFixed(0)}% accuracy)`);
+        const rewards = await calculateRewards({
+            gameId: 'patternBuilder',
+            difficulty,
+            performanceMetrics: { accuracy, peekUsed: peekUsedThisRound }
+        });
+        
+        // If accuracy is not 100%, award only points, no coins, as per user request.
+        const coinsToAward = accuracy < 100 ? 0 : rewards.sCoins;
+
+        applyRewards(rewards.sPoints, coinsToAward, `Pattern Builder round (${difficulty}, ${accuracy.toFixed(0)}% accuracy)`);
         toast({
             title: "Round Complete!",
-            description: `You earned ${rewards.sPoints} S-Points and ${rewards.sCoins} S-Coins!`,
+            description: `You earned ${rewards.sPoints} S-Points and ${coinsToAward} S-Coins!`,
         });
     } catch(error) {
         console.error("Error calculating rewards:", error);
@@ -152,7 +197,7 @@ export default function PatternBuilderPage() {
                 <button
                     key={index}
                     onClick={() => isInteractive && handleCellClick(index)}
-                    disabled={!isInteractive}
+                    disabled={!isInteractive || isPeeking}
                     className={cn(
                         "w-12 h-12 sm:w-16 sm:h-16 rounded-md transition-colors duration-200 flex items-center justify-center bg-card",
                         isInteractive && "hover:ring-2 ring-primary"
@@ -186,7 +231,7 @@ export default function PatternBuilderPage() {
             </CardContent>
             <CardFooter>
                 <Button asChild variant="ghost" className="w-full">
-                    <Link href="/"><ArrowLeft className="mr-2"/> Back to Menu</Link>
+                    <Link href="/dashboard"><ArrowLeft className="mr-2"/> Back to Menu</Link>
                 </Button>
             </CardFooter>
         </Card>
@@ -209,15 +254,21 @@ export default function PatternBuilderPage() {
               </div>
           </CardHeader>
           <CardContent className="p-6 space-y-4">
-              {gameState === 'memorize' && (
+              {isPeeking ? (
+                  <div className="text-center space-y-4">
+                      <p className="font-bold text-yellow-800 animate-pulse flex items-center justify-center gap-2 text-lg">
+                          <Eye size={22} /> Peeking! The pattern will hide again soon...
+                      </p>
+                      {renderGrid(pattern, false)}
+                  </div>
+              ) : gameState === 'memorize' ? (
                   <div className="text-center space-y-4">
                       <p className="font-bold text-yellow-800 animate-pulse flex items-center justify-center gap-2 text-lg">
                           <Eye size={22} /> Memorize the pattern!
                       </p>
                       {renderGrid(pattern, false)}
                   </div>
-              )}
-              {gameState === 'build' && (
+              ) : gameState === 'build' ? (
                   <div className="text-center space-y-4">
                       <p className="font-bold text-green-800 flex items-center justify-center gap-2 text-lg">
                           <Pointer size={22} /> Your turn! Recreate the pattern.
@@ -235,13 +286,17 @@ export default function PatternBuilderPage() {
                               </button>
                           ))}
                       </div>
-                      <Button onClick={checkPattern} className="mt-4 w-full bg-accent text-accent-foreground" disabled={isCalculatingReward}>
-                        {isCalculatingReward ? <Loader2 className="mr-2 animate-spin"/> : <Check className="mr-2"/>}
-                        Check My Pattern
-                      </Button>
+                      <div className="flex justify-center gap-4 pt-2">
+                        <Button variant="outline" onClick={handlePeek} disabled={peekChances <= 0 || isPeeking}>
+                          <Eye className="mr-2" /> Peek ({peekChances})
+                        </Button>
+                        <Button onClick={checkPattern} className="bg-accent text-accent-foreground" disabled={isCalculatingReward}>
+                          {isCalculatingReward ? <Loader2 className="mr-2 animate-spin"/> : <Check className="mr-2"/>}
+                          Check My Pattern
+                        </Button>
+                      </div>
                   </div>
-              )}
-              {gameState === 'result' && (
+              ) : gameState === 'result' ? (
                   <div className="text-center p-4 bg-muted rounded-lg space-y-3">
                     {(() => {
                     const ResultIcon = getResultContent().Icon;
@@ -249,7 +304,7 @@ export default function PatternBuilderPage() {
                     })()}
                       <h3 className="text-2xl font-bold">{getResultContent().title}</h3>
                       <p className="text-lg">Accuracy: <span className="font-bold text-accent">{score.toFixed(0)}%</span></p>
-                      <p>{getResultContent().description}</p>
+                      <p>{peekUsedThisRound ? "No rewards this round because a peek was used." : getResultContent().description}</p>
                       <div className="flex justify-center items-center gap-4 pt-4">
                         <div><h4 className='font-semibold'>Original</h4>{renderGrid(pattern, false)}</div>
                         <div><h4 className='font-semibold'>Your Build</h4>{renderGrid(userPattern, false)}</div>
@@ -258,7 +313,7 @@ export default function PatternBuilderPage() {
                           <RotateCw className="mr-2" /> Play Next Level
                       </Button>
                   </div>
-              )}
+              ) : null}
           </CardContent>
       </Card>
     </div>

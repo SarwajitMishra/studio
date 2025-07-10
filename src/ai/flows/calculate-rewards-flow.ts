@@ -20,7 +20,7 @@ const RewardCalculationInputSchema = z.object({
   performanceMetrics: z
     .record(z.any())
     .optional()
-    .describe('An optional object with game-specific performance data (e.g., { "attempts": 5, "time": 60 }).'),
+    .describe('An optional object with game-specific performance data (e.g., { "attempts": 5, "time": 60, "peekUsed": true }).'),
 });
 export type RewardCalculationInput = z.infer<typeof RewardCalculationInputSchema>;
 
@@ -50,7 +50,10 @@ Reward Logic Table (in JSON format):
 {{{json rewardLogic}}}
 \`\`\`
 
-**IMPORTANT RULE:** If the player lost the game, or their score/performance is zero or very poor (e.g., \`result\` is 'loss', \`score\` is 0, \`accuracy\` is very low, or they found 0 words), you MUST award 0 S-Coins. S-Coins are for good performance only. You can still award a small number of S-Points for participation if appropriate.
+**CRITICAL RULES:**
+1.  **NO COINS FOR IMPERFECT PLAY:** If a player's performance is not perfect (e.g., 'accuracy' is less than 100, they did not get a "perfectBonus"), you MUST award 0 S-Coins. S-Coins are for excellence only.
+2.  **NO REWARD IF HINTS/PEEKS ARE USED:** If the player used a hint or peek (e.g., 'peekUsed' is true, or 'hintsUsed' > 0), you MUST award 0 S-Points AND 0 S-Coins, regardless of performance.
+3.  **NO COINS FOR POOR PERFORMANCE:** If the player lost the game, or their score/performance is very poor (e.g., 'result' is 'loss', 'score' is 0, 'accuracy' is very low, or they found 0 words), you MUST award 0 S-Coins. You can still award a small number of S-Points for participation if appropriate, unless Rule 2 applies.
 
 **Player's Performance Data:**
 - Game ID: {{gameId}}
@@ -58,15 +61,16 @@ Reward Logic Table (in JSON format):
 - Performance Metrics: {{#if performanceMetrics}} {{{json performanceMetrics}}} {{else}} None provided. {{/if}}
 
 **Your Task:**
-1.  Find the rules for the specified \`gameId\` in the Reward Logic table.
-2.  Calculate the base S-Points and S-Coins based on the \`difficulty\` and the rules, strictly following the **IMPORTANT RULE** about S-Coins for poor performance.
-3.  If any \`performanceMetrics\` are provided (like low attempts, fast time, perfect score), apply the bonus rewards as specified in the rules.
-4.  Return the final calculated \`sPoints\` and \`sCoins\` in the specified JSON format. If a game is not in the table, award 0 points and 0 coins.
+1.  Find the rules for the specified 'gameId' in the Reward Logic table.
+2.  Carefully evaluate the performance against the **CRITICAL RULES**. If Rule 2 applies, immediately return 0 for both points and coins.
+3.  Calculate the base S-Points and S-Coins based on the 'difficulty' and the rules, strictly following all Critical Rules.
+4.  If any 'performanceMetrics' are provided (like low attempts, fast time, perfect score), apply the bonus rewards as specified in the rules, but only if allowed by the Critical Rules.
+5.  Return the final calculated 'sPoints' and 'sCoins' in the specified JSON format. If a game is not in the table, award 0 points and 0 coins.
 
-**Example Calculation for 'guessTheNumber':**
-- If a user wins on 'easy' in 1 attempt, the rule is "50–100 S-Points" and a bonus of "+5 S-Coins" for a first-try guess.
-- A good reward would be 100 S-Points (for excellent performance) and 5 S-Coins.
-- If they win on 'hard' in 10 attempts, a fair reward might be 60 S-Points and 0 S-Coins (no bonus).
+**Example Calculation for 'patternBuilder':**
+- A user gets 100% accuracy with no peeks: Award S-Points and S-Coins based on the table (e.g., 100 S-Points, 10 S-Coins).
+- A user gets 90% accuracy with no peeks: Award S-Points based on the table, but award 0 S-Coins due to imperfect play (Rule 1).
+- A user gets 100% accuracy but used a peek: Award 0 S-Points and 0 S-Coins (Rule 2).
 
 Now, calculate the rewards for the provided performance data.
 `,

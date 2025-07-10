@@ -12,7 +12,11 @@ export const REWARD_LOGIC = {
 
   // Puzzle Games
   sudoku: { base: { sPoints: "50–200", sCoins: "5–20" }, bonus: { description: "No hint", sCoins: 5 } },
-  patternBuilder: { base: { sPoints: "50–100", sCoins: "0–10" }, bonus: { description: "Perfect accuracy", sCoins: 10 } },
+  patternBuilder: {
+    base: { description: "Points are based on accuracy. S-Coins only for 100% accuracy.", sPoints: "50–100", sCoins: "0–10" },
+    bonus: { description: "Perfect accuracy (100%)", sCoins: 10 },
+    penalty: { description: "Using a peek results in 0 points and 0 coins.", peekUsed: true, sPoints: 0, sCoins: 0 },
+  },
   jigsaw: { base: { sPoints: "50–100", sCoins: "0–15" }, bonus: { description: "Speed solve", sCoins: 5 } },
   memory: { base: { sPoints: "50–100", sCoins: "0–10" }, bonus: { description: "Full match", sCoins: 10 } },
   crossword: {
