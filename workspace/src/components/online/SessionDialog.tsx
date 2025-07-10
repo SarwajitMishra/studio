@@ -240,7 +240,13 @@ export function SessionDialog({ open, onOpenChange }: SessionDialogProps) {
             <h3 className="font-semibold flex items-center"><Users className="mr-2 h-4 w-4"/>Participants ({session?.participants.length})</h3>
             <div className="p-3 bg-muted rounded-lg space-y-2 max-h-24 overflow-y-auto">
                 {session?.participants.map(p => (
-                    <p key={p.uid} className="text-sm font-medium">{p.name} {p.uid === currentUser?.uid && <span className="text-muted-foreground">(You)</span>}</p>
+                    <div key={p.uid} className="flex items-center gap-2">
+                        <Avatar className="h-6 w-6">
+                            <AvatarImage src={p.photoURL || undefined} />
+                            <AvatarFallback>{p.name?.charAt(0) || 'U'}</AvatarFallback>
+                        </Avatar>
+                        <p className="text-sm font-medium">{p.name} {p.uid === currentUser?.uid && <span className="text-muted-foreground">(You)</span>}</p>
+                    </div>
                 ))}
             </div>
         </div>

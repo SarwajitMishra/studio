@@ -1,64 +1,54 @@
 
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Users can only read their own profile, but anyone can create one.
-    // Admins can read all user profiles.
+  
+    // --- User Data Rules ---
+    // User profiles can be read by anyone, but only the user can write to their own profile.
     match /users/{userId} {
-      allow read: if request.auth != null && request.auth.uid == userId
-                  || (get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.isAdmin == true);
-      allow create: if request.auth != null;
-      allow update: if request.auth != null && request.auth.uid == userId;
+      allow read: if true;
+      allow write: if request.auth.uid == userId;
     }
     
-    // Usernames can only be created, not updated or deleted, to ensure uniqueness.
-    // This is part of a transaction in the createUserProfile function.
+    // Usernames must be unique. Documents in this collection are just for uniqueness checks.
+    // Only authenticated users can create their own username doc. No one can update or delete.
     match /usernames/{username} {
-      allow read: if true;
-      allow create: if request.auth != null;
-      allow update, delete: if false;
+       allow read: if true;
+       allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+       allow update, delete: if false;
     }
-
-    // Admins have their role defined in a 'roles' collection.
-    // Only other admins can read or write roles (for security).
+    
+    // User roles can only be read and written by admins.
     match /roles/{userId} {
       allow read, write: if get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.isAdmin == true;
     }
     
-    // Blog posts can only be read if they are 'published'.
-    // Authenticated users can create 'pending' or 'draft' posts.
-    // Admins can manage all blog posts.
-    match /blogs/{blogId} {
-      allow read: if resource.data.status == 'published'
-                  || (request.auth != null && get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.isAdmin == true);
-      allow create: if request.auth != null;
-      allow update: if request.auth != null && (
-                      (resource.data.authorId == request.auth.uid && request.resource.data.authorId == resource.data.authorId)
-                      || get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.isAdmin == true
-                    );
+    // User-specific subcollections (e.g., gameStats, rewardHistory) are private.
+    match /users/{userId}/{collection}/{docId} {
+      allow read, write: if request.auth.uid == userId;
     }
-    
-    // SESSIONS (for multiplayer/chat)
-    match /sessions/{sessionId} {
-      // Anyone authenticated can create a session.
-      allow create: if request.auth != null;
-      
-      // Only participants of the session can read or update it (e.g., join).
-      allow read, update: if request.auth != null && request.auth.uid in resource.data.participants.map(p => p.uid);
 
-      // --- CHAT MESSAGES SUBCOLLECTION ---
-      match /messages/{messageId} {
-        // Anyone in the session can read all messages.
-        allow read: if request.auth != null && get(/databases/$(database)/documents/sessions/$(sessionId)).data.participants.map(p => p.uid).hasAny([request.auth.uid]);
-        
-        // You can only create a message if you are in the session, and you are the author of the message.
-        allow create: if request.auth != null && get(/databases/$(database)/documents/sessions/$(sessionId)).data.participants.map(p => p.uid).hasAny([request.auth.uid])
-                       && request.resource.data.uid == request.auth.uid;
-                       
-        // Messages are immutable.
-        allow update, delete: if false;
-      }
+    // --- Online Session Rules ---
+    // Allow authenticated users to create sessions.
+    match /sessions/{sessionId} {
+      allow read: if request.auth != null;
+      // CREATE: any authenticated user can create.
+      // UPDATE: only a logged-in user who is a participant can update the session
+      // (e.g., to add themselves).
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && request.auth.uid in resource.data.participants;
+      // DELETE: only the host can delete a session.
+      allow delete: if request.auth.uid == resource.data.hostUid;
     }
+
+    // --- Session Chat Rules ---
+    // Only participants of a session can read or write messages in it.
+    match /sessions/{sessionId}/messages/{messageId} {
+      allow read: if request.auth != null && get(/databases/$(database)/documents/sessions/$(sessionId)).data.participants.exists(p => p.uid == request.auth.uid);
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.uid && get(/databases/$(database)/documents/sessions/$(sessionId)).data.participants.exists(p => p.uid == request.auth.uid);
+      allow update, delete: if false; // Messages are immutable
+    }
+
   }
 }

@@ -30,11 +30,17 @@ export interface ChatMessage {
     createdAt: Timestamp;
 }
 
+export interface OnlineSessionParticipant {
+    uid: string;
+    name: string;
+    photoURL: string | null;
+}
+
 export interface OnlineSession {
     id: string;
     hostUid: string;
     hostName: string;
-    participants: { uid: string; name: string; }[];
+    participants: OnlineSessionParticipant[];
     status: 'waiting' | 'playing' | 'finished';
     gameId: string | null;
     createdAt: Timestamp;
@@ -53,7 +59,11 @@ export async function createOnlineSession(user: User): Promise<OnlineSession> {
         id: sessionId,
         hostUid: user.uid,
         hostName: user.displayName || 'Anonymous',
-        participants: [{ uid: user.uid, name: user.displayName || 'Anonymous' }],
+        participants: [{ 
+            uid: user.uid, 
+            name: user.displayName || 'Anonymous',
+            photoURL: user.photoURL 
+        }],
         status: 'waiting',
         gameId: null,
         createdAt: serverTimestamp(),
@@ -97,7 +107,11 @@ export async function joinOnlineSession(sessionId: string, user: User): Promise<
     }
 
     await updateDoc(sessionRef, {
-        participants: arrayUnion({ uid: user.uid, name: user.displayName || 'Anonymous' })
+        participants: arrayUnion({ 
+            uid: user.uid, 
+            name: user.displayName || 'Anonymous',
+            photoURL: user.photoURL
+        })
     });
     
     console.log(`[Session] User ${user.uid} successfully joined session ${sessionId}.`);
