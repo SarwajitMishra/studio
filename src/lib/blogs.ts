@@ -131,9 +131,9 @@ export async function getPendingBlogs(): Promise<BlogPost[]> {
 
 export async function getBlogBySlug(slug: string): Promise<BlogPost | null> {
     const blogsCol = collection(db, 'blogs');
-    // The previous query `where('slug', '==', slug), where('status', '==', 'published')` fails
-    // without a composite index. The fix is to query only by the unique slug, then verify the status.
-    const q = query(blogsCol, where('slug', '==', slug));
+    // This query REQUIRES a composite index on ('slug', 'status') in Firestore.
+    // This is the correct way to query while respecting security rules.
+    const q = query(blogsCol, where('slug', '==', slug), where('status', '==', 'published'));
     const snapshot = await getDocs(q);
     
     if (snapshot.empty) {
@@ -141,14 +141,7 @@ export async function getBlogBySlug(slug: string): Promise<BlogPost | null> {
     }
     
     const doc = snapshot.docs[0];
-    const post = serializePost(doc);
-
-    // Only return the post if it's actually published.
-    if (post.status === 'published') {
-        return post;
-    }
-
-    return null;
+    return serializePost(doc);
 }
 
 export async function updateBlogStatus(blogId: string, status: 'published' | 'rejected' | 'draft'): Promise<{success: boolean}> {
