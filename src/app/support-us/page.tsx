@@ -28,6 +28,12 @@ export default function SupportUsPage() {
         });
       }
     } catch (error) {
+      // Don't show an error if the user cancels the share sheet
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        console.log('Share action was cancelled by the user.');
+        return;
+      }
+      
       console.error("Error sharing:", error);
       toast({
         variant: "destructive",
