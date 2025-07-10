@@ -3,22 +3,21 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faBolt, faXmark, faEnvelope, faHeart, faGear } from '@fortawesome/free-solid-svg-icons';
-import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
+import { Zap, X, Mail, Heart, BookText } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
 export default function FloatingActionButtons() {
     const [isOpen, setIsOpen] = useState(false);
     const [isMounted, setIsMounted] = useState(false);
     useEffect(() => setIsMounted(true), []);
 
-    const menuItems: { href: string; label: string; icon: IconDefinition }[] = [
-        { href: '#', label: 'Spin the Wheel', icon: faGear },
-        { href: '#', label: 'Contact Us', icon: faEnvelope },
-        { href: '#', label: 'Donate / Support', icon: faHeart },
+    const menuItems: { href: string; label: string; Icon: LucideIcon }[] = [
+        { href: '/info', label: 'Game Info', Icon: BookText },
+        { href: '#', label: 'Contact Us', Icon: Mail },
+        { href: '#', label: 'Donate / Support', Icon: Heart },
     ];
 
     if (!isMounted) return null;
@@ -39,14 +38,14 @@ export default function FloatingActionButtons() {
                             className="h-14 w-14 rounded-full shadow-lg bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-300 transform"
                             onClick={() => setIsOpen(!isOpen)}
                             aria-expanded={isOpen}
-                            aria-label={isOpen ? "Close support menu" : "Open support menu"}
+                            aria-label={isOpen ? "Close quick actions menu" : "Open quick actions menu"}
                         >
-                            <FontAwesomeIcon icon={faBolt} size="lg" className={cn("absolute transition-all duration-300", isOpen ? "rotate-45 scale-0 opacity-0" : "rotate-0 scale-100 opacity-100")} />
-                            <FontAwesomeIcon icon={faXmark} size="lg" className={cn("absolute transition-all duration-300", isOpen ? "rotate-0 scale-100 opacity-100" : "-rotate-45 scale-0 opacity-0")} />
+                            <Zap className={cn("absolute transition-all duration-300", isOpen ? "rotate-45 scale-0 opacity-0" : "rotate-0 scale-100 opacity-100")} />
+                            <X className={cn("absolute transition-all duration-300", isOpen ? "rotate-0 scale-100 opacity-100" : "-rotate-45 scale-0 opacity-0")} />
                         </Button>
                     </TooltipTrigger>
                     <TooltipContent side="right" className="ml-2">
-                        <p>{isOpen ? "Close" : "Support & Feedback"}</p>
+                        <p>{isOpen ? "Close" : "Quick Actions"}</p>
                     </TooltipContent>
                 </Tooltip>
                 
@@ -57,12 +56,12 @@ export default function FloatingActionButtons() {
                         isOpen ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"
                     )}
                 >
-                    {menuItems.map((item, index) => (
+                    {menuItems.map((item) => (
                          <Tooltip key={item.label}>
                             <TooltipTrigger asChild>
                                 <Button asChild variant="secondary" size="icon" className="h-12 w-12 rounded-full shadow-lg">
                                     <Link href={item.href}>
-                                        <FontAwesomeIcon icon={item.icon} size="lg" />
+                                        <item.Icon />
                                     </Link>
                                 </Button>
                             </TooltipTrigger>

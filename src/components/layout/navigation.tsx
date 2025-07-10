@@ -168,21 +168,6 @@ export default function Navigation({ side }: NavigationProps) {
           </TooltipTrigger>
           <TooltipContent><p>{userName}</p></TooltipContent>
         </Tooltip>
-        
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Link href="/info" aria-label="Game Info">
-              <Button
-                variant="ghost"
-                size="icon"
-                className={cn(commonButtonClasses, pathname === '/info' && "bg-accent text-accent-foreground hover:bg-accent/90")}
-              >
-                <BookText size={24} />
-              </Button>
-            </Link>
-          </TooltipTrigger>
-          <TooltipContent><p>Game Info</p></TooltipContent>
-        </Tooltip>
 
         <DropdownMenu>
           <Tooltip>
