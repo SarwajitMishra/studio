@@ -15,8 +15,8 @@ import ArithmeticChallengeGame from "@/components/number-puzzles/ArithmeticChall
 import WhatComesNextGame from "@/components/number-puzzles/WhatComesNextGame";
 import CountTheObjectsGame from "@/components/number-puzzles/CountTheObjectsGame";
 import PlaceholderPuzzleGame from "@/components/number-puzzles/PlaceholderPuzzleGame";
-import CodeBreakerGame from "@/components/number-puzzles/CodeBreakerGame";
 import FastMathGame from "@/components/number-puzzles/FastMathGame";
+import MagicSquareGame from "@/components/number-puzzles/MagicSquareGame";
 
 // Client component to inject metadata
 const HeadMetadata = ({ puzzleName }: { puzzleName?: string }) => {
@@ -81,8 +81,8 @@ export default function NumberPuzzlesPage() {
         return <WhatComesNextGame {...gameProps} />;
       case "countTheObjects":
         return <CountTheObjectsGame {...gameProps} />;
-      case "codeBreaker":
-        return <CodeBreakerGame {...gameProps} />;
+      case "magicSquare":
+        return <MagicSquareGame {...gameProps} />;
       case "mathDuel":
         return <FastMathGame {...gameProps} />;
       default:

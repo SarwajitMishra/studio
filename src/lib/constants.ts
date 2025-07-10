@@ -8,7 +8,7 @@ import {
     Keyboard, Gamepad2, Languages, Mail, Heart, Hash, CircleDot,
     Grid3x3, Route, Blocks, KeyRound, LayoutGrid, XCircle, Dice6, Users, FileText,
     Trophy, Award, Compass, BrainCircuit, Shield, Palette, Volume2, PenSquare, 
-    CalendarDays, Lightbulb, Ticket, Wand, Eye
+    CalendarDays, Lightbulb, Ticket, Wand, Eye, FunctionSquare
 } from 'lucide-react';
 
 export type GameCategory = 'Strategy' | 'Puzzles' | 'Learning';
@@ -203,10 +203,10 @@ export const MATH_PUZZLE_TYPES: MathPuzzleType[] = [
     color: "text-pink-500",
   },
   {
-    id: "codeBreaker",
-    name: "Code Breaker",
-    description: "Deduce the secret code using logic and clues.",
-    Icon: KeyRound,
+    id: "magicSquare",
+    name: "Magic Square Builder",
+    description: "Fill the grid so every row, column, and diagonal adds up to the same number.",
+    Icon: FunctionSquare,
     color: "text-gray-500",
   },
   {

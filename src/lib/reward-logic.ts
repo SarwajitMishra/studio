@@ -27,9 +27,9 @@ export const REWARD_LOGIC = {
   guessTheNumber: { base: { sPoints: "50–100", sCoins: "0–10" }, bonus: { description: "First try guess", sCoins: 5 } },
   arithmeticChallenge: { base: { sPoints: "10 per correct" }, bonus: { description: "Getting all answers correct", sCoins: 5 } },
   numberSequence: { base: { sPoints: "50–100", sCoins: "0–10" } },
-  missingNumber: { base: { sPoints: "50–100", sCoins: "0–10" } },
+  whatComesNext: { base: { sPoints: "50-150 based on difficulty and number of correct answers.", sCoins: "5-20" }, bonus: { description: "Perfect score (all correct)", sCoins: 10 } },
   countTheObjects: { base: { sPoints: "10 per correct" }, bonus: { description: "Getting all answers correct", sCoins: 5 } },
-  codeBreaker: { base: { sPoints: "50-150 based on difficulty and number of guesses", sCoins: "5-20" }, bonus: { description: "Cracking the code in half the guesses or less", sCoins: 10 } },
+  magicSquare: { base: { sPoints: "100-300 based on time remaining and difficulty.", sCoins: "10-30" }, bonus: { description: "Solving with more than 75% time left", sCoins: 15 } },
   fastMath: { base: { sPoints: "Speed based XP" }, bonus: { description: "Scoring high in <10s", sCoins: 5 } },
   
   // English Puzzles (sub-games)
