@@ -75,7 +75,7 @@ export default function PrivacyPolicyPage() {
 
           <section>
             <h3>9. Contact Us</h3>
-            <p>If you have any questions or concerns about our privacy practices, please contact us at: <a href="mailto:privacy@shravya-playhouse.com">privacy@shravya-playhouse.com</a></p>
+            <p>If you have any questions or concerns about our privacy practices, please contact us at: <a href="mailto:help.shravyaplayhouse@gmail.com">help.shravyaplayhouse@gmail.com</a></p>
           </section>
         </CardContent>
       </Card>

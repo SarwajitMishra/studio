@@ -25,7 +25,7 @@ export default function RequestFeaturePage() {
           <CardDescription>Have a great idea for a new game or an improvement? We want to hear it!</CardDescription>
         </CardHeader>
         <CardContent>
-          <form className="space-y-6" action="mailto:feedback@shravya-playhouse.com" method="get" encType="text/plain">
+          <form className="space-y-6" action="mailto:help.shravyaplayhouse@gmail.com" method="get" encType="text/plain">
              <div className="space-y-2">
                 <Label htmlFor="subject">Subject</Label>
                 <Input id="subject" name="subject" placeholder="e.g., Idea for a new space-themed game" required />

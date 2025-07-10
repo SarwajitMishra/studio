@@ -27,7 +27,7 @@ export default function ContactUsPage() {
               <div>
                 <h3 className="font-semibold">Email</h3>
                 <p className="text-muted-foreground">For general inquiries, support, or feedback:</p>
-                <a href="mailto:support@shravya-playhouse.com" className="text-primary hover:underline">support@shravya-playhouse.com</a>
+                <a href="mailto:help.shravyaplayhouse@gmail.com" className="text-primary hover:underline">help.shravyaplayhouse@gmail.com</a>
               </div>
             </div>
              <div className="flex items-start gap-4">
@@ -48,7 +48,7 @@ export default function ContactUsPage() {
           
           <div className="space-y-4">
              <h3 className="text-xl font-semibold border-b pb-2">Send us a message</h3>
-             <form className="space-y-4" action="mailto:support@shravya-playhouse.com" method="get" encType="text/plain">
+             <form className="space-y-4" action="mailto:help.shravyaplayhouse@gmail.com" method="get" encType="text/plain">
                 <div className="space-y-2">
                     <Label htmlFor="name">Name</Label>
                     <Input id="name" name="subject" placeholder="Your Name" />

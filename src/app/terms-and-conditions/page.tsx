@@ -79,7 +79,7 @@ export default function TermsAndConditionsPage() {
 
           <section>
             <h3>11. Contact Information</h3>
-            <p>For any questions or support inquiries regarding these terms, please contact us at: <a href="mailto:support@shravya-playhouse.com">support@shravya-playhouse.com</a></p>
+            <p>For any questions or support inquiries regarding these terms, please contact us at: <a href="mailto:help.shravyaplayhouse@gmail.com">help.shravyaplayhouse@gmail.com</a></p>
           </section>
         </CardContent>
       </Card>
