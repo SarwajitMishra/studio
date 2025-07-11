@@ -117,6 +117,27 @@ export async function createUserProfile(user: User, additionalData: any, guestDa
 }
 
 /**
+ * Fetches a user's profile from Firestore.
+ * @param userId The UID of the user.
+ * @returns The user profile data, or null if it doesn't exist.
+ */
+export async function getUserProfile(userId: string): Promise<UserProfile | null> {
+    if (!userId) return null;
+    const userRef = doc(db, 'users', userId);
+    try {
+        const docSnap = await getDoc(userRef);
+        if (docSnap.exists()) {
+            return docSnap.data() as UserProfile;
+        }
+        return null; // Profile does not exist
+    } catch (error) {
+        console.error("Error fetching user profile:", error);
+        return null;
+    }
+}
+
+
+/**
  * Overwrites an existing user's cloud data with local guest data.
  * This is an "upsert" operation - it creates the document if it doesn't exist.
  * @param userId The UID of the user whose data will be overwritten.
