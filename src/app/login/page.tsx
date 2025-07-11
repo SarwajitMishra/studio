@@ -24,6 +24,7 @@ import {
   googleProvider,
   signInWithPopup,
   signInWithEmailAndPassword,
+  updateProfile,
   type UserCredential,
   type User,
   RecaptchaVerifier,
@@ -33,7 +34,7 @@ import {
 import { Loader2, CalendarIcon, Eye, EyeOff } from 'lucide-react';
 import SyncDataDialog from '@/components/auth/sync-data-dialog';
 import { getGuestData, clearGuestData } from '@/lib/sync';
-import { syncGuestDataToProfile, getUserProfile, createUserProfile } from '@/lib/users';
+import { syncGuestDataToProfile, getUserProfile, createUserProfile, checkUsernameUnique } from '@/lib/users';
 import { COUNTRIES, COUNTRY_CODES } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 
