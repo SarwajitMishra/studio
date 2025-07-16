@@ -365,9 +365,12 @@ export default function SignupPage() {
                       </FormControl></PopoverTrigger>
                       <PopoverContent className="w-auto p-0 rounded-xl shadow-lg border" align="start">
                         <Calendar
-                          mode="single" captionLayout="dropdown"
-                          fromYear={1920} toYear={subYears(new Date(), 3).getFullYear()}
-                          selected={field.value} onSelect={field.onChange}
+                          mode="single"
+                          captionLayout="dropdown"
+                          fromYear={1920}
+                          toYear={subYears(new Date(), 3).getFullYear()}
+                          selected={field.value}
+                          onSelect={field.onChange}
                           disabled={(date) => date > subYears(new Date(), 3) || date < new Date("1900-01-01")}
                           initialFocus
                         />
