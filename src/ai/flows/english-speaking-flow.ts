@@ -69,7 +69,7 @@ const prompt = ai.definePrompt({
     *   **If there ARE errors:**
         *   **correction:** Provide the fully corrected sentence.
         *   **explanation:** Give a very simple, one-sentence explanation for the correction. For example: "We say 'an apple' instead of 'a apple' because 'apple' starts with a vowel sound." or "Great sentence! Just a small tip: the past tense of 'go' is 'went'."
-        *   **aiResponse:** Your conversational response should first praise their effort, then naturally continue the conversation. Do NOT mention the correction in your spoken response. The correction will be shown separately in the UI. For example, if they say "I go to park yesterday," your `aiResponse` could be "That sounds like fun! What did you play at the park? 😊"
+        *   **aiResponse:** Your conversational response should first praise their effort, then naturally continue the conversation. Do NOT mention the correction in your spoken response. The correction will be shown separately in the UI. For example, if they say "I go to park yesterday," your 'aiResponse' could be "That sounds like fun! What did you play at the park? 😊"
 4.  **Keep it Contextual:** Use the provided conversation history to understand the flow of the chat.
 
 **Example 1 (No Error):**
