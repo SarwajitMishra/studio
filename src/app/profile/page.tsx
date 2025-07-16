@@ -44,6 +44,7 @@ import { ref as storageRef, uploadString, getDownloadURL } from 'firebase/storag
 import { getGameStats, type GameStat, checkAndTriggerAchievements } from '@/lib/progress';
 import { getRewardHistory, type RewardEvent } from '@/lib/rewards';
 import { addNotification } from '@/lib/notifications';
+import { getUserProfile, type UserProfile } from '@/lib/users';
 
 const LOCAL_STORAGE_USER_NAME_KEY = 'shravyaPlayhouse_userName';
 const LOCAL_STORAGE_AVATAR_KEY = 'shravyaPlayhouse_avatar';
@@ -90,6 +91,7 @@ const GameStatRow = ({ stat, game }: { stat: GameStat, game: any }) => (
 
 export default function ProfilePage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [editingUserName, setEditingUserName] = useState<string>(DEFAULT_USER_NAME);
   const [selectedAvatar, setSelectedAvatar] = useState<string>(DEFAULT_AVATAR_SRC);
@@ -170,26 +172,30 @@ export default function ProfilePage() {
       return;
     }
     
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
         setCurrentUser(user);
-        setAuthChecked(true);
+        
+        if (user) {
+            const profile = await getUserProfile(user.uid);
+            setUserProfile(profile);
 
-        if (user) { 
-            const firebaseDisplayName = user.displayName ?? localStorage.getItem(LOCAL_STORAGE_USER_NAME_KEY) ?? DEFAULT_USER_NAME;
-            setEditingUserName(firebaseDisplayName);
-            localStorage.setItem(LOCAL_STORAGE_USER_NAME_KEY, firebaseDisplayName);
+            const displayName = profile?.displayName ?? user.displayName ?? localStorage.getItem(LOCAL_STORAGE_USER_NAME_KEY) ?? DEFAULT_USER_NAME;
+            setEditingUserName(displayName);
+            localStorage.setItem(LOCAL_STORAGE_USER_NAME_KEY, displayName);
 
-            const firebasePhotoURL = user.photoURL ?? localStorage.getItem(LOCAL_STORAGE_AVATAR_KEY) ?? DEFAULT_AVATAR_SRC;
-            setSelectedAvatar(firebasePhotoURL);
-            localStorage.setItem(LOCAL_STORAGE_AVATAR_KEY, firebasePhotoURL);
+            const photoURL = user.photoURL ?? localStorage.getItem(LOCAL_STORAGE_AVATAR_KEY) ?? DEFAULT_AVATAR_SRC;
+            setSelectedAvatar(photoURL);
+            localStorage.setItem(LOCAL_STORAGE_AVATAR_KEY, photoURL);
             
             updateLocalData();
             
         } else { 
+            setUserProfile(null);
             setEditingUserName(localStorage.getItem(LOCAL_STORAGE_USER_NAME_KEY) || DEFAULT_USER_NAME);
             setSelectedAvatar(localStorage.getItem(LOCAL_STORAGE_AVATAR_KEY) || DEFAULT_AVATAR_SRC);
             updateLocalData();
         }
+        setAuthChecked(true);
     });
 
     return () => unsubscribe();
@@ -238,7 +244,7 @@ export default function ProfilePage() {
     };
 
     useEffect(() => {
-      if (!currentUser || editingUserName === (currentUser.displayName ?? DEFAULT_USER_NAME)) {
+      if (!currentUser || !userProfile || editingUserName === (userProfile.displayName ?? DEFAULT_USER_NAME)) {
         return;
       }
   
@@ -268,7 +274,7 @@ export default function ProfilePage() {
           clearTimeout(debounceTimeoutRef.current);
         }
       };
-    }, [editingUserName, currentUser, toast]);
+    }, [editingUserName, currentUser, userProfile, toast]);
 
   const handleAvatarFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -350,7 +356,7 @@ export default function ProfilePage() {
                 />
             </div>
             <div className="space-y-3">
-                <p className="text-foreground">Logged in as: <span className="font-semibold">{currentUser.email}</span></p>
+                <p className="text-foreground">Logged in as: <span className="font-semibold">{userProfile?.username ? `@${userProfile.username}` : (userProfile?.email || 'Loading...')}</span></p>
             </div>
             </CardContent>
         </Card>
