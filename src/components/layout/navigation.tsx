@@ -20,7 +20,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Settings, Home, Store, BookOpen, Bell, BookText, LogOut, Shield, Zap, CheckCheck, Lightbulb, LogIn } from 'lucide-react';
+import { Settings, Home, Store, BookOpen, Bell, BookText, LogOut, Shield, Zap, CheckCheck, Lightbulb, LogIn, PenSquare } from 'lucide-react';
 import { SETTINGS_MENU_ITEMS } from '@/lib/constants';
 import { auth, signOut as firebaseSignOut, onAuthStateChanged, type User } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
@@ -128,6 +128,21 @@ export default function Navigation({ side }: NavigationProps) {
                 <TooltipContent><p>Homepage</p></TooltipContent>
             </Tooltip>
             
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <Link href="/blogs" aria-label="Go to Blogs">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className={cn(commonButtonClasses, pathname.startsWith('/blogs') && "bg-accent text-accent-foreground hover:bg-accent/90")}
+                    >
+                        <PenSquare size={24} />
+                    </Button>
+                    </Link>
+                </TooltipTrigger>
+                <TooltipContent><p>Blogs</p></TooltipContent>
+            </Tooltip>
+
             <Tooltip>
                 <TooltipTrigger asChild>
                     <Link href="/shop" aria-label="Go to Shop">
