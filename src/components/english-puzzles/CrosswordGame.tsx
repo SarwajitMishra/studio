@@ -13,10 +13,9 @@ import { useToast } from "@/hooks/use-toast";
 import { applyRewards, calculateRewards } from "@/lib/rewards";
 import { S_COINS_ICON as SCoinsIcon, S_POINTS_ICON as SPointsIcon } from '@/lib/constants';
 import type { Difficulty } from '@/lib/constants';
-import { type CrosswordPuzzle, type CrosswordWord } from '@/lib/crossword-puzzles';
-import { updateGameStats } from '@/lib/progress';
+import { type CrosswordPuzzle, type CrosswordWord, CROSSWORD_PUZZLES } from '@/lib/crossword-puzzles';
+import { updateGameStats } from "@/lib/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { generateCrossword } from '@/ai/flows/generate-crossword-flow';
 
 
 interface Cell {
@@ -83,31 +82,34 @@ export default function CrosswordGame({ difficulty, onBack }: CrosswordGameProps
         setIsGenerating(true);
         setPuzzle(null);
         setGrid([]);
-        try {
-            const generatedPuzzle = await generateCrossword({ difficulty });
-            const newGrid = createGridFromPuzzle(generatedPuzzle);
-
-            setPuzzle(generatedPuzzle);
-            setGrid(newGrid);
-            setUserGrid(Array(generatedPuzzle.gridSize).fill(null).map(() => Array(generatedPuzzle.gridSize).fill('')));
-            inputRefs.current = Array(generatedPuzzle.gridSize).fill(null).map(() => Array(generatedPuzzle.gridSize).fill(null));
-            setHintsUsed(0);
-            setMistakesMade(false);
-            setActiveCell(null);
-            setLastReward(null);
-            setIsCalculatingReward(false);
-            setIsGameOver(false);
-        } catch (error) {
-             console.error("Failed to generate crossword:", error);
+        
+        const availablePuzzles = CROSSWORD_PUZZLES.filter(p => p.difficulty === difficulty);
+        if (availablePuzzles.length === 0) {
             toast({
                 variant: "destructive",
-                title: "Puzzle Generation Failed",
-                description: "Could not create a new crossword. Please try again.",
+                title: "No Puzzles Available",
+                description: `We don't have any ${difficulty} crosswords right now. Please select another difficulty.`,
             });
             onBack();
-        } finally {
-            setIsGenerating(false);
+            return;
         }
+
+        const staticPuzzle = availablePuzzles[Math.floor(Math.random() * availablePuzzles.length)];
+
+        const newGrid = createGridFromPuzzle(staticPuzzle);
+
+        setPuzzle(staticPuzzle);
+        setGrid(newGrid);
+        setUserGrid(Array(staticPuzzle.gridSize).fill(null).map(() => Array(staticPuzzle.gridSize).fill('')));
+        inputRefs.current = Array(staticPuzzle.gridSize).fill(null).map(() => Array(staticPuzzle.gridSize).fill(null));
+        setHintsUsed(0);
+        setMistakesMade(false);
+        setActiveCell(null);
+        setLastReward(null);
+        setIsCalculatingReward(false);
+        setIsGameOver(false);
+        setIsGenerating(false);
+
     }, [difficulty, createGridFromPuzzle, onBack, toast]);
 
     useEffect(() => {
@@ -278,7 +280,7 @@ export default function CrosswordGame({ difficulty, onBack }: CrosswordGameProps
     if(isGenerating || !puzzle || grid.length === 0) return (
         <div className="flex flex-col items-center justify-center h-96 w-full max-w-lg">
             <Loader2 className="animate-spin text-primary h-12 w-12" />
-            <p className="mt-4 text-muted-foreground">The AI is creating a new crossword...</p>
+            <p className="mt-4 text-muted-foreground">Loading a new crossword...</p>
         </div>
     );
     

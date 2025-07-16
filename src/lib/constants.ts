@@ -110,15 +110,6 @@ export const GAMES: Game[] = [
     href: '/puzzles/easy-english',
     color: 'text-indigo-500',
   },
-  {
-    id: 'english-speaking',
-    title: 'English Speaking',
-    category: 'Learning',
-    Icon: Ear,
-    description: 'Practice speaking English with a friendly AI conversational partner.',
-    href: '/speaking-practice',
-    color: 'text-cyan-500',
-  },
 ];
 
 export interface SettingsMenuItem {
