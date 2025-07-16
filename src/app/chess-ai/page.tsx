@@ -410,6 +410,99 @@ export default function ChessAIPage() {
     return allMoves;
   }, [calculateLegalMoves, getPieceAt]);
 
+  const performMove = useCallback((from: SquarePosition, to: SquarePosition) => {
+    const pieceToMove = getPieceAt(board, from.row, from.col);
+    if (!pieceToMove) return;
+
+    const newBoard = board.map(r_arr => r_arr.map(p => p ? { ...p } : null));
+    let nextEnPassantTarget: SquarePosition | null = null;
+    const newCastlingRights = JSON.parse(JSON.stringify(castlingRights));
+    
+    const opponentColor = currentPlayer === 'w' ? 'b' : 'w';
+    const capturedPiece = getPieceAt(newBoard, to.row, to.col);
+    if (capturedPiece) {
+      setCapturedPieces(prev => ({...prev, [currentPlayer]: [...prev[currentPlayer], capturedPiece]}));
+    }
+
+    let moveNotation = '';
+    if (pieceToMove.type === 'K' && Math.abs(from.col - to.col) === 2) {
+        moveNotation = (to.col > from.col) ? '0-0' : '0-0-0'; // Castle
+        if (to.col > from.col) { const rook = newBoard[to.row][7]; newBoard[to.row][5] = rook; newBoard[to.row][7] = null; } 
+        else { const rook = newBoard[to.row][0]; newBoard[to.row][3] = rook; newBoard[to.row][0] = null; }
+    } else {
+        const isCapture = !!capturedPiece;
+        moveNotation = `${PIECE_UNICODE[pieceToMove.color][pieceToMove.type]} ${getAlgebraicNotation(from)} ${isCapture ? 'x' : '→'} ${getAlgebraicNotation(to)}`;
+    }
+    
+    if (pieceToMove.type === 'P' && enPassantTarget && to.row === enPassantTarget.row && to.col === enPassantTarget.col) {
+        newBoard[from.row][to.col] = null;
+        const capturedPawn: Piece = { type: 'P', color: opponentColor };
+        setCapturedPieces(prev => ({ ...prev, [currentPlayer]: [...prev[currentPlayer], capturedPawn]}));
+    }
+
+    newBoard[to.row][to.col] = pieceToMove;
+    newBoard[from.row][from.col] = null;
+    
+    if (pieceToMove.type === 'P' && Math.abs(from.row - to.row) === 2) {
+        nextEnPassantTarget = { row: (from.row + to.row) / 2, col: to.col };
+    }
+    
+    if (pieceToMove.type === 'K') { newCastlingRights[currentPlayer].K = false; newCastlingRights[currentPlayer].Q = false; }
+    if (pieceToMove.type === 'R') {
+        if (from.col === 0 && from.row === (currentPlayer === 'w' ? 7 : 0)) newCastlingRights[currentPlayer].Q = false;
+        if (from.col === 7 && from.row === (currentPlayer === 'w' ? 7 : 0)) newCastlingRights[currentPlayer].K = false;
+    }
+    if (capturedPiece?.type === 'R') {
+        if (to.row === (opponentColor === 'w' ? 7 : 0)) {
+            if (to.col === 0) newCastlingRights[opponentColor].Q = false;
+            if (to.col === 7) newCastlingRights[opponentColor].K = false;
+        }
+    }
+    
+    const isPromotion = pieceToMove.type === 'P' && ((pieceToMove.color === 'w' && to.row === 0) || (pieceToMove.color === 'b' && to.row === 7));
+    if (isPromotion) {
+        setBoard(newBoard);
+        setPromotionSquare(to);
+        setEnPassantTarget(nextEnPassantTarget);
+        setCastlingRights(newCastlingRights);
+        setPossibleMoves([]);
+        setGameStatusMessage(`Pawn promotion! Select a piece.`);
+        setMoveHistory(prev => [...prev, moveNotation]);
+        return; 
+    }
+    
+    setBoard(newBoard);
+    setEnPassantTarget(nextEnPassantTarget);
+    setCastlingRights(newCastlingRights);
+
+    const newKingPositions = { ...kingPositions };
+    if (pieceToMove.type === 'K') {
+      newKingPositions[pieceToMove.color] = to;
+    }
+    setKingPositions(newKingPositions);
+
+    const opponentKingPos = newKingPositions[opponentColor];
+    const isOpponentInCheck = opponentKingPos.row !== -1 && isSquareAttacked(newBoard, opponentKingPos.row, opponentKingPos.col, currentPlayer);
+    
+    setKingUnderAttack(isOpponentInCheck ? opponentColor : null);
+    const opponentHasLegalMoves = getAllLegalMovesForPlayer(newBoard, opponentColor, newKingPositions).length > 0;
+    
+    let finalMoveNotation = moveNotation;
+
+    if (isOpponentInCheck && !opponentHasLegalMoves) {
+      finalMoveNotation += '#'; // Checkmate
+      handleGameEnd(currentPlayer, `Checkmate! ${playerNames[currentPlayer]} wins!`);
+    } else if (!isOpponentInCheck && !opponentHasLegalMoves) {
+      handleGameEnd('draw', "Stalemate! It's a draw.");
+    } else {
+      if (isOpponentInCheck) finalMoveNotation += '+'; // Check
+      setCurrentPlayer(opponentColor);
+      setGameStatusMessage(`${isOpponentInCheck ? "Check! " : ""}${playerNames[opponentColor]}'s turn.`);
+    }
+    setMoveHistory(prev => [...prev, finalMoveNotation]);
+    setSelectedPiece(null);
+    setPossibleMoves([]);
+  }, [board, castlingRights, currentPlayer, enPassantTarget, getAllLegalMovesForPlayer, getPieceAt, handleGameEnd, isSquareAttacked, kingPositions, playerNames]);
 
   const makeAIMove = useCallback(() => {
     const aiColor = 'b';
@@ -430,8 +523,7 @@ export default function ChessAIPage() {
 
         const opponentColor = aiColor === 'w' ? 'b' : 'w';
         if(getAllLegalMovesForPlayer(tempBoard, opponentColor, tempKingPositions).length === 0 && isSquareAttacked(tempBoard, kingPositions[opponentColor].row, kingPositions[opponentColor].col, aiColor)) {
-            handleSquareClick(move.from.row, move.from.col);
-            setTimeout(() => handleSquareClick(move.to.row, move.to.col), 100);
+            performMove(move.from, move.to);
             return;
         }
     }
@@ -440,17 +532,15 @@ export default function ChessAIPage() {
     const captureMoves = allMoves.filter(move => getPieceAt(board, move.to.row, move.to.col) !== null);
     if(captureMoves.length > 0) {
         const randomCapture = captureMoves[Math.floor(Math.random() * captureMoves.length)];
-        handleSquareClick(randomCapture.from.row, randomCapture.from.col);
-        setTimeout(() => handleSquareClick(randomCapture.to.row, randomCapture.to.col), 100);
+        performMove(randomCapture.from, randomCapture.to);
         return;
     }
 
     // 3. Simple random move
     const randomMove = allMoves[Math.floor(Math.random() * allMoves.length)];
-    handleSquareClick(randomMove.from.row, randomMove.from.col);
-    setTimeout(() => handleSquareClick(randomMove.to.row, randomMove.to.col), 100);
+    performMove(randomMove.from, randomMove.to);
 
-  }, [board, currentPlayer, gameState, getAllLegalMovesForPlayer, kingPositions, getPieceAt, isSquareAttacked]);
+  }, [board, currentPlayer, gameState, getAllLegalMovesForPlayer, kingPositions, getPieceAt, isSquareAttacked, performMove]);
 
   useEffect(() => {
     if(currentPlayer === 'b' && gameState === 'playing' && winner === null) {
@@ -461,108 +551,14 @@ export default function ChessAIPage() {
 
   const handleSquareClick = (row: number, col: number) => {
     if (promotionSquare || gameState !== 'playing' || winner) return;
-    if (currentPlayer === 'b') return; // Prevent user from moving AI pieces
+    if (currentPlayer === 'b') return; // Prevent human from moving AI pieces
 
     const clickedSquarePiece = getPieceAt(board, row, col);
 
     if (selectedPiece) {
-      const { row: fromRow, col: fromCol } = selectedPiece;
-      const pieceToMove = getPieceAt(board, fromRow, fromCol);
-      if (!pieceToMove) {
-        setSelectedPiece(null); setPossibleMoves([]); return;
-      }
-      
       const isMovePossible = possibleMoves.some(m => m.row === row && m.col === col);
       if (isMovePossible) {
-        const newBoard = board.map(r_arr => r_arr.map(p => p ? { ...p } : null));
-        let nextEnPassantTarget: SquarePosition | null = null;
-        const newCastlingRights = JSON.parse(JSON.stringify(castlingRights));
-        
-        const opponentColor = currentPlayer === 'w' ? 'b' : 'w';
-        const capturedPiece = getPieceAt(newBoard, row, col);
-        if (capturedPiece) {
-          setCapturedPieces(prev => ({...prev, [currentPlayer]: [...prev[currentPlayer], capturedPiece]}));
-        }
-
-        let moveNotation = '';
-        if (pieceToMove.type === 'K' && Math.abs(fromCol - col) === 2) {
-            moveNotation = (col > fromCol) ? '0-0' : '0-0-0'; // Castle
-            if (col > fromCol) { const rook = newBoard[row][7]; newBoard[row][5] = rook; newBoard[row][7] = null; } 
-            else { const rook = newBoard[row][0]; newBoard[row][3] = rook; newBoard[row][0] = null; }
-        } else {
-            const isCapture = !!capturedPiece;
-            moveNotation = `${PIECE_UNICODE[pieceToMove.color][pieceToMove.type]} ${getAlgebraicNotation({row: fromRow, col: fromCol})} ${isCapture ? 'x' : '→'} ${getAlgebraicNotation({row, col})}`;
-        }
-        
-        if (pieceToMove.type === 'P' && enPassantTarget && row === enPassantTarget.row && col === enPassantTarget.col) {
-            newBoard[fromRow][col] = null;
-            const capturedPawn: Piece = { type: 'P', color: opponentColor };
-            setCapturedPieces(prev => ({ ...prev, [currentPlayer]: [...prev[currentPlayer], capturedPawn]}));
-        }
-
-        newBoard[row][col] = pieceToMove;
-        newBoard[fromRow][fromCol] = null;
-        
-        if (pieceToMove.type === 'P' && Math.abs(fromRow - row) === 2) {
-            nextEnPassantTarget = { row: (fromRow + row) / 2, col: col };
-        }
-        
-        if (pieceToMove.type === 'K') { newCastlingRights[currentPlayer].K = false; newCastlingRights[currentPlayer].Q = false; }
-        if (pieceToMove.type === 'R') {
-            if (fromCol === 0 && fromRow === (currentPlayer === 'w' ? 7 : 0)) newCastlingRights[currentPlayer].Q = false;
-            if (fromCol === 7 && fromRow === (currentPlayer === 'w' ? 7 : 0)) newCastlingRights[currentPlayer].K = false;
-        }
-        if (capturedPiece?.type === 'R') {
-            if (row === (opponentColor === 'w' ? 7 : 0)) {
-                if (col === 0) newCastlingRights[opponentColor].Q = false;
-                if (col === 7) newCastlingRights[opponentColor].K = false;
-            }
-        }
-        
-        const isPromotion = pieceToMove.type === 'P' && ((pieceToMove.color === 'w' && row === 0) || (pieceToMove.color === 'b' && row === 7));
-        if (isPromotion) {
-            setBoard(newBoard);
-            setPromotionSquare({ row, col });
-            setEnPassantTarget(nextEnPassantTarget);
-            setCastlingRights(newCastlingRights);
-            setPossibleMoves([]);
-            setGameStatusMessage(`Pawn promotion! Select a piece.`);
-            setMoveHistory(prev => [...prev, moveNotation]);
-            return; 
-        }
-        
-        setBoard(newBoard);
-        setEnPassantTarget(nextEnPassantTarget);
-        setCastlingRights(newCastlingRights);
-
-        const newKingPositions = { ...kingPositions };
-        if (pieceToMove.type === 'K') {
-          newKingPositions[pieceToMove.color] = { row, col };
-        }
-        setKingPositions(newKingPositions);
-
-        const opponentKingPos = newKingPositions[opponentColor];
-        const isOpponentInCheck = opponentKingPos.row !== -1 && isSquareAttacked(newBoard, opponentKingPos.row, opponentKingPos.col, currentPlayer);
-        
-        setKingUnderAttack(isOpponentInCheck ? opponentColor : null);
-        const opponentHasLegalMoves = getAllLegalMovesForPlayer(newBoard, opponentColor, newKingPositions).length > 0;
-        
-        let finalMoveNotation = moveNotation;
-
-        if (isOpponentInCheck && !opponentHasLegalMoves) {
-          finalMoveNotation += '#'; // Checkmate
-          handleGameEnd(currentPlayer, `Checkmate! ${playerNames[currentPlayer]} wins!`);
-        } else if (!isOpponentInCheck && !opponentHasLegalMoves) {
-          handleGameEnd('draw', "Stalemate! It's a draw.");
-        } else {
-          if (isOpponentInCheck) finalMoveNotation += '+'; // Check
-          setCurrentPlayer(opponentColor);
-          setGameStatusMessage(`${isOpponentInCheck ? "Check! " : ""}${playerNames[opponentColor]}'s turn.`);
-        }
-        setMoveHistory(prev => [...prev, finalMoveNotation]);
-        setSelectedPiece(null);
-        setPossibleMoves([]);
-
+        performMove(selectedPiece, {row, col});
       } else {
         if (clickedSquarePiece && clickedSquarePiece.color === currentPlayer) {
           setSelectedPiece({ row, col });
@@ -792,5 +788,3 @@ export default function ChessAIPage() {
     </div>
   );
 }
-
-    
