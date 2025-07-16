@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { onAuthStateChanged } from '@/lib/firebase';
 import { auth } from '@/lib/firebase';
 import { isUserAdmin } from '@/lib/users';
-import { Loader2, ShieldCheck, Home, Users } from 'lucide-react';
+import { Loader2, ShieldCheck, Home, Users, PenSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -44,6 +44,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const navItems = [
       { href: "/admin", label: "Dashboard", Icon: Home },
       { href: "/admin/users", label: "Users", Icon: Users },
+      { href: "/admin/blogs", label: "Blogs", Icon: PenSquare },
   ];
 
   return (

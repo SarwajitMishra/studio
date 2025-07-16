@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview An AI flow for analyzing blog post content for grammar, spelling, and style.
@@ -45,8 +46,8 @@ The target audience is parents and children. The tone should be positive, encour
 ---
 
 **Your Tasks:**
-1.  **Correct Grammar and Spelling:** Carefully review the text. Fix all grammatical errors, spelling mistakes, and typos. Provide the fully corrected, ready-to-publish text in the \`correctedContent\` field of your JSON output.
-2.  **Provide Suggestions:** Offer 2-3 actionable suggestions to improve the post's clarity, engagement, or style. These suggestions should be encouraging and easy to understand. For example, suggest breaking up long paragraphs, adding a question to engage readers, or using simpler words. Put these suggestions in the \`suggestions\` array.
+1.  **Correct Grammar and Spelling:** Carefully review the text. Fix all grammatical errors, spelling mistakes, and typos. Provide the fully corrected, ready-to-publish text in the 'correctedContent' field of your JSON output.
+2.  **Provide Suggestions:** Offer 2-3 actionable suggestions to improve the post's clarity, engagement, or style. These suggestions should be encouraging and easy to understand. For example, suggest breaking up long paragraphs, adding a question to engage readers, or using simpler words. Put these suggestions in the 'suggestions' array.
 
 **IMPORTANT:** Your response MUST be a single, valid JSON object that strictly follows the specified output schema. Do not include any text or explanations outside of the JSON structure.
 `,

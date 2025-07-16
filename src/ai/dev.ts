@@ -7,3 +7,4 @@ import './flows/get-word-definition-flow';
 import './flows/generate-puzzle-image-flow';
 import './flows/generate-crossword-flow';
 import './flows/english-speaking-flow';
+import './flows/analyze-blog-content-flow';
