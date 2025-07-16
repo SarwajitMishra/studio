@@ -2,7 +2,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Header from './header';
 import FloatingChatButton from './floating-chat-button';
 import FloatingActionButtons from './floating-action-buttons';
@@ -15,9 +15,50 @@ interface MainLayoutProps {
 
 export default function MainLayout({ children }: MainLayoutProps) {
   const [isMounted, setIsMounted] = useState(false);
+  // Use a ref to hold the WakeLockSentinel object.
+  // Using useRef avoids re-renders when the sentinel is set or released.
+  const wakeLockSentinel = useRef<WakeLockSentinel | null>(null);
+
+  // Function to request the screen wake lock
+  const requestWakeLock = async () => {
+    if ('wakeLock' in navigator) {
+      try {
+        wakeLockSentinel.current = await navigator.wakeLock.request('screen');
+        wakeLockSentinel.current.addEventListener('release', () => {
+          console.log('Screen Wake Lock was released');
+        });
+        console.log('Screen Wake Lock is active.');
+      } catch (err: any) {
+        console.error(`${err.name}, ${err.message}`);
+      }
+    } else {
+      console.warn('Screen Wake Lock API not supported on this browser.');
+    }
+  };
 
   useEffect(() => {
     setIsMounted(true);
+    
+    // Request the lock when the component mounts
+    requestWakeLock();
+
+    // Re-request the lock when the page becomes visible again
+    const handleVisibilityChange = () => {
+      if (wakeLockSentinel.current === null && document.visibilityState === 'visible') {
+        requestWakeLock();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Clean up the event listener when the component unmounts
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (wakeLockSentinel.current) {
+        wakeLockSentinel.current.release();
+        wakeLockSentinel.current = null;
+      }
+    };
   }, []);
 
   return (
