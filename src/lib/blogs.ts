@@ -83,26 +83,47 @@ export async function createBlogPost(data: { title: string, content: string }, a
 }
 
 /**
- * Fetches all blog posts with 'published' status.
+ * Fetches all blog posts with 'published' status, sorted by published date.
  * @returns An array of published blog posts.
  */
 export async function getPublishedBlogs(): Promise<BlogPost[]> {
     const blogsCollectionRef = collection(db, 'blogs');
-    const q = query(blogsCollectionRef, where("status", "==", "published"), orderBy("publishedAt", "desc"));
+    // Fetch all published posts without sorting at the DB level
+    const q = query(blogsCollectionRef, where("status", "==", "published"));
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as BlogPost));
+    
+    // Map and then sort in code
+    const posts = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as BlogPost));
+    posts.sort((a, b) => {
+        const dateA = a.publishedAt?.seconds || 0;
+        const dateB = b.publishedAt?.seconds || 0;
+        return dateB - dateA; // Sort descending
+    });
+
+    return posts;
 }
 
 /**
- * Fetches all blog posts with 'pending' status.
+ * Fetches all blog posts with 'pending' status, sorted by creation date.
  * @returns An array of pending blog posts.
  */
 export async function getPendingBlogs(): Promise<BlogPost[]> {
     const blogsCollectionRef = collection(db, 'blogs');
-    const q = query(blogsCollectionRef, where("status", "==", "pending"), orderBy("createdAt", "desc"));
+     // Fetch all pending posts without sorting at the DB level
+    const q = query(blogsCollectionRef, where("status", "==", "pending"));
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as BlogPost));
+    
+    // Map and then sort in code
+    const posts = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as BlogPost));
+    posts.sort((a, b) => {
+        const dateA = a.createdAt?.seconds || 0;
+        const dateB = b.createdAt?.seconds || 0;
+        return dateB - dateA; // Sort descending
+    });
+
+    return posts;
 }
+
 
 /**
  * Updates the status of a blog post.
