@@ -16,7 +16,7 @@ const ChatMessageSchema = z.object({
   content: z.string(),
 });
 
-export const EnglishSpeakingInputSchema = z.object({
+const EnglishSpeakingInputSchema = z.object({
   userInput: z
     .string()
     .describe('The text transcribed from the user\'s speech.'),
@@ -27,7 +27,7 @@ export const EnglishSpeakingInputSchema = z.object({
 });
 export type EnglishSpeakingInput = z.infer<typeof EnglishSpeakingInputSchema>;
 
-export const EnglishSpeakingOutputSchema = z.object({
+const EnglishSpeakingOutputSchema = z.object({
   aiResponse: z
     .string()
     .describe('A friendly, conversational response to continue the dialogue.'),
