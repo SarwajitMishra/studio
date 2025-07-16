@@ -7,6 +7,7 @@
 export const REWARD_LOGIC = {
   // Strategy Games
   chess: { win: { sPoints: 200, sCoins: 30 }, draw: { sPoints: 100, sCoins: 5 }, bonus: { description: "Win streak of 5", sCoins: 15 } },
+  'chess-ai': { win: { sPoints: 200, sCoins: 30 }, draw: { sPoints: 100, sCoins: 5 }, bonus: { description: "Win streak of 5", sCoins: 15 } },
   towerOfHanoi: { complete: { sPoints: 150, sCoins: 15 }, bonus: { description: "Speed solve", sCoins: 5 } },
   'dots-and-boxes': { win: { sPoints: "50-100 based on score difference", sCoins: "5-10" }, bonus: { description: "Winning by a large margin (5+ boxes)", sCoins: 5 } },
 

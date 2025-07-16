@@ -9,7 +9,7 @@ import {
     Grid3x3, Route, Blocks, KeyRound, LayoutGrid, XCircle, Dice6, Users, FileText,
     Trophy, Award, Compass, BrainCircuit, Shield, Palette, Volume2, PenSquare, 
     CalendarDays, Lightbulb, Ticket, Wand, Eye, FunctionSquare, Rocket, Globe,
-    Spade, Flag, Dna, Bell, Info
+    Spade, Flag, Dna, Bell, Info, Cpu
 } from 'lucide-react';
 
 export type GameCategory = 'Strategy' | 'Puzzles' | 'Learning';
@@ -28,12 +28,21 @@ export interface Game {
 export const GAMES: Game[] = [
   {
     id: 'chess',
-    title: 'Chess',
+    title: 'Chess (PvP)',
     category: 'Strategy',
-    Icon: Crown,
-    description: 'Classic strategy board game. Sharpen your mind!',
+    Icon: Users,
+    description: 'Classic strategy board game. Challenge a friend on the same device!',
     href: '/chess',
     color: 'text-sky-600',
+  },
+   {
+    id: 'chess-ai',
+    title: 'Chess vs AI',
+    category: 'Strategy',
+    Icon: Cpu,
+    description: 'Test your skills against our smart AI opponent. Can you beat Shravya AI?',
+    href: '/chess-ai',
+    color: 'text-sky-400',
   },
   {
     id: 'dots-and-boxes',

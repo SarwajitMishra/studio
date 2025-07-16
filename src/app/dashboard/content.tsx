@@ -131,6 +131,14 @@ export default function DashboardContent() {
           {CATEGORIES_ORDER.map((category) => {
               const gamesInCategory = groupedGames[category];
               if (!gamesInCategory || gamesInCategory.length === 0) return null;
+              
+              // Sort games: Chess vs AI should come after Chess (PvP)
+              gamesInCategory.sort((a, b) => {
+                  if (a.id === 'chess' && b.id === 'chess-ai') return -1;
+                  if (a.id === 'chess-ai' && b.id === 'chess') return 1;
+                  return 0; // Keep original order for others
+              });
+
               const CategoryIconComponent = gamesInCategory[0]?.Icon || Component;
               return (
                   <section key={category} aria-labelledby={`category-title-${category.toLowerCase()}`}>

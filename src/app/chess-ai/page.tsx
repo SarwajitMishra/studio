@@ -6,13 +6,14 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from 'next/navigation';
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { Crown, AlertTriangle, Timer, ListChecks, ArrowLeft, Brain, Gamepad2, Users, Edit } from "lucide-react";
+import { Crown, AlertTriangle, Timer, ListChecks, ArrowLeft, Brain, Cpu, Award, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { S_POINTS_ICON as SPointsIcon, S_COINS_ICON as SCoinsIcon } from '@/lib/constants';
+import { applyRewards, calculateRewards } from "@/lib/rewards";
+import { updateGameStats } from "@/lib/progress";
 
 
 interface Piece {
@@ -25,8 +26,13 @@ interface SquarePosition {
   col: number;
 }
 
+interface Move {
+    from: SquarePosition;
+    to: SquarePosition;
+}
+
 type PlayerColor = "w" | "b";
-type GameState = 'setup' | 'playing' | 'gameOver';
+type GameState = 'playing' | 'gameOver';
 
 const PIECE_UNICODE: Record<PlayerColor, Record<Piece["type"], string>> = {
   w: { K: "♔", Q: "♕", R: "♖", B: "♗", N: "♘", P: "♙" },
@@ -145,10 +151,8 @@ const ChessSquare = ({
   );
 };
 
-export default function ChessPage() {
-  const [gameState, setGameState] = useState<GameState>('setup');
-  const [playerNames, setPlayerNames] = useState({ w: 'White', b: 'Black' });
-  const [isSetupDialogOpen, setIsSetupDialogOpen] = useState(false);
+export default function ChessAIPage() {
+  const [gameState, setGameState] = useState<GameState>('playing');
   const router = useRouter();
 
   const initialSetup = initialBoardSetup();
@@ -157,7 +161,7 @@ export default function ChessPage() {
   const [selectedPiece, setSelectedPiece] = useState<SquarePosition | null>(null);
   const [currentPlayer, setCurrentPlayer] = useState<PlayerColor>('w');
   const [possibleMoves, setPossibleMoves] = useState<SquarePosition[]>([]);
-  const [gameStatusMessage, setGameStatusMessage] = useState<string>("White's turn to move.");
+  const [gameStatusMessage, setGameStatusMessage] = useState<string>("Your turn to move.");
   const [winner, setWinner] = useState<PlayerColor | 'draw' | null>(null);
   const [kingUnderAttack, setKingUnderAttack] = useState<PlayerColor | null>(null);
   const [promotionSquare, setPromotionSquare] = useState<SquarePosition | null>(null);
@@ -167,6 +171,10 @@ export default function ChessPage() {
   const [moveHistory, setMoveHistory] = useState<string[]>([]);
   const [capturedPieces, setCapturedPieces] = useState<{w: Piece[], b: Piece[]}>({w: [], b: []});
   const [playerTimers, setPlayerTimers] = useState({w: 600, b: 600});
+  const playerNames = { w: 'You', b: 'Shravya AI' };
+
+  const [isCalculatingReward, setIsCalculatingReward] = useState(false);
+  const [lastReward, setLastReward] = useState<{points: number, coins: number} | null>(null);
 
   const { toast } = useToast();
   
@@ -174,7 +182,31 @@ export default function ChessPage() {
     setGameState('gameOver');
     setWinner(winnerColor);
     setGameStatusMessage(reason);
-  }, []);
+    
+    setIsCalculatingReward(true);
+
+    const didWin = winnerColor === 'w'; 
+    setTimeout(() => {
+        updateGameStats({ gameId: 'chess-ai', didWin });
+    }, 0);
+
+    try {
+        const rewards = await calculateRewards({
+            gameId: 'chess', // Use base chess logic for rewards
+            difficulty: winnerColor === 'w' ? 'hard' : (winnerColor === 'b' ? 'easy' : 'medium'),
+            performanceMetrics: { result: winnerColor === 'w' ? 'win' : (winnerColor === 'draw' ? 'draw' : 'loss') }
+        });
+
+        const earned = applyRewards(rewards.sPoints, rewards.sCoins, `Chess Game vs AI: ${reason}`);
+        setLastReward(earned);
+
+    } catch(e) {
+        console.error("Error calculating rewards:", e);
+        toast({ variant: 'destructive', title: 'Reward Error', description: 'Could not calculate rewards.' });
+    } finally {
+        setIsCalculatingReward(false);
+    }
+  }, [toast]);
 
 
   useEffect(() => {
@@ -362,22 +394,74 @@ export default function ChessPage() {
     currentBoard: (Piece | null)[][],
     playerColor: PlayerColor,
     currentKingPositions: Record<PlayerColor, SquarePosition>
-  ) => {
-    for (let r = 0; r < 8; r++) {
-      for (let c = 0; c < 8; c++) {
-        const piece = getPieceAt(currentBoard, r, c);
+  ): Move[] => {
+    const allMoves: Move[] = [];
+    for (let r_idx = 0; r_idx < 8; r_idx++) {
+      for (let c_idx = 0; c_idx < 8; c_idx++) {
+        const piece = getPieceAt(currentBoard, r_idx, c_idx);
         if (piece && piece.color === playerColor) {
-          const legalMoves = calculateLegalMoves(currentBoard, piece, r, c, currentKingPositions);
-          if (legalMoves.length > 0) return true;
+          const legalMoves = calculateLegalMoves(currentBoard, piece, r_idx, c_idx, currentKingPositions);
+          for(const move of legalMoves) {
+              allMoves.push({ from: {row: r_idx, col: c_idx}, to: move });
+          }
         }
       }
     }
-    return false;
+    return allMoves;
   }, [calculateLegalMoves, getPieceAt]);
 
 
+  const makeAIMove = useCallback(() => {
+    const aiColor = 'b';
+    if(currentPlayer !== aiColor || gameState !== 'playing') return;
+    
+    const allMoves = getAllLegalMovesForPlayer(board, aiColor, kingPositions);
+    if(allMoves.length === 0) return;
+
+    // 1. Prioritize checkmating moves
+    for(const move of allMoves) {
+        const tempBoard = board.map(r => [...r]);
+        const piece = tempBoard[move.from.row][move.from.col];
+        tempBoard[move.to.row][move.to.col] = piece;
+        tempBoard[move.from.row][move.from.col] = null;
+        
+        const tempKingPositions = {...kingPositions};
+        if(piece?.type === 'K') tempKingPositions[aiColor] = move.to;
+
+        const opponentColor = aiColor === 'w' ? 'b' : 'w';
+        if(getAllLegalMovesForPlayer(tempBoard, opponentColor, tempKingPositions).length === 0 && isSquareAttacked(tempBoard, kingPositions[opponentColor].row, kingPositions[opponentColor].col, aiColor)) {
+            handleSquareClick(move.from.row, move.from.col);
+            setTimeout(() => handleSquareClick(move.to.row, move.to.col), 100);
+            return;
+        }
+    }
+
+    // 2. Prioritize captures
+    const captureMoves = allMoves.filter(move => getPieceAt(board, move.to.row, move.to.col) !== null);
+    if(captureMoves.length > 0) {
+        const randomCapture = captureMoves[Math.floor(Math.random() * captureMoves.length)];
+        handleSquareClick(randomCapture.from.row, randomCapture.from.col);
+        setTimeout(() => handleSquareClick(randomCapture.to.row, randomCapture.to.col), 100);
+        return;
+    }
+
+    // 3. Simple random move
+    const randomMove = allMoves[Math.floor(Math.random() * allMoves.length)];
+    handleSquareClick(randomMove.from.row, randomMove.from.col);
+    setTimeout(() => handleSquareClick(randomMove.to.row, randomMove.to.col), 100);
+
+  }, [board, currentPlayer, gameState, getAllLegalMovesForPlayer, kingPositions, getPieceAt, isSquareAttacked]);
+
+  useEffect(() => {
+    if(currentPlayer === 'b' && gameState === 'playing' && winner === null) {
+      const aiMoveTimeout = setTimeout(makeAIMove, 1000);
+      return () => clearTimeout(aiMoveTimeout);
+    }
+  }, [currentPlayer, gameState, winner, makeAIMove]);
+
   const handleSquareClick = (row: number, col: number) => {
     if (promotionSquare || gameState !== 'playing' || winner) return;
+    if (currentPlayer === 'b') return; // Prevent user from moving AI pieces
 
     const clickedSquarePiece = getPieceAt(board, row, col);
 
@@ -461,19 +545,19 @@ export default function ChessPage() {
         const isOpponentInCheck = opponentKingPos.row !== -1 && isSquareAttacked(newBoard, opponentKingPos.row, opponentKingPos.col, currentPlayer);
         
         setKingUnderAttack(isOpponentInCheck ? opponentColor : null);
-        const opponentHasLegalMoves = getAllLegalMovesForPlayer(newBoard, opponentColor, newKingPositions);
+        const opponentHasLegalMoves = getAllLegalMovesForPlayer(newBoard, opponentColor, newKingPositions).length > 0;
         
         let finalMoveNotation = moveNotation;
 
         if (isOpponentInCheck && !opponentHasLegalMoves) {
           finalMoveNotation += '#'; // Checkmate
-          handleGameEnd(currentPlayer, `Checkmate! ${currentPlayer === 'w' ? playerNames.w : playerNames.b} wins!`);
+          handleGameEnd(currentPlayer, `Checkmate! ${playerNames[currentPlayer]} wins!`);
         } else if (!isOpponentInCheck && !opponentHasLegalMoves) {
           handleGameEnd('draw', "Stalemate! It's a draw.");
         } else {
           if (isOpponentInCheck) finalMoveNotation += '+'; // Check
           setCurrentPlayer(opponentColor);
-          setGameStatusMessage(`${isOpponentInCheck ? "Check! " : ""}${opponentColor === 'w' ? playerNames.w : playerNames.b}'s turn.`);
+          setGameStatusMessage(`${isOpponentInCheck ? "Check! " : ""}${playerNames[opponentColor]}'s turn.`);
         }
         setMoveHistory(prev => [...prev, finalMoveNotation]);
         setSelectedPiece(null);
@@ -516,15 +600,15 @@ export default function ChessPage() {
     const isOpponentInCheck = opponentKingPos.row !== -1 && isSquareAttacked(finalBoard, opponentKingPos.row, opponentKingPos.col, currentPlayer);
     setKingUnderAttack(isOpponentInCheck ? opponentColor : null);
 
-    const opponentHasLegalMoves = getAllLegalMovesForPlayer(finalBoard, opponentColor, kingPositions);
+    const opponentHasLegalMoves = getAllLegalMovesForPlayer(finalBoard, opponentColor, kingPositions).length > 0;
 
     if (isOpponentInCheck && !opponentHasLegalMoves) {
-        handleGameEnd(currentPlayer, `Checkmate! ${currentPlayer === 'w' ? playerNames.w : playerNames.b} wins!`);
+        handleGameEnd(currentPlayer, `Checkmate! ${playerNames[currentPlayer]} wins!`);
     } else if (!isOpponentInCheck && !opponentHasLegalMoves) {
         handleGameEnd('draw', "Stalemate! It's a draw.");
     } else {
         setCurrentPlayer(opponentColor);
-        setGameStatusMessage(`${isOpponentInCheck ? "Check! " : ""}${opponentColor === 'w' ? playerNames.w : playerNames.b}'s turn.`);
+        setGameStatusMessage(`${isOpponentInCheck ? "Check! " : ""}${playerNames[opponentColor]}'s turn.`);
     }
 
     setPromotionSquare(null);
@@ -533,6 +617,9 @@ export default function ChessPage() {
   };
 
   const resetGame = () => {
+    if (gameState === 'playing') {
+        setTimeout(() => updateGameStats({ gameId: 'chess-ai', didWin: false }), 0);
+    }
     const newInitialSetup = initialBoardSetup();
     setBoard(newInitialSetup.board);
     setKingPositions(newInitialSetup.kings);
@@ -550,44 +637,12 @@ export default function ChessPage() {
     setPlayerTimers({ w: 600, b: 600 });
     toast({ title: "Game Reset", description: "The board has been reset." });
     setGameState('playing');
+    setLastReward(null);
   };
   
   const movePairs = [];
   for (let i = 0; i < moveHistory.length; i += 2) {
     movePairs.push(moveHistory.slice(i, i + 2));
-  }
-  
-  const startGame = (names: { w: string, b: string }) => {
-    setPlayerNames(names);
-    setGameState('playing');
-    setGameStatusMessage(`${names.w}'s turn to move.`);
-    resetGame();
-  }
-
-  if (gameState === 'setup') {
-    return (
-        <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
-            <Card className="w-full max-w-md text-center shadow-xl">
-                <CardHeader>
-                    <CardTitle className="text-3xl font-bold">Chess (Player vs Player)</CardTitle>
-                    <CardDescription>Challenge a friend on the same device.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <Dialog open={isSetupDialogOpen} onOpenChange={setIsSetupDialogOpen}>
-                        <DialogTrigger asChild>
-                            <Button className="w-full text-lg py-6"><Users className="mr-2"/> Start Game</Button>
-                        </DialogTrigger>
-                        <SetupDialog onStart={startGame} />
-                    </Dialog>
-                </CardContent>
-                 <CardFooter>
-                    <Button asChild variant="ghost" className="w-full">
-                        <a href="/dashboard"><ArrowLeft className="mr-2"/> Back to Homepage</a>
-                    </Button>
-                </CardFooter>
-            </Card>
-        </div>
-    );
   }
 
   return (
@@ -596,15 +651,34 @@ export default function ChessPage() {
         <AlertDialogContent>
             <AlertDialogHeader>
             <AlertDialogTitle className="text-2xl text-primary flex items-center justify-center gap-2">
-                {winner === 'draw' ? <Gamepad2 size={28} /> : <Crown size={28} />} {gameStatusMessage}
+                <Award size={28} /> {gameStatusMessage}
             </AlertDialogTitle>
             </AlertDialogHeader>
             <div className="py-4 text-center">
-                 <p className="text-lg">Well played!</p>
+                {(isCalculatingReward) ? (
+                    <div className="flex flex-col items-center justify-center gap-2 pt-4">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        <p className="text-sm text-muted-foreground">Calculating your rewards...</p>
+                    </div>
+                ) : (lastReward) ? (
+                    <div className="flex flex-col items-center gap-3 text-center">
+                        <AlertDialogDescription className="text-center text-base pt-2">
+                           Congratulations on finishing the game!
+                        </AlertDialogDescription>
+                        <div className="flex items-center gap-6 mt-2">
+                            <span className="flex items-center font-bold text-2xl">
+                                +{lastReward.points} <SPointsIcon className="ml-2 h-7 w-7 text-yellow-400" />
+                            </span>
+                            <span className="flex items-center font-bold text-2xl">
+                                +{lastReward.coins} <SCoinsIcon className="ml-2 h-7 w-7 text-amber-500" />
+                            </span>
+                        </div>
+                    </div>
+                ) : <p className="text-lg">Well played!</p>}
             </div>
             <AlertDialogFooter>
-             <Button onClick={resetGame}>Play Again</Button>
-             <Button onClick={() => setGameState('setup')} variant="outline">Back to Menu</Button>
+             <Button onClick={resetGame} disabled={isCalculatingReward}>Play Again</Button>
+             <Button onClick={() => router.push('/dashboard')} variant="outline" disabled={isCalculatingReward}>Back to Homepage</Button>
             </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -624,7 +698,7 @@ export default function ChessPage() {
                   const isPossMove = possibleMoves.some(m => m.row === rowIndex && m.col === colIndex);
                   const isKingSquareInCheck = piece?.type === 'K' && piece.color === kingUnderAttack;
                   return (
-                    <ChessSquare key={`${rowIndex}-${colIndex}`} piece={piece} isLight={isLight} onClick={() => handleSquareClick(rowIndex, colIndex)} isSelected={isSel} isPossibleMove={isPossMove} isInCheck={isKingSquareInCheck} isDisabled={!!promotionSquare || gameState !== 'playing'} />
+                    <ChessSquare key={`${rowIndex}-${colIndex}`} piece={piece} isLight={isLight} onClick={() => handleSquareClick(rowIndex, colIndex)} isSelected={isSel} isPossibleMove={isPossMove} isInCheck={isKingSquareInCheck} isDisabled={!!promotionSquare || gameState !== 'playing' || currentPlayer === 'b'} />
                   );
                 })
               )}
@@ -655,7 +729,7 @@ export default function ChessPage() {
       <div className="w-full lg:w-80 space-y-4 flex-shrink-0">
         <Card className="shadow-lg">
            <CardHeader>
-                <CardTitle className="text-xl flex items-center gap-2"><Timer /> Status</CardTitle>
+                <CardTitle className="text-xl flex items-center gap-2"><Cpu /> Game Status</CardTitle>
             </CardHeader>
             <CardContent>
                 <div className="mb-4 flex items-center justify-center space-x-2 p-2 rounded-md bg-card border shadow text-center">
@@ -716,46 +790,5 @@ export default function ChessPage() {
         </div>
       </div>
     </div>
-  );
-}
-
-// Setup Dialog Component for PvP
-interface SetupDialogProps {
-  onStart: (names: { w: string; b: string }) => void;
-}
-
-function SetupDialog({ onStart }: SetupDialogProps) {
-  const [p1Name, setP1Name] = useState('Player 1 (White)');
-  const [p2Name, setP2Name] = useState('Player 2 (Black)');
-  
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!p1Name.trim() || !p2Name.trim()) {
-      alert("Player names cannot be empty.");
-      return;
-    }
-    onStart({ w: p1Name, b: p2Name });
-  };
-  
-  return (
-    <DialogContent>
-        <DialogHeader>
-            <DialogTitle>Setup: Player vs Player</DialogTitle>
-            <DialogDescription>Enter player names to begin.</DialogDescription>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 py-4">
-            <div className="space-y-2">
-                <Label htmlFor="p1Name">Player 1 (White)</Label>
-                <Input id="p1Name" value={p1Name} onChange={(e) => setP1Name(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-                <Label htmlFor="p2Name">Player 2 (Black)</Label>
-                <Input id="p2Name" value={p2Name} onChange={(e) => setP2Name(e.target.value)} />
-            </div>
-            <DialogFooter>
-                <Button type="submit">Start Game</Button>
-            </DialogFooter>
-        </form>
-    </DialogContent>
   );
 }
