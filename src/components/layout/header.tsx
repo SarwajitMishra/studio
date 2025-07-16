@@ -9,6 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { SessionDialog } from '@/components/online/SessionDialog';
+import DateTimeWidget from './DateTimeWidget';
 
 
 export default function Header() {
@@ -35,6 +36,9 @@ export default function Header() {
             <Navigation side="left" />
           </div>
           <div className="flex items-center gap-2 md:gap-4">
+             <div className="hidden md:block">
+                <DateTimeWidget />
+             </div>
             <div className="flex items-center space-x-2 min-w-[95px]">
                 {isMounted ? (
                   <>

@@ -8,6 +8,7 @@ import FloatingChatButton from './floating-chat-button';
 import FloatingActionButtons from './floating-action-buttons';
 import Link from 'next/link';
 import { Separator } from '../ui/separator';
+import VisitorCountWidget from './VisitorCountWidget';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -85,6 +86,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
         <>
           <FloatingActionButtons />
           <FloatingChatButton />
+          <VisitorCountWidget />
         </>
       )}
     </div>
