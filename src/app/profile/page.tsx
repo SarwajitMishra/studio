@@ -148,7 +148,6 @@ export default function ProfilePage() {
         gameName: gameDef?.title || gameDef?.name || 'a game'
     };
   }, [gameStats]);
-  const blogsWritten = 0; // Placeholder
 
   useEffect(() => {
     window.addEventListener('storageUpdated', updateLocalData);

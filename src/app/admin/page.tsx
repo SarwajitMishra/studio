@@ -2,13 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, FileText, BarChart3, Loader2 } from "lucide-react";
+import { Users, BarChart3, Loader2 } from "lucide-react";
 import { getAllUsers } from '@/lib/users';
 import { GAMES } from '@/lib/constants';
 
 interface Stats {
   userCount: number;
-  blogCount: number; // Will remain a placeholder for now
   gameCount: number;
 }
 
@@ -20,13 +19,10 @@ export default function AdminDashboardPage() {
     async function fetchStats() {
       try {
         const userList = await getAllUsers();
-        // Blog fetching logic would go here once implemented
-        const blogCount = 57; // Placeholder
         const gameCount = GAMES.filter(g => !g.disabled).length;
 
         setStats({
           userCount: userList.length,
-          blogCount,
           gameCount,
         });
       } catch (error) {
@@ -65,15 +61,6 @@ export default function AdminDashboardPage() {
           </CardHeader>
           <CardContent>
             {renderCardContent(stats?.userCount, 'Registered users')}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Blog Posts</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {renderCardContent(stats?.blogCount, '(Placeholder)')}
           </CardContent>
         </Card>
         <Card>

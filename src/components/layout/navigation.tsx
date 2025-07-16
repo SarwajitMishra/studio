@@ -142,21 +142,6 @@ export default function Navigation({ side }: NavigationProps) {
                 </TooltipTrigger>
                 <TooltipContent><p>Shop</p></TooltipContent>
             </Tooltip>
-            
-            <Tooltip>
-                <TooltipTrigger asChild>
-                    <Link href="/blogs" aria-label="Go to Blogs">
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className={cn(commonButtonClasses, pathname === '/blogs' && "bg-accent text-accent-foreground hover:bg-accent/90")}
-                    >
-                        <BookOpen size={24} />
-                    </Button>
-                    </Link>
-                </TooltipTrigger>
-                <TooltipContent><p>Blogs</p></TooltipContent>
-            </Tooltip>
        </nav>
       </TooltipProvider>
     )
