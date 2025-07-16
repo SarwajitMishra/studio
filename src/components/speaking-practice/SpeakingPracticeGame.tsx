@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Mic, MicOff, Square, Bot, User, Brain, AlertTriangle, Loader2, ArrowLeft, Award, Star } from 'lucide-react';
+import { Mic, MicOff, Square, Bot, User, Brain, AlertTriangle, Loader2, ArrowLeft, Award, Star, Ear } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { englishSpeakingTutor, type EnglishSpeakingInput, type EnglishSpeakingOutput } from '@/ai/flows/english-speaking-flow';
 import { useToast } from '@/hooks/use-toast';
