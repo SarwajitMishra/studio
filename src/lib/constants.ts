@@ -28,21 +28,12 @@ export interface Game {
 export const GAMES: Game[] = [
   {
     id: 'chess',
-    title: 'Chess (PvP)',
+    title: 'Chess',
     category: 'Strategy',
-    Icon: Users,
-    description: 'Classic strategy board game. Challenge a friend on the same device!',
+    Icon: Cpu, // Using Cpu icon to signify AI is available
+    description: 'Play classic chess against a friend locally or challenge our AI opponent.',
     href: '/chess',
     color: 'text-sky-600',
-  },
-   {
-    id: 'chess-ai',
-    title: 'Chess vs AI',
-    category: 'Strategy',
-    Icon: Cpu,
-    description: 'Test your skills against our smart AI opponent. Can you beat Shravya AI?',
-    href: '/chess-ai',
-    color: 'text-sky-400',
   },
   {
     id: 'dots-and-boxes',

@@ -6,13 +6,16 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from 'next/navigation';
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { Crown, AlertTriangle, Timer, ListChecks, ArrowLeft, Brain, Gamepad2, Users, Edit } from "lucide-react";
+import { Crown, AlertTriangle, Timer, ListChecks, ArrowLeft, Brain, Gamepad2, Users, Edit, Cpu, Award, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { S_POINTS_ICON as SPointsIcon, S_COINS_ICON as SCoinsIcon } from '@/lib/constants';
+import { applyRewards, calculateRewards } from "@/lib/rewards";
+import { updateGameStats } from "@/lib/progress";
 
 
 interface Piece {
@@ -25,8 +28,14 @@ interface SquarePosition {
   col: number;
 }
 
+interface Move {
+    from: SquarePosition;
+    to: SquarePosition;
+}
+
 type PlayerColor = "w" | "b";
 type GameState = 'setup' | 'playing' | 'gameOver';
+type GameMode = 'pvp' | 'ai' | null;
 
 const PIECE_UNICODE: Record<PlayerColor, Record<Piece["type"], string>> = {
   w: { K: "♔", Q: "♕", R: "♖", B: "♗", N: "♘", P: "♙" },
@@ -135,7 +144,7 @@ const ChessSquare = ({
           )}
           style={{ textShadow: piece.color === 'w' ? '0 0 3px black, 0 0 5px black' : '0 0 3px white, 0 0 5px white' }}
         >
-          {PIECE_UNICODE[piece.color][p.type]}
+          {PIECE_UNICODE[piece.color][piece.type]}
         </span>
       )}
       {isPossibleMove && !piece && (
@@ -147,6 +156,7 @@ const ChessSquare = ({
 
 export default function ChessPage() {
   const [gameState, setGameState] = useState<GameState>('setup');
+  const [gameMode, setGameMode] = useState<GameMode>(null);
   const [playerNames, setPlayerNames] = useState({ w: 'White', b: 'Black' });
   const [isSetupDialogOpen, setIsSetupDialogOpen] = useState(false);
   const router = useRouter();
@@ -167,6 +177,9 @@ export default function ChessPage() {
   const [moveHistory, setMoveHistory] = useState<string[]>([]);
   const [capturedPieces, setCapturedPieces] = useState<{w: Piece[], b: Piece[]}>({w: [], b: []});
   const [playerTimers, setPlayerTimers] = useState({w: 600, b: 600});
+  
+  const [isCalculatingReward, setIsCalculatingReward] = useState(false);
+  const [lastReward, setLastReward] = useState<{points: number, coins: number} | null>(null);
 
   const { toast } = useToast();
   
@@ -174,7 +187,30 @@ export default function ChessPage() {
     setGameState('gameOver');
     setWinner(winnerColor);
     setGameStatusMessage(reason);
-  }, []);
+    
+    if (gameMode === 'ai') {
+        setIsCalculatingReward(true);
+        const didWin = winnerColor === 'w'; 
+        updateGameStats({ gameId: 'chess', didWin });
+
+        try {
+            const rewards = await calculateRewards({
+                gameId: 'chess',
+                difficulty: winnerColor === 'w' ? 'hard' : (winnerColor === 'b' ? 'easy' : 'medium'),
+                performanceMetrics: { result: winnerColor === 'w' ? 'win' : (winnerColor === 'draw' ? 'draw' : 'loss') }
+            });
+
+            const earned = applyRewards(rewards.sPoints, rewards.sCoins, `Chess Game vs AI: ${reason}`);
+            setLastReward(earned);
+
+        } catch(e) {
+            console.error("Error calculating rewards:", e);
+            toast({ variant: 'destructive', title: 'Reward Error', description: 'Could not calculate rewards.' });
+        } finally {
+            setIsCalculatingReward(false);
+        }
+    }
+  }, [gameMode, toast]);
 
 
   useEffect(() => {
@@ -362,123 +398,172 @@ export default function ChessPage() {
     currentBoard: (Piece | null)[][],
     playerColor: PlayerColor,
     currentKingPositions: Record<PlayerColor, SquarePosition>
-  ) => {
-    for (let r = 0; r < 8; r++) {
-      for (let c = 0; c < 8; c++) {
-        const piece = getPieceAt(currentBoard, r, c);
+  ): Move[] => {
+    const allMoves: Move[] = [];
+    for (let r_idx = 0; r_idx < 8; r_idx++) {
+      for (let c_idx = 0; c_idx < 8; c_idx++) {
+        const piece = getPieceAt(currentBoard, r_idx, c_idx);
         if (piece && piece.color === playerColor) {
-          const legalMoves = calculateLegalMoves(currentBoard, piece, r, c, currentKingPositions);
-          if (legalMoves.length > 0) return true;
+          const legalMoves = calculateLegalMoves(currentBoard, piece, r_idx, c_idx, currentKingPositions);
+          for(const move of legalMoves) {
+              allMoves.push({ from: {row: r_idx, col: c_idx}, to: move });
+          }
         }
       }
     }
-    return false;
+    return allMoves;
   }, [calculateLegalMoves, getPieceAt]);
+  
+  const performMove = useCallback((from: SquarePosition, to: SquarePosition) => {
+    const pieceToMove = getPieceAt(board, from.row, from.col);
+    if (!pieceToMove) return;
 
+    const newBoard = board.map(r_arr => r_arr.map(p => p ? { ...p } : null));
+    let nextEnPassantTarget: SquarePosition | null = null;
+    const newCastlingRights = JSON.parse(JSON.stringify(castlingRights));
+    
+    const opponentColor = currentPlayer === 'w' ? 'b' : 'w';
+    const capturedPiece = getPieceAt(newBoard, to.row, to.col);
+    if (capturedPiece) {
+      setCapturedPieces(prev => ({...prev, [currentPlayer]: [...prev[currentPlayer], capturedPiece]}));
+    }
 
+    let moveNotation = '';
+    if (pieceToMove.type === 'K' && Math.abs(from.col - to.col) === 2) {
+        moveNotation = (to.col > from.col) ? '0-0' : '0-0-0'; // Castle
+        if (to.col > from.col) { const rook = newBoard[to.row][7]; newBoard[to.row][5] = rook; newBoard[to.row][7] = null; } 
+        else { const rook = newBoard[to.row][0]; newBoard[to.row][3] = rook; newBoard[to.row][0] = null; }
+    } else {
+        const isCapture = !!capturedPiece;
+        moveNotation = `${PIECE_UNICODE[pieceToMove.color][pieceToMove.type]} ${getAlgebraicNotation(from)} ${isCapture ? 'x' : '→'} ${getAlgebraicNotation(to)}`;
+    }
+    
+    if (pieceToMove.type === 'P' && enPassantTarget && to.row === enPassantTarget.row && to.col === enPassantTarget.col) {
+        newBoard[from.row][to.col] = null;
+        const capturedPawn: Piece = { type: 'P', color: opponentColor };
+        setCapturedPieces(prev => ({ ...prev, [currentPlayer]: [...prev[currentPlayer], capturedPawn]}));
+    }
+
+    newBoard[to.row][to.col] = pieceToMove;
+    newBoard[from.row][from.col] = null;
+    
+    if (pieceToMove.type === 'P' && Math.abs(from.row - to.row) === 2) {
+        nextEnPassantTarget = { row: (from.row + to.row) / 2, col: to.col };
+    }
+    
+    if (pieceToMove.type === 'K') { newCastlingRights[currentPlayer].K = false; newCastlingRights[currentPlayer].Q = false; }
+    if (pieceToMove.type === 'R') {
+        if (from.col === 0 && from.row === (currentPlayer === 'w' ? 7 : 0)) newCastlingRights[currentPlayer].Q = false;
+        if (from.col === 7 && from.row === (currentPlayer === 'w' ? 7 : 0)) newCastlingRights[currentPlayer].K = false;
+    }
+    if (capturedPiece?.type === 'R') {
+        if (to.row === (opponentColor === 'w' ? 7 : 0)) {
+            if (to.col === 0) newCastlingRights[opponentColor].Q = false;
+            if (to.col === 7) newCastlingRights[opponentColor].K = false;
+        }
+    }
+    
+    const isPromotion = pieceToMove.type === 'P' && ((pieceToMove.color === 'w' && to.row === 0) || (pieceToMove.color === 'b' && to.row === 7));
+    if (isPromotion) {
+        setBoard(newBoard);
+        setPromotionSquare(to);
+        setEnPassantTarget(nextEnPassantTarget);
+        setCastlingRights(newCastlingRights);
+        setPossibleMoves([]);
+        setGameStatusMessage(`Pawn promotion! Select a piece.`);
+        setMoveHistory(prev => [...prev, moveNotation]);
+        return; 
+    }
+    
+    setBoard(newBoard);
+    setEnPassantTarget(nextEnPassantTarget);
+    setCastlingRights(newCastlingRights);
+
+    const newKingPositions = { ...kingPositions };
+    if (pieceToMove.type === 'K') {
+      newKingPositions[pieceToMove.color] = to;
+    }
+    setKingPositions(newKingPositions);
+
+    const opponentKingPos = newKingPositions[opponentColor];
+    const isOpponentInCheck = opponentKingPos.row !== -1 && isSquareAttacked(newBoard, opponentKingPos.row, opponentKingPos.col, currentPlayer);
+    
+    setKingUnderAttack(isOpponentInCheck ? opponentColor : null);
+    const opponentHasLegalMoves = getAllLegalMovesForPlayer(newBoard, opponentColor, newKingPositions).length > 0;
+    
+    let finalMoveNotation = moveNotation;
+
+    if (isOpponentInCheck && !opponentHasLegalMoves) {
+      finalMoveNotation += '#'; // Checkmate
+      handleGameEnd(currentPlayer, `Checkmate! ${playerNames[currentPlayer]} wins!`);
+    } else if (!isOpponentInCheck && !opponentHasLegalMoves) {
+      handleGameEnd('draw', "Stalemate! It's a draw.");
+    } else {
+      if (isOpponentInCheck) finalMoveNotation += '+'; // Check
+      setCurrentPlayer(opponentColor);
+      setGameStatusMessage(`${isOpponentInCheck ? "Check! " : ""}${playerNames[opponentColor]}'s turn.`);
+    }
+    setMoveHistory(prev => [...prev, finalMoveNotation]);
+    setSelectedPiece(null);
+    setPossibleMoves([]);
+  }, [board, castlingRights, currentPlayer, enPassantTarget, getAllLegalMovesForPlayer, getPieceAt, handleGameEnd, isSquareAttacked, kingPositions, playerNames]);
+
+  const makeAIMove = useCallback(() => {
+    const aiColor = 'b';
+    if(currentPlayer !== aiColor || gameState !== 'playing' || !gameMode) return;
+    
+    const allMoves = getAllLegalMovesForPlayer(board, aiColor, kingPositions);
+    if(allMoves.length === 0) return;
+
+    // 1. Prioritize checkmating moves
+    for(const move of allMoves) {
+        const tempBoard = board.map(r => [...r]);
+        const piece = tempBoard[move.from.row][move.from.col];
+        tempBoard[move.to.row][move.to.col] = piece;
+        tempBoard[move.from.row][move.from.col] = null;
+        
+        const tempKingPositions = {...kingPositions};
+        if(piece?.type === 'K') tempKingPositions[aiColor] = move.to;
+
+        const opponentColor = aiColor === 'w' ? 'b' : 'w';
+        if(getAllLegalMovesForPlayer(tempBoard, opponentColor, tempKingPositions).length === 0 && isSquareAttacked(tempBoard, kingPositions[opponentColor].row, kingPositions[opponentColor].col, aiColor)) {
+            performMove(move.from, move.to);
+            return;
+        }
+    }
+
+    // 2. Prioritize captures
+    const captureMoves = allMoves.filter(move => getPieceAt(board, move.to.row, move.to.col) !== null);
+    if(captureMoves.length > 0) {
+        const randomCapture = captureMoves[Math.floor(Math.random() * captureMoves.length)];
+        performMove(randomCapture.from, randomCapture.to);
+        return;
+    }
+
+    // 3. Simple random move
+    const randomMove = allMoves[Math.floor(Math.random() * allMoves.length)];
+    performMove(randomMove.from, randomMove.to);
+
+  }, [board, currentPlayer, gameState, getAllLegalMovesForPlayer, kingPositions, getPieceAt, isSquareAttacked, performMove, gameMode]);
+
+  useEffect(() => {
+    if(gameMode === 'ai' && currentPlayer === 'b' && gameState === 'playing' && winner === null) {
+      const aiMoveTimeout = setTimeout(makeAIMove, 1000);
+      return () => clearTimeout(aiMoveTimeout);
+    }
+  }, [gameMode, currentPlayer, gameState, winner, makeAIMove]);
+  
   const handleSquareClick = (row: number, col: number) => {
     if (promotionSquare || gameState !== 'playing' || winner) return;
+    if (gameMode === 'ai' && currentPlayer === 'b') return; // Prevent human from moving AI pieces
 
     const clickedSquarePiece = getPieceAt(board, row, col);
 
     if (selectedPiece) {
       const { row: fromRow, col: fromCol } = selectedPiece;
-      const pieceToMove = getPieceAt(board, fromRow, fromCol);
-      if (!pieceToMove) {
-        setSelectedPiece(null); setPossibleMoves([]); return;
-      }
-      
       const isMovePossible = possibleMoves.some(m => m.row === row && m.col === col);
       if (isMovePossible) {
-        const newBoard = board.map(r_arr => r_arr.map(p => p ? { ...p } : null));
-        let nextEnPassantTarget: SquarePosition | null = null;
-        const newCastlingRights = JSON.parse(JSON.stringify(castlingRights));
-        
-        const opponentColor = currentPlayer === 'w' ? 'b' : 'w';
-        const capturedPiece = getPieceAt(newBoard, row, col);
-        if (capturedPiece) {
-          setCapturedPieces(prev => ({...prev, [currentPlayer]: [...prev[currentPlayer], capturedPiece]}));
-        }
-
-        let moveNotation = '';
-        if (pieceToMove.type === 'K' && Math.abs(fromCol - col) === 2) {
-            moveNotation = (col > fromCol) ? '0-0' : '0-0-0'; // Castle
-            if (col > fromCol) { const rook = newBoard[row][7]; newBoard[row][5] = rook; newBoard[row][7] = null; } 
-            else { const rook = newBoard[row][0]; newBoard[row][3] = rook; newBoard[row][0] = null; }
-        } else {
-            const isCapture = !!capturedPiece;
-            moveNotation = `${PIECE_UNICODE[pieceToMove.color][pieceToMove.type]} ${getAlgebraicNotation({row: fromRow, col: fromCol})} ${isCapture ? 'x' : '→'} ${getAlgebraicNotation({row, col})}`;
-        }
-        
-        if (pieceToMove.type === 'P' && enPassantTarget && row === enPassantTarget.row && col === enPassantTarget.col) {
-            newBoard[fromRow][col] = null;
-            const capturedPawn: Piece = { type: 'P', color: opponentColor };
-            setCapturedPieces(prev => ({ ...prev, [currentPlayer]: [...prev[currentPlayer], capturedPawn]}));
-        }
-
-        newBoard[row][col] = pieceToMove;
-        newBoard[fromRow][fromCol] = null;
-        
-        if (pieceToMove.type === 'P' && Math.abs(fromRow - row) === 2) {
-            nextEnPassantTarget = { row: (fromRow + row) / 2, col: col };
-        }
-        
-        if (pieceToMove.type === 'K') { newCastlingRights[currentPlayer].K = false; newCastlingRights[currentPlayer].Q = false; }
-        if (pieceToMove.type === 'R') {
-            if (fromCol === 0 && fromRow === (currentPlayer === 'w' ? 7 : 0)) newCastlingRights[currentPlayer].Q = false;
-            if (fromCol === 7 && fromRow === (currentPlayer === 'w' ? 7 : 0)) newCastlingRights[currentPlayer].K = false;
-        }
-        if (capturedPiece?.type === 'R') {
-            if (row === (opponentColor === 'w' ? 7 : 0)) {
-                if (col === 0) newCastlingRights[opponentColor].Q = false;
-                if (col === 7) newCastlingRights[opponentColor].K = false;
-            }
-        }
-        
-        const isPromotion = pieceToMove.type === 'P' && ((pieceToMove.color === 'w' && row === 0) || (pieceToMove.color === 'b' && row === 7));
-        if (isPromotion) {
-            setBoard(newBoard);
-            setPromotionSquare({ row, col });
-            setEnPassantTarget(nextEnPassantTarget);
-            setCastlingRights(newCastlingRights);
-            setPossibleMoves([]);
-            setGameStatusMessage(`Pawn promotion! Select a piece.`);
-            setMoveHistory(prev => [...prev, moveNotation]);
-            return; 
-        }
-        
-        setBoard(newBoard);
-        setEnPassantTarget(nextEnPassantTarget);
-        setCastlingRights(newCastlingRights);
-
-        const newKingPositions = { ...kingPositions };
-        if (pieceToMove.type === 'K') {
-          newKingPositions[pieceToMove.color] = { row, col };
-        }
-        setKingPositions(newKingPositions);
-
-        const opponentKingPos = newKingPositions[opponentColor];
-        const isOpponentInCheck = opponentKingPos.row !== -1 && isSquareAttacked(newBoard, opponentKingPos.row, opponentKingPos.col, currentPlayer);
-        
-        setKingUnderAttack(isOpponentInCheck ? opponentColor : null);
-        const opponentHasLegalMoves = getAllLegalMovesForPlayer(newBoard, opponentColor, newKingPositions);
-        
-        let finalMoveNotation = moveNotation;
-
-        if (isOpponentInCheck && !opponentHasLegalMoves) {
-          finalMoveNotation += '#'; // Checkmate
-          handleGameEnd(currentPlayer, `Checkmate! ${currentPlayer === 'w' ? playerNames.w : playerNames.b} wins!`);
-        } else if (!isOpponentInCheck && !opponentHasLegalMoves) {
-          handleGameEnd('draw', "Stalemate! It's a draw.");
-        } else {
-          if (isOpponentInCheck) finalMoveNotation += '+'; // Check
-          setCurrentPlayer(opponentColor);
-          setGameStatusMessage(`${isOpponentInCheck ? "Check! " : ""}${opponentColor === 'w' ? playerNames.w : playerNames.b}'s turn.`);
-        }
-        setMoveHistory(prev => [...prev, finalMoveNotation]);
-        setSelectedPiece(null);
-        setPossibleMoves([]);
-
+        performMove(selectedPiece, {row, col});
       } else {
         if (clickedSquarePiece && clickedSquarePiece.color === currentPlayer) {
           setSelectedPiece({ row, col });
@@ -516,15 +601,15 @@ export default function ChessPage() {
     const isOpponentInCheck = opponentKingPos.row !== -1 && isSquareAttacked(finalBoard, opponentKingPos.row, opponentKingPos.col, currentPlayer);
     setKingUnderAttack(isOpponentInCheck ? opponentColor : null);
 
-    const opponentHasLegalMoves = getAllLegalMovesForPlayer(finalBoard, opponentColor, kingPositions);
+    const opponentHasLegalMoves = getAllLegalMovesForPlayer(finalBoard, opponentColor, kingPositions).length > 0;
 
     if (isOpponentInCheck && !opponentHasLegalMoves) {
-        handleGameEnd(currentPlayer, `Checkmate! ${currentPlayer === 'w' ? playerNames.w : playerNames.b} wins!`);
+        handleGameEnd(currentPlayer, `Checkmate! ${playerNames[currentPlayer]} wins!`);
     } else if (!isOpponentInCheck && !opponentHasLegalMoves) {
         handleGameEnd('draw', "Stalemate! It's a draw.");
     } else {
         setCurrentPlayer(opponentColor);
-        setGameStatusMessage(`${isOpponentInCheck ? "Check! " : ""}${opponentColor === 'w' ? playerNames.w : playerNames.b}'s turn.`);
+        setGameStatusMessage(`${isOpponentInCheck ? "Check! " : ""}${playerNames[opponentColor]}'s turn.`);
     }
 
     setPromotionSquare(null);
@@ -532,7 +617,11 @@ export default function ChessPage() {
     setPossibleMoves([]);
   };
 
-  const resetGame = () => {
+  const resetGame = (newMode?: GameMode) => {
+    const modeToUse = newMode || gameMode;
+    if (gameState === 'playing' && gameMode === 'ai') {
+        updateGameStats({ gameId: 'chess', didWin: false });
+    }
     const newInitialSetup = initialBoardSetup();
     setBoard(newInitialSetup.board);
     setKingPositions(newInitialSetup.kings);
@@ -548,8 +637,10 @@ export default function ChessPage() {
     setMoveHistory([]);
     setCapturedPieces({ w: [], b: [] });
     setPlayerTimers({ w: 600, b: 600 });
+    setLastReward(null);
     toast({ title: "Game Reset", description: "The board has been reset." });
     setGameState('playing');
+    if (newMode) setGameMode(newMode);
   };
   
   const movePairs = [];
@@ -557,11 +648,12 @@ export default function ChessPage() {
     movePairs.push(moveHistory.slice(i, i + 2));
   }
   
-  const startGame = (names: { w: string, b: string }) => {
+  const startGame = (mode: GameMode, names: { w: string, b: string }) => {
     setPlayerNames(names);
+    setGameMode(mode);
     setGameState('playing');
     setGameStatusMessage(`${names.w}'s turn to move.`);
-    resetGame();
+    resetGame(mode);
   }
 
   if (gameState === 'setup') {
@@ -569,16 +661,19 @@ export default function ChessPage() {
         <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
             <Card className="w-full max-w-md text-center shadow-xl">
                 <CardHeader>
-                    <CardTitle className="text-3xl font-bold">Chess (Player vs Player)</CardTitle>
-                    <CardDescription>Challenge a friend on the same device.</CardDescription>
+                    <CardTitle className="text-3xl font-bold">Chess</CardTitle>
+                    <CardDescription>Select a game mode.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <Dialog open={isSetupDialogOpen} onOpenChange={setIsSetupDialogOpen}>
                         <DialogTrigger asChild>
-                            <Button className="w-full text-lg py-6"><Users className="mr-2"/> Start Game</Button>
+                            <Button className="w-full text-lg py-6"><Users className="mr-2"/> Player vs Player</Button>
                         </DialogTrigger>
-                        <SetupDialog onStart={startGame} />
+                        <SetupDialog onStart={(names) => startGame('pvp', names)} />
                     </Dialog>
+                     <Button className="w-full text-lg py-6" onClick={() => startGame('ai', {w: 'You', b: 'Shravya AI'})}>
+                        <Cpu className="mr-2"/> Player vs AI
+                    </Button>
                 </CardContent>
                  <CardFooter>
                     <Button asChild variant="ghost" className="w-full">
@@ -596,15 +691,36 @@ export default function ChessPage() {
         <AlertDialogContent>
             <AlertDialogHeader>
             <AlertDialogTitle className="text-2xl text-primary flex items-center justify-center gap-2">
-                {winner === 'draw' ? <Gamepad2 size={28} /> : <Crown size={28} />} {gameStatusMessage}
+                {winner === 'draw' ? <Gamepad2 size={28} /> : <Award size={28} />} {gameStatusMessage}
             </AlertDialogTitle>
             </AlertDialogHeader>
             <div className="py-4 text-center">
-                 <p className="text-lg">Well played!</p>
+                 {gameMode === 'ai' ? (
+                    (isCalculatingReward) ? (
+                        <div className="flex flex-col items-center justify-center gap-2 pt-4">
+                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                            <p className="text-sm text-muted-foreground">Calculating your rewards...</p>
+                        </div>
+                    ) : (lastReward) ? (
+                        <div className="flex flex-col items-center gap-3 text-center">
+                             <AlertDialogDescription className="text-center text-base pt-2">
+                                Congratulations on finishing the game!
+                            </AlertDialogDescription>
+                            <div className="flex items-center gap-6 mt-2">
+                                <span className="flex items-center font-bold text-2xl">
+                                    +{lastReward.points} <SPointsIcon className="ml-2 h-7 w-7 text-yellow-400" />
+                                </span>
+                                <span className="flex items-center font-bold text-2xl">
+                                    +{lastReward.coins} <SCoinsIcon className="ml-2 h-7 w-7 text-amber-500" />
+                                </span>
+                            </div>
+                        </div>
+                    ) : <p className="text-lg">Well played!</p>
+                ) : <p className="text-lg">Well played!</p>}
             </div>
             <AlertDialogFooter>
-             <Button onClick={resetGame}>Play Again</Button>
-             <Button onClick={() => setGameState('setup')} variant="outline">Back to Menu</Button>
+             <Button onClick={() => resetGame()} disabled={isCalculatingReward}>Play Again</Button>
+             <Button onClick={() => setGameState('setup')} variant="outline" disabled={isCalculatingReward}>Back to Menu</Button>
             </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -624,7 +740,7 @@ export default function ChessPage() {
                   const isPossMove = possibleMoves.some(m => m.row === rowIndex && m.col === colIndex);
                   const isKingSquareInCheck = piece?.type === 'K' && piece.color === kingUnderAttack;
                   return (
-                    <ChessSquare key={`${rowIndex}-${colIndex}`} piece={piece} isLight={isLight} onClick={() => handleSquareClick(rowIndex, colIndex)} isSelected={isSel} isPossibleMove={isPossMove} isInCheck={isKingSquareInCheck} isDisabled={!!promotionSquare || gameState !== 'playing'} />
+                    <ChessSquare key={`${rowIndex}-${colIndex}`} piece={piece} isLight={isLight} onClick={() => handleSquareClick(rowIndex, colIndex)} isSelected={isSel} isPossibleMove={isPossMove} isInCheck={isKingSquareInCheck} isDisabled={!!promotionSquare || gameState !== 'playing' || (gameMode === 'ai' && currentPlayer === 'b')} />
                   );
                 })
               )}
@@ -664,7 +780,7 @@ export default function ChessPage() {
                       {gameStatusMessage}
                     </span>
                 </div>
-                 <Button onClick={resetGame} className="w-full bg-accent text-accent-foreground rounded-md shadow-md hover:bg-accent/90 transition-colors text-lg">
+                 <Button onClick={() => resetGame()} className="w-full bg-accent text-accent-foreground rounded-md shadow-md hover:bg-accent/90 transition-colors text-lg">
                     Reset Game
                 </Button>
             </CardContent>
@@ -719,7 +835,7 @@ export default function ChessPage() {
   );
 }
 
-// Setup Dialog Component for PvP
+// Setup Dialog Component Component
 interface SetupDialogProps {
   onStart: (names: { w: string; b: string }) => void;
 }
