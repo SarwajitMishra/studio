@@ -15,11 +15,8 @@ interface MainLayoutProps {
 
 export default function MainLayout({ children }: MainLayoutProps) {
   const [isMounted, setIsMounted] = useState(false);
-  // Use a ref to hold the WakeLockSentinel object.
-  // Using useRef avoids re-renders when the sentinel is set or released.
   const wakeLockSentinel = useRef<WakeLockSentinel | null>(null);
 
-  // Function to request the screen wake lock
   const requestWakeLock = async () => {
     if ('wakeLock' in navigator) {
       try {
@@ -29,7 +26,12 @@ export default function MainLayout({ children }: MainLayoutProps) {
         });
         console.log('Screen Wake Lock is active.');
       } catch (err: any) {
-        console.error(`${err.name}, ${err.message}`);
+        // Gracefully handle the NotAllowedError which is common in iframes/sandboxed environments
+        if (err.name === 'NotAllowedError') {
+          console.log('Screen Wake Lock request failed. This is expected in some secure contexts (like iframes) and can be safely ignored.');
+        } else {
+          console.error(`An unexpected error occurred with the Screen Wake Lock API: ${err.name}, ${err.message}`);
+        }
       }
     } else {
       console.warn('Screen Wake Lock API not supported on this browser.');
@@ -39,10 +41,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
   useEffect(() => {
     setIsMounted(true);
     
-    // Request the lock when the component mounts
     requestWakeLock();
 
-    // Re-request the lock when the page becomes visible again
     const handleVisibilityChange = () => {
       if (wakeLockSentinel.current === null && document.visibilityState === 'visible') {
         requestWakeLock();
@@ -51,7 +51,6 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // Clean up the event listener when the component unmounts
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (wakeLockSentinel.current) {
