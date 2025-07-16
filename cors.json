@@ -1,8 +1,9 @@
+
 [
   {
     "origin": [
       "https://your-production-domain.com",
-      "https://6000-firebase-studio-1747466888186.cluster-htdgsbmflbdmov5xrjithceibm.cloudworkstations.dev"
+      "https://your-new-cloud-workstation-url.cloudworkstations.dev"
     ],
     "method": [
       "GET",

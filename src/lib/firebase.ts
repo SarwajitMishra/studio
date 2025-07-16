@@ -30,8 +30,8 @@ const firebaseConfigValues = {
 };
 
 // Add a diagnostic check to the console
-if (typeof window !== 'undefined' && (!firebaseConfigValues.apiKey || !firebaseConfigValues.projectId)) {
-    console.warn("Firebase config is missing or incomplete. Please check your .env.local file and ensure NEXT_PUBLIC_FIREBASE_* variables are set correctly.");
+if (typeof window !== 'undefined' && (!firebaseConfigValues.apiKey || !firebaseConfigValues.projectId || firebaseConfigValues.apiKey.includes('your-new-'))) {
+    console.warn("Firebase config is missing, incomplete, or still using placeholder values. Please update your .env file with the configuration from your new Firebase project.");
 }
 
 
