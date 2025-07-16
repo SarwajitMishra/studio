@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Card, CardHeader } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Mic, MicOff, Square, Bot, User, AlertTriangle, Loader2, Award, Star, ArrowLeft } from 'lucide-react';
