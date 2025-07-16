@@ -9,7 +9,7 @@ import {
     Grid3x3, Route, Blocks, KeyRound, LayoutGrid, XCircle, Dice6, Users, FileText,
     Trophy, Award, Compass, BrainCircuit, Shield, Palette, Volume2, PenSquare, 
     CalendarDays, Lightbulb, Ticket, Wand, Eye, FunctionSquare, Rocket, Globe,
-    Spade, Flag, Dna, Bell, Info, Cpu
+    Spade, Flag, Dna, Bell, Info, Cpu, Ear
 } from 'lucide-react';
 
 export type GameCategory = 'Strategy' | 'Puzzles' | 'Learning';
@@ -109,6 +109,15 @@ export const GAMES: Game[] = [
     description: 'Learn basic English words and improve typing skills!',
     href: '/puzzles/easy-english',
     color: 'text-indigo-500',
+  },
+  {
+    id: 'english-speaking',
+    title: 'English Speaking',
+    category: 'Learning',
+    Icon: Ear,
+    description: 'Practice speaking English with a friendly AI conversational partner.',
+    href: '/speaking-practice',
+    color: 'text-cyan-500',
   },
 ];
 

@@ -112,7 +112,7 @@ export const updateGameStats = (payload: UpdateStatsPayload) => {
         }
         stats[statIndex] = statToUpdate;
     } else {
-        // This case should be handled by getGameStats, but as a fallback:
+        // This case handles newly added games that aren't in localStorage yet
         stats.push({
             gameId: payload.gameId,
             gamesPlayed: 1,
