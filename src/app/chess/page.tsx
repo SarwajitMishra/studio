@@ -1,6 +1,7 @@
 
 "use client";
 
+import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from 'next/navigation';
@@ -193,7 +194,7 @@ export default function ChessPage() {
     setWinner(winnerColor);
     setGameStatusMessage(reason);
     
-    if (gameMode === 'ai') {
+    if (gameMode === 'ai' && winnerColor !== null) {
         const didWin = winnerColor === humanPlayerColor; 
         updateGameStats({ gameId: 'chess', didWin });
         
@@ -866,6 +867,7 @@ export default function ChessPage() {
 
 // Setup Dialog Component for PvP
 function SetupDialogPVP({ onStart }: { onStart: (names: { w: string; b: string }) => void; }) {
+  const { toast } = useToast();
   const [p1Name, setP1Name] = useState('Player 1 (White)');
   const [p2Name, setP2Name] = useState('Player 2 (Black)');
   
