@@ -27,7 +27,7 @@ export default function AdminUsersPage() {
         setUsers(userList);
       } catch (error) {
         console.error("Failed to fetch users (check Firestore rules):", error);
-        setError("Failed to fetch users. This is likely a Firestore security rule issue. Please ensure admins have 'read' and 'list' access to the 'users' collection in your Firestore rules.");
+        setError("Failed to fetch users. This is likely a Firestore security rule issue. Please ensure admins have 'list' access to the 'users' collection in your firestore.rules file.");
       } finally {
         setLoading(false);
       }
@@ -50,7 +50,7 @@ export default function AdminUsersPage() {
         <div className="text-center py-8 text-destructive bg-destructive/10 rounded-lg">
            <AlertTriangle className="mx-auto h-8 w-8 mb-2" />
            <p className="font-semibold">Error Loading Users</p>
-           <p className="text-sm mt-1">{error}</p>
+           <p className="text-sm mt-1 px-4">{error}</p>
         </div>
       );
     }

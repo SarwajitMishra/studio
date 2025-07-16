@@ -2,52 +2,62 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    function isAdmin() {
-      // Allow user to read their OWN role document. This breaks the recursive loop.
-      return get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.isAdmin == true;
+    // Default deny all
+    match /{document=**} {
+      allow read, write: if false;
     }
 
-    match /users/{userId} {
-      // Admins can see all user profiles
-      allow list, get: if isAdmin();
-      // Users can only see/edit their own profile
-      allow get, update: if request.auth.uid == userId;
-    }
-
-    match /usernames/{username} {
-      // Only authenticated users can check for usernames (to prevent anonymous spam)
-      allow get: if request.auth != null;
-      // Creation is handled by the 'createUserProfile' transaction rule
-      allow create: if false;
-    }
-
-    match /roles/{userId} {
-        // A user can read their own role to facilitate the isAdmin() check for themselves.
-        // Admins can read anyone's role.
-        allow get: if request.auth.uid == userId || isAdmin();
-    }
-
-    match /blogs/{blogId} {
-      // Anyone can read a published blog post
-      allow get, list: if resource.data.status == 'published';
-
-      // Allow any authenticated user to create a 'pending' post.
-      // This rule is now very strict to ensure data integrity.
-      allow create: if request.auth != null &&
-                       request.resource.data.authorId == request.auth.uid &&
-                       request.resource.data.status == 'pending' &&
-                       request.resource.data.keys().hasAll(['title', 'content', 'slug', 'authorId', 'authorName', 'authorAvatar', 'status', 'createdAt', 'publishedAt']) &&
-                       request.resource.data.size() == 9;
-
-      // Allow admins to update/delete any post.
-      // Users cannot update/delete their own posts directly.
-      allow update, delete: if isAdmin();
+    // Allow anyone to create a document in the 'visitors' collection.
+    // This lets the visitor counter work.
+    // Deny updates or deletes to prevent tampering.
+    match /visitors/{visitorId} {
+      allow create, read: if true;
+      allow update, delete: if false;
     }
     
+    // Allow users to read and update their own profile.
+    match /users/{userId} {
+      allow read, update: if request.auth != null && request.auth.uid == userId;
+      // Allow admins to read any user profile.
+      allow get: if request.auth != null && get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.isAdmin == true;
+    }
+    
+    // Allow admins to list all users.
+    match /users/{userId} {
+        allow list: if request.auth != null && get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.isAdmin == true;
+    }
+
+    // Allow users to read their own role, but only admins can write roles.
+    match /roles/{userId} {
+      allow get: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if request.auth != null && get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.isAdmin == true;
+    }
+    
+    // Allow any authenticated user to create pending blog posts.
+    // Allow anyone to read published posts.
+    match /blogs/{blogId} {
+        allow read: if resource.data.status == 'published';
+        allow create: if request.auth != null && request.resource.data.status == 'pending';
+        // Allow author to update/delete their own drafts/pending posts
+        allow update, delete: if request.auth != null && request.auth.uid == resource.data.authorId && (resource.data.status == 'draft' || resource.data.status == 'pending');
+        // Allow admins to manage any post
+        allow get, list, update, delete: if request.auth != null && get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.isAdmin == true;
+    }
+
+    // Allow admins to read the usernames collection for validation.
+    match /usernames/{username} {
+        allow get: if request.auth != null && get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.isAdmin == true;
+        // Allow users to create their own username entry.
+        allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+    }
+    
+     // Allow admins to manage sessions, and authenticated users to interact with them.
     match /sessions/{sessionId} {
-      // Allow any authenticated user to read/write to sessions for multiplayer functionality.
-      allow read, write: if request.auth != null;
+      allow read, create, update: if request.auth != null;
+    }
+    
+    match /sessions/{sessionId}/messages/{messageId} {
+        allow read, create: if request.auth != null;
     }
   }
 }
