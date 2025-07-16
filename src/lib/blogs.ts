@@ -15,7 +15,8 @@ import {
     updateDoc,
     orderBy,
     limit,
-    getDoc
+    getDoc,
+    Timestamp,
 } from 'firebase/firestore';
 
 export interface BlogPost {
@@ -82,6 +83,17 @@ export async function createBlogPost(data: { title: string, content: string }, a
   }
 }
 
+const processPost = (doc: any): BlogPost => {
+    const data = doc.data();
+    return {
+        id: doc.id,
+        ...data,
+        createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt,
+        publishedAt: data.publishedAt?.toDate ? data.publishedAt.toDate().toISOString() : data.publishedAt,
+    } as BlogPost;
+}
+
+
 /**
  * Fetches all blog posts with 'published' status, sorted by published date.
  * @returns An array of published blog posts.
@@ -93,10 +105,10 @@ export async function getPublishedBlogs(): Promise<BlogPost[]> {
     const querySnapshot = await getDocs(q);
     
     // Map and then sort in code
-    const posts = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as BlogPost));
+    const posts = querySnapshot.docs.map(processPost);
     posts.sort((a, b) => {
-        const dateA = a.publishedAt?.seconds || 0;
-        const dateB = b.publishedAt?.seconds || 0;
+        const dateA = new Date(a.publishedAt).getTime();
+        const dateB = new Date(b.publishedAt).getTime();
         return dateB - dateA; // Sort descending
     });
 
@@ -114,10 +126,10 @@ export async function getPendingBlogs(): Promise<BlogPost[]> {
     const querySnapshot = await getDocs(q);
     
     // Map and then sort in code
-    const posts = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as BlogPost));
+    const posts = querySnapshot.docs.map(processPost);
     posts.sort((a, b) => {
-        const dateA = a.createdAt?.seconds || 0;
-        const dateB = b.createdAt?.seconds || 0;
+        const dateA = new Date(a.createdAt).getTime();
+        const dateB = new Date(b.createdAt).getTime();
         return dateB - dateA; // Sort descending
     });
 
@@ -168,5 +180,5 @@ export async function getBlogPostBySlug(slug: string): Promise<BlogPost | null> 
         return null;
     }
     const docSnap = querySnapshot.docs[0];
-    return { id: docSnap.id, ...docSnap.data() } as BlogPost;
+    return processPost(docSnap);
 }
