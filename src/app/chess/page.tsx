@@ -628,7 +628,6 @@ export default function ChessPage() {
     setSelectedPiece(null);
     setCurrentPlayer('w');
     setPossibleMoves([]);
-    setGameStatusMessage(`${playerNames.w}'s turn to move.`);
     setWinner(null);
     setKingUnderAttack(null);
     setPromotionSquare(null);
@@ -638,15 +637,15 @@ export default function ChessPage() {
     setCapturedPieces({ w: [], b: [] });
     setPlayerTimers({ w: 600, b: 600 });
     setLastReward(null);
-    toast({ title: "Game Reset", description: "The board has been reset." });
     
-    if (newMode === 'ai') {
+    if (modeToUse === 'ai') {
         setGameState('aiConfig');
-    } else if (newMode === 'pvp') {
+    } else if (modeToUse === 'pvp') {
         setIsSetupDialogOpen(true);
-    } else {
+    } else if(modeToUse){
+        setGameMode(modeToUse);
         setGameState('playing');
-        if (newMode) setGameMode(newMode);
+        setGameStatusMessage(`${playerNames.w}'s turn to move.`);
     }
   };
   
@@ -655,13 +654,32 @@ export default function ChessPage() {
     movePairs.push(moveHistory.slice(i, i + 2));
   }
   
-  const startGame = (mode: GameMode, names: { w: string, b: string }, startingPlayer: PlayerColor) => {
+  const startGame = (mode: GameMode, names: { w: string, b: string }, startingPlayer: PlayerColor, difficulty?: AIDifficulty) => {
+    const newInitialSetup = initialBoardSetup();
+    setBoard(newInitialSetup.board);
+    setKingPositions(newInitialSetup.kings);
+    setSelectedPiece(null);
+    setPossibleMoves([]);
+    setWinner(null);
+    setKingUnderAttack(null);
+    setPromotionSquare(null);
+    setCastlingRights({ w: { K: true, Q: true }, b: { K: true, Q: true }});
+    setEnPassantTarget(null);
+    setMoveHistory([]);
+    setCapturedPieces({ w: [], b: [] });
+    setPlayerTimers({ w: 600, b: 600 });
+    setLastReward(null);
+    
     setPlayerNames(names);
     setGameMode(mode);
-    setGameState('playing');
     setCurrentPlayer(startingPlayer);
     setGameStatusMessage(`${names[startingPlayer]}'s turn to move.`);
-    resetGame(mode);
+
+    if(mode === 'ai' && difficulty) {
+        setHumanPlayerColor(Object.keys(names).find(k => names[k as PlayerColor] !== 'Shravya AI') as PlayerColor);
+        setAiDifficulty(difficulty);
+    }
+    setGameState('playing');
   }
 
   if (gameState === 'setup' || gameState === 'aiConfig') {
@@ -679,11 +697,7 @@ export default function ChessPage() {
                                 <Button className="w-full text-lg py-6"><Users className="mr-2"/> Player vs Player</Button>
                             </DialogTrigger>
                             <SetupDialogPVP onStart={(names) => {
-                                setGameMode('pvp');
-                                setPlayerNames(names);
-                                setGameState('playing');
-                                setCurrentPlayer('w');
-                                setGameStatusMessage(`${names.w}'s turn.`);
+                               startGame('pvp', names, 'w');
                             }} />
                         </Dialog>
                          <Button className="w-full text-lg py-6" onClick={() => setGameState('aiConfig')}>
@@ -692,7 +706,7 @@ export default function ChessPage() {
                     </CardContent>
                      <CardFooter>
                         <Button asChild variant="ghost" className="w-full">
-                            <a href="/dashboard"><ArrowLeft className="mr-2"/> Back to Homepage</a>
+                            <Link href="/dashboard"><ArrowLeft className="mr-2"/> Back to Homepage</Link>
                         </Button>
                     </CardFooter>
                 </Card>
@@ -858,7 +872,7 @@ function SetupDialogPVP({ onStart }: { onStart: (names: { w: string; b: string }
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!p1Name.trim() || !p2Name.trim()) {
-      alert("Player names cannot be empty.");
+      toast({variant: 'destructive', title: "Player names cannot be empty."});
       return;
     }
     onStart({ w: p1Name, b: p2Name });
@@ -888,25 +902,27 @@ function SetupDialogPVP({ onStart }: { onStart: (names: { w: string; b: string }
 }
 
 // Setup Dialog for Player vs AI
-function SetupDialogAI({ onStart, onBack }: { onStart: (mode: 'ai', names: { w: string; b: string }, startingPlayer: PlayerColor) => void, onBack: () => void }) {
+function SetupDialogAI({ onStart, onBack }: { onStart: (mode: 'ai', names: { w: string; b: string }, startingPlayer: PlayerColor, difficulty: AIDifficulty) => void, onBack: () => void }) {
+    const { toast } = useToast();
     const [playerName, setPlayerName] = useState('Player');
     const [playerColor, setPlayerColor] = useState<PlayerColor>('w');
     const [difficulty, setDifficulty] = useState<AIDifficulty>('medium');
-    const [tossResult, setTossResult] = useState<string | null>(null);
-
-    const handleToss = () => {
+    const [isTossing, setIsTossing] = useState(false);
+    
+    const handleTossAndStart = () => {
+        setIsTossing(true);
         const result = Math.random() < 0.5 ? 'You win the toss!' : 'Shravya AI wins the toss!';
-        setTossResult(result);
-    };
-
-    const handleSubmit = () => {
-        if (!tossResult) {
-            alert("Please toss the coin to decide who starts!");
-            return;
-        }
-        const startingPlayer = tossResult.startsWith('You') ? playerColor : (playerColor === 'w' ? 'b' : 'w');
+        const startingPlayer = result.startsWith('You') ? playerColor : (playerColor === 'w' ? 'b' : 'w');
         const names = playerColor === 'w' ? { w: playerName, b: 'Shravya AI' } : { w: 'Shravya AI', b: playerName };
-        onStart('ai', names, startingPlayer);
+
+        toast({
+            title: "Toss Complete!",
+            description: `${result} You will play as ${playerColor === 'w' ? 'White' : 'Black'}. The game is starting!`,
+        });
+
+        setTimeout(() => {
+            onStart('ai', names, startingPlayer, difficulty);
+        }, 1200); 
     };
 
     return (
@@ -920,45 +936,39 @@ function SetupDialogAI({ onStart, onBack }: { onStart: (mode: 'ai', names: { w: 
             <CardContent className="space-y-6">
                  <div className="space-y-2">
                     <Label htmlFor="playerName">Your Name</Label>
-                    <Input id="playerName" value={playerName} onChange={(e) => setPlayerName(e.target.value)} />
+                    <Input id="playerName" value={playerName} onChange={(e) => setPlayerName(e.target.value)} disabled={isTossing}/>
                 </div>
                 <div className="space-y-2">
                     <Label>Choose Your Pieces</Label>
-                    <RadioGroup defaultValue="w" onValueChange={(v) => setPlayerColor(v as PlayerColor)} className="grid grid-cols-2 gap-4">
-                        <Label className="flex items-center space-x-2 rounded-md border p-4 cursor-pointer hover:bg-accent">
-                            <RadioGroupItem value="w" id="color-w" />
+                    <RadioGroup value={playerColor} onValueChange={(v) => setPlayerColor(v as PlayerColor)} className="grid grid-cols-2 gap-4">
+                        <Label className={cn("flex items-center space-x-2 rounded-md border p-4 cursor-pointer hover:bg-accent", playerColor === 'w' && 'bg-accent border-primary')}>
+                            <RadioGroupItem value="w" id="color-w" disabled={isTossing} />
                             <UserIcon /><span>White</span>
                         </Label>
-                        <Label className="flex items-center space-x-2 rounded-md border p-4 cursor-pointer hover:bg-accent">
-                            <RadioGroupItem value="b" id="color-b" />
+                        <Label className={cn("flex items-center space-x-2 rounded-md border p-4 cursor-pointer hover:bg-accent", playerColor === 'b' && 'bg-accent border-primary')}>
+                            <RadioGroupItem value="b" id="color-b" disabled={isTossing} />
                             <UserIcon className="text-neutral-800" /><span>Black</span>
                         </Label>
                     </RadioGroup>
                 </div>
                  <div className="space-y-2">
                     <Label>AI Difficulty</Label>
-                    <RadioGroup defaultValue="medium" onValueChange={(v) => setDifficulty(v as AIDifficulty)} className="grid grid-cols-3 gap-2">
-                        <Label className="p-2 text-center rounded-md border cursor-pointer hover:bg-accent">
-                            <RadioGroupItem value="easy" id="diff-easy" className="sr-only"/>Easy</Label>
-                        <Label className="p-2 text-center rounded-md border cursor-pointer hover:bg-accent">
-                           <RadioGroupItem value="medium" id="diff-medium" className="sr-only"/>Medium</Label>
-                        <Label className="p-2 text-center rounded-md border cursor-pointer hover:bg-accent">
-                           <RadioGroupItem value="hard" id="diff-hard" className="sr-only"/>Hard</Label>
+                    <RadioGroup value={difficulty} onValueChange={(v) => setDifficulty(v as AIDifficulty)} className="grid grid-cols-3 gap-2">
+                        <Label className={cn("p-2 text-center rounded-md border cursor-pointer hover:bg-accent", difficulty === 'easy' && 'bg-accent border-primary')}>
+                            <RadioGroupItem value="easy" id="diff-easy" className="sr-only" disabled={isTossing}/>Easy</Label>
+                        <Label className={cn("p-2 text-center rounded-md border cursor-pointer hover:bg-accent", difficulty === 'medium' && 'bg-accent border-primary')}>
+                           <RadioGroupItem value="medium" id="diff-medium" className="sr-only" disabled={isTossing}/>Medium</Label>
+                        <Label className={cn("p-2 text-center rounded-md border cursor-pointer hover:bg-accent", difficulty === 'hard' && 'bg-accent border-primary')}>
+                           <RadioGroupItem value="hard" id="diff-hard" className="sr-only" disabled={isTossing}/>Hard</Label>
                     </RadioGroup>
-                </div>
-
-                <div className="text-center space-y-3 pt-4 border-t">
-                    <Button type="button" onClick={handleToss} variant="outline">
-                        <Coins className="mr-2"/> Toss to Start
-                    </Button>
-                    {tossResult && (
-                        <p className="font-semibold text-lg text-primary animate-pulse">{tossResult} You will play as {playerColor === 'w' ? 'White' : 'Black'}.</p>
-                    )}
                 </div>
             </CardContent>
             <CardFooter className="flex justify-between">
-                <Button variant="ghost" onClick={onBack}><ArrowLeft className="mr-2"/>Back</Button>
-                <Button onClick={handleSubmit} disabled={!tossResult}>Start Game</Button>
+                <Button variant="ghost" onClick={onBack} disabled={isTossing}><ArrowLeft className="mr-2"/>Back</Button>
+                <Button onClick={handleTossAndStart} disabled={isTossing}>
+                    {isTossing ? <Loader2 className="mr-2 animate-spin"/> : <Coins className="mr-2"/>}
+                    {isTossing ? 'Tossing...' : 'Toss to Start'}
+                </Button>
             </CardFooter>
         </Card>
     );
