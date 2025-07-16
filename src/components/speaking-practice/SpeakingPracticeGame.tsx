@@ -2,46 +2,46 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Mic, MicOff, Square, Bot, User, Brain, AlertTriangle, Loader2, ArrowLeft, Award, Star, Ear } from 'lucide-react';
+import { Mic, MicOff, Square, Bot, User, AlertTriangle, Loader2, Award, Star, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { englishSpeakingTutor, type EnglishSpeakingInput, type EnglishSpeakingOutput } from '@/ai/flows/english-speaking-flow';
+import { englishSpeakingTutor, type EnglishSpeakingInput } from '@/ai/flows/english-speaking-flow';
 import { useToast } from '@/hooks/use-toast';
 import { applyRewards, calculateRewards } from '@/lib/rewards';
 import { S_POINTS_ICON as SPointsIcon, S_COINS_ICON as SCoinsIcon } from '@/lib/constants';
 import { updateGameStats } from '@/lib/progress';
-
+import CustomChatIcon from '../icons/custom-chat-icon';
+import type { VoiceOption } from '@/app/speaking-practice/page';
 
 const SpeechRecognition = (typeof window !== 'undefined') ? (window.SpeechRecognition || window.webkitSpeechRecognition) : null;
 const speechSynthesis = (typeof window !== 'undefined') ? window.speechSynthesis : null;
 
 interface SpeakingPracticeGameProps {
-  sessionDuration: 1 | 3 | 5;
-  voice: 'male' | 'female';
+  sessionDuration: number;
+  voice: VoiceOption;
   onBack: () => void;
 }
 
 interface ChatMessage {
-    id: string;
     role: 'user' | 'assistant';
     content: string;
-    correction?: string;
-    explanation?: string;
 }
 
-const STREAMING_SPEED_MS = 30;
+const INITIAL_GREETING = "Hello! Let's practice our English. I'm ready when you are. Just press the microphone button to start talking.";
 
 export default function SpeakingPracticeGame({ sessionDuration, voice, onBack }: SpeakingPracticeGameProps) {
-    const [gameState, setGameState] = useState<'playing' | 'paused' | 'gameOver'>('playing');
-    const [conversation, setConversation] = useState<ChatMessage[]>([]);
+    const [gameState, setGameState] = useState<'playing' | 'gameOver'>('playing');
+    const [conversationHistory, setConversationHistory] = useState<ChatMessage[]>([]);
     const [isListening, setIsListening] = useState(false);
     const [isAITurn, setIsAITurn] = useState(false);
     const [sttError, setSttError] = useState<string | null>(null);
     const [browserSupport, setBrowserSupport] = useState({ stt: false, tts: false });
     const [isSpeaking, setIsSpeaking] = useState(false);
+    const [currentTranscript, setCurrentTranscript] = useState('');
+    const [currentResponse, setCurrentResponse] = useState(INITIAL_GREETING);
+    const [currentCorrection, setCurrentCorrection] = useState<{ correction: string, explanation: string } | null>(null);
 
     const [timeLeft, setTimeLeft] = useState(sessionDuration * 60);
     const [totalUserWords, setTotalUserWords] = useState(0);
@@ -49,21 +49,7 @@ export default function SpeakingPracticeGame({ sessionDuration, voice, onBack }:
 
     const speechRecognitionRef = useRef<SpeechRecognition | null>(null);
     const { toast } = useToast();
-    const streamingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-    const scrollAreaRef = useRef<HTMLDivElement>(null);
-
-    const scrollToBottom = useCallback(() => {
-        setTimeout(() => {
-            if (scrollAreaRef.current) {
-                const scrollViewport = scrollAreaRef.current.querySelector('div[data-radix-scroll-area-viewport]');
-                if (scrollViewport) {
-                    scrollViewport.scrollTop = scrollViewport.scrollHeight;
-                }
-            }
-        }, 100);
-    }, []);
-
-    useEffect(scrollToBottom, [conversation]);
+    const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
     useEffect(() => {
         setBrowserSupport({ stt: !!SpeechRecognition, tts: !!speechSynthesis });
@@ -81,56 +67,58 @@ export default function SpeakingPracticeGame({ sessionDuration, voice, onBack }:
         }
     }, [timeLeft, gameState]);
 
+    const speak = useCallback((text: string) => {
+        if (!browserSupport.tts) {
+            setIsAITurn(false);
+            return;
+        };
+        
+        speechSynthesis.cancel();
+        
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.voice = speechSynthesis.getVoices().find(v => v.name.includes(voice === 'female' ? 'Female' : 'Male') && v.lang.startsWith('en')) || null;
+        utterance.onstart = () => setIsSpeaking(true);
+        utterance.onend = () => {
+            setIsSpeaking(false);
+            setIsAITurn(false);
+        };
+        utterance.onerror = () => {
+            setIsSpeaking(false);
+            setIsAITurn(false);
+        };
+        utteranceRef.current = utterance;
+        speechSynthesis.speak(utterance);
+    }, [browserSupport.tts, voice]);
+
+    useEffect(() => {
+        speak(INITIAL_GREETING);
+    }, [speak]);
+
     const handleAIResponse = useCallback(async (userInput: string) => {
         setIsAITurn(true);
-
-        const historyForPrompt = conversation.slice(-6).map(({ role, content }) => ({ role, content }));
+        setCurrentTranscript('');
+        setCurrentCorrection(null);
+        
+        const historyForPrompt = conversationHistory.slice(-4);
         const input: EnglishSpeakingInput = { userInput, conversationHistory: historyForPrompt };
 
         try {
-            const output: EnglishSpeakingOutput = await englishSpeakingTutor(input);
-            const aiMessageId = `assistant-${Date.now()}`;
-            const fullResponse = output.aiResponse;
+            const output = await englishSpeakingTutor(input);
+            setConversationHistory(prev => [...prev, {role: 'user', content: userInput}, {role: 'assistant', content: output.aiResponse}]);
+            setCurrentResponse(output.aiResponse);
 
-            setConversation(prev => [
-                ...prev.map(msg => msg.id.startsWith('user-') ? { ...msg, correction: output.correction, explanation: output.explanation } : msg),
-                { id: aiMessageId, role: 'assistant', content: '' }
-            ]);
-
-            if (output.correction) {
+            if (output.correction && output.explanation) {
+                setCurrentCorrection({ correction: output.correction, explanation: output.explanation });
                 setCorrectedWords(prev => prev + output.correction!.split(' ').length);
             }
-
-            // Stream AI response
-            const words = fullResponse.split(' ');
-            let currentWordIndex = 0;
-            const streamWords = () => {
-                if (currentWordIndex < words.length) {
-                    setConversation(prev => prev.map(msg =>
-                        msg.id === aiMessageId ? { ...msg, content: words.slice(0, currentWordIndex + 1).join(' ') } : msg
-                    ));
-                    currentWordIndex++;
-                    streamingTimeoutRef.current = setTimeout(streamWords, STREAMING_SPEED_MS);
-                } else {
-                    if(browserSupport.tts) {
-                        const utterance = new SpeechSynthesisUtterance(fullResponse);
-                        utterance.voice = speechSynthesis!.getVoices().find(v => v.name.includes(voice === 'female' ? 'Female' : 'Male') && v.lang.startsWith('en')) || null;
-                        utterance.onstart = () => setIsSpeaking(true);
-                        utterance.onend = () => { setIsSpeaking(false); setIsAITurn(false); };
-                        speechSynthesis!.speak(utterance);
-                    } else {
-                        setIsAITurn(false);
-                    }
-                }
-            };
-            streamWords();
-
+            speak(output.aiResponse);
         } catch (error) {
             console.error("Error from AI flow:", error);
-            toast({ variant: "destructive", title: "AI Error", description: "Could not get a response from Shravya AI." });
-            setIsAITurn(false);
+            const errorMsg = "Sorry, I had a little trouble thinking. Could you say that again?";
+            setCurrentResponse(errorMsg);
+            speak(errorMsg);
         }
-    }, [conversation, voice, toast, browserSupport.tts]);
+    }, [conversationHistory, speak]);
 
 
     // Setup Speech Recognition
@@ -139,35 +127,42 @@ export default function SpeakingPracticeGame({ sessionDuration, voice, onBack }:
         
         const recognition = new SpeechRecognition();
         recognition.continuous = true;
-        recognition.interimResults = false;
+        recognition.interimResults = true;
+
+        recognition.onstart = () => {
+            setIsListening(true);
+            setCurrentTranscript('');
+            setCurrentCorrection(null);
+            if (speechSynthesis.speaking) {
+                speechSynthesis.cancel();
+            }
+        };
 
         recognition.onresult = (event) => {
-            let transcript = '';
+            let interim_transcript = '';
             for (let i = event.resultIndex; i < event.results.length; ++i) {
-                transcript += event.results[i][0].transcript;
+                if (event.results[i].isFinal) {
+                    const finalTranscript = event.results[i][0].transcript.trim();
+                    if(finalTranscript){
+                        setTotalUserWords(prev => prev + finalTranscript.split(' ').length);
+                        handleAIResponse(finalTranscript);
+                    }
+                } else {
+                    interim_transcript += event.results[i][0].transcript;
+                }
             }
-            if(transcript.trim()) {
-                const newUserMessage: ChatMessage = { id: `user-${Date.now()}`, role: 'user', content: transcript.trim() };
-                setConversation(prev => [...prev, newUserMessage]);
-                setTotalUserWords(prev => prev + transcript.trim().split(' ').length);
-                handleAIResponse(transcript.trim());
-            }
+            setCurrentTranscript(interim_transcript);
         };
 
         recognition.onerror = (event) => {
             console.error("Speech recognition error:", event.error);
-            setSttError(`Error: ${event.error}. Please check microphone permissions.`);
+            setSttError(`Error: ${event.error}. Please check mic permissions.`);
             setIsListening(false);
         };
         
-        recognition.onstart = () => setIsListening(true);
         recognition.onend = () => setIsListening(false);
 
         speechRecognitionRef.current = recognition;
-
-        return () => {
-            recognition.stop();
-        }
     }, [browserSupport.stt, handleAIResponse]);
     
     const handleToggleListen = () => {
@@ -186,81 +181,91 @@ export default function SpeakingPracticeGame({ sessionDuration, voice, onBack }:
     };
     
     const accuracy = totalUserWords > 0 ? Math.max(0, (totalUserWords - correctedWords) / totalUserWords) * 100 : 100;
+    
+    let avatarState: 'idle' | 'listening' | 'speaking' = 'idle';
+    if(isListening) avatarState = 'listening';
+    if(isSpeaking) avatarState = 'speaking';
 
     return (
-        <div className="flex flex-col h-[calc(100vh-10rem)] max-w-2xl mx-auto">
+        <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)]">
             {gameState === 'gameOver' && (
                 <GameOverDialog 
                     accuracy={accuracy} 
                     totalWords={totalUserWords}
                     sessionDuration={sessionDuration}
                     onPlayAgain={() => {
-                        setConversation([]);
+                        setConversationHistory([]);
                         setTimeLeft(sessionDuration * 60);
                         setTotalUserWords(0);
                         setCorrectedWords(0);
                         setGameState('playing');
+                        setCurrentResponse(INITIAL_GREETING);
+                        speak(INITIAL_GREETING);
                     }} 
                     onBack={onBack}
                 />
             )}
-            <Card className="flex flex-col flex-grow w-full shadow-xl">
-                <CardHeader className="flex-shrink-0">
-                    <div className="flex items-center justify-between">
+            <Card className="w-full max-w-2xl shadow-xl flex flex-col h-[70vh]">
+                 <CardHeader className="flex-shrink-0">
+                     <div className="flex items-center justify-between">
                          <div className="flex items-center space-x-3">
-                            <Ear size={28} className="text-primary" />
-                            <CardTitle className="text-2xl font-bold text-primary">English Speaking Practice</CardTitle>
+                            <Bot size={28} className="text-primary" />
+                            <h1 className="text-2xl font-bold text-primary">Speaking Practice</h1>
                         </div>
                         <Button variant="outline" size="sm" onClick={onBack}>
-                            <ArrowLeft size={16} className="mr-1" /> Back
+                            <ArrowLeft size={16} className="mr-1" /> Back to Setup
                         </Button>
                     </div>
-                    <Progress value={(timeLeft / (sessionDuration * 60)) * 100} className="w-full mt-2" />
-                    <CardDescription className="text-center text-md text-foreground/80 pt-2">
+                     <Progress value={(timeLeft / (sessionDuration * 60)) * 100} className="w-full mt-2" />
+                     <p className="text-center text-sm text-muted-foreground pt-1">
                         Time Left: {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
-                    </CardDescription>
+                     </p>
                 </CardHeader>
-                <CardContent className="flex flex-col flex-grow p-4 min-h-0">
-                    <ScrollArea ref={scrollAreaRef} className="flex-grow pr-4 -mr-4">
-                        <div className="space-y-4">
-                            {conversation.map(msg => (
-                                <div key={msg.id} className={cn("flex flex-col", msg.role === 'user' ? 'items-end' : 'items-start')}>
-                                    <div className={cn("flex items-start gap-3 w-full", msg.role === 'user' && 'flex-row-reverse')}>
-                                        <div className={cn("p-2 rounded-full", msg.role === 'user' ? 'bg-secondary' : 'bg-accent')}>
-                                            {msg.role === 'user' ? <User size={20}/> : <Bot size={20}/>}
-                                        </div>
-                                        <div className={cn("p-3 rounded-lg shadow max-w-[85%]", msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-card border')}>
-                                            <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                                        </div>
-                                    </div>
-                                    {msg.correction && (
-                                        <div className="mt-2 text-xs p-2 bg-yellow-100 border border-yellow-300 rounded-lg max-w-[85%] self-end">
-                                            <p><strong className="text-yellow-800">Correction:</strong> {msg.correction}</p>
-                                            {msg.explanation && <p className="mt-1"><strong className="text-yellow-800">Tip:</strong> {msg.explanation}</p>}
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-                    </ScrollArea>
-                    <div className="flex-shrink-0 pt-4 border-t text-center space-y-3">
-                         {sttError && (
-                            <div className="p-2 bg-destructive/10 text-destructive text-xs rounded-md flex items-center justify-center gap-2">
-                                <AlertTriangle size={16} /> {sttError}
-                            </div>
-                         )}
-                         <Button
-                            onClick={handleToggleListen}
-                            disabled={!browserSupport.stt || isAITurn || isSpeaking}
-                            size="lg"
-                            className={cn("w-full h-16 text-lg", isListening && "bg-destructive hover:bg-destructive/90")}
-                         >
-                            {isAITurn || isSpeaking ? <Loader2 className="mr-2 animate-spin"/> : (isListening ? <Square className="mr-2" /> : <Mic className="mr-2" />)}
-                            {isAITurn ? "AI is replying..." : isSpeaking ? "AI is speaking..." : isListening ? "Stop Recording" : "Start Speaking"}
-                         </Button>
-                         <p className="text-xs text-muted-foreground">Click to start and stop recording. Shravya AI will reply automatically.</p>
+
+                <div className="flex-grow flex flex-col items-center justify-center text-center p-4 space-y-4">
+                     <div className="relative">
+                        <CustomChatIcon size={128} className="transition-all duration-300"/>
+                        {avatarState === 'listening' && (
+                            <div className="absolute inset-0 rounded-full ring-4 ring-destructive ring-offset-4 ring-offset-background animate-pulse"></div>
+                        )}
+                         {avatarState === 'speaking' && (
+                            <div className="absolute inset-0 rounded-full ring-4 ring-accent ring-offset-4 ring-offset-background animate-pulse"></div>
+                        )}
                     </div>
-                </CardContent>
+                    
+                    <div className="min-h-[6rem] flex flex-col items-center justify-center">
+                        <p className="text-lg font-semibold text-foreground max-w-lg">{currentResponse}</p>
+                    </div>
+                    
+                    <div className="min-h-[3rem] flex flex-col items-center justify-center">
+                        <p className="text-md text-muted-foreground italic max-w-lg">{currentTranscript}</p>
+                        {currentCorrection && (
+                           <div className="mt-2 text-xs p-2 bg-yellow-100 border border-yellow-300 rounded-lg max-w-md">
+                               <p><strong className="text-yellow-800">Correction:</strong> {currentCorrection.correction}</p>
+                               <p className="mt-1"><strong className="text-yellow-800">Tip:</strong> {currentCorrection.explanation}</p>
+                           </div>
+                        )}
+                    </div>
+                </div>
+
+                <div className="flex-shrink-0 p-6 border-t text-center space-y-3">
+                    {sttError && (
+                        <div className="p-2 bg-destructive/10 text-destructive text-xs rounded-md flex items-center justify-center gap-2">
+                            <AlertTriangle size={16} /> {sttError}
+                        </div>
+                    )}
+                    <Button
+                        onClick={handleToggleListen}
+                        disabled={!browserSupport.stt || isAITurn}
+                        size="lg"
+                        className={cn("w-24 h-24 rounded-full text-lg shadow-lg", isListening ? "bg-destructive hover:bg-destructive/90" : "bg-accent hover:bg-accent/80")}
+                    >
+                        {isAITurn ? <Loader2 className="h-10 w-10 animate-spin"/> : <Mic className="h-10 w-10" />}
+                    </Button>
+                    <p className="text-xs text-muted-foreground">
+                        {isAITurn ? "AI is replying..." : (isListening ? "Tap to stop" : "Tap to speak")}
+                    </p>
+                </div>
             </Card>
         </div>
     );
