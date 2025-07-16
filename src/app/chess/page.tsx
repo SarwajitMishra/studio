@@ -6,13 +6,14 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from 'next/navigation';
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { Crown, AlertTriangle, Timer, ListChecks, ArrowLeft, Brain, Gamepad2, Users, Edit, Cpu, Award, Loader2 } from "lucide-react";
+import { Crown, AlertTriangle, Timer, ListChecks, ArrowLeft, Brain, Gamepad2, Users, Edit, Cpu, Award, Loader2, Coins, User as UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { S_POINTS_ICON as SPointsIcon, S_COINS_ICON as SCoinsIcon } from '@/lib/constants';
 import { applyRewards, calculateRewards } from "@/lib/rewards";
 import { updateGameStats } from "@/lib/progress";
@@ -34,8 +35,10 @@ interface Move {
 }
 
 type PlayerColor = "w" | "b";
-type GameState = 'setup' | 'playing' | 'gameOver';
+type GameState = 'setup' | 'playing' | 'gameOver' | 'aiConfig';
 type GameMode = 'pvp' | 'ai' | null;
+type AIDifficulty = 'easy' | 'medium' | 'hard';
+
 
 const PIECE_UNICODE: Record<PlayerColor, Record<Piece["type"], string>> = {
   w: { K: "♔", Q: "♕", R: "♖", B: "♗", N: "♘", P: "♙" },
@@ -159,6 +162,8 @@ export default function ChessPage() {
   const [gameMode, setGameMode] = useState<GameMode>(null);
   const [playerNames, setPlayerNames] = useState({ w: 'White', b: 'Black' });
   const [isSetupDialogOpen, setIsSetupDialogOpen] = useState(false);
+  const [humanPlayerColor, setHumanPlayerColor] = useState<PlayerColor>('w');
+  const [aiDifficulty, setAiDifficulty] = useState<AIDifficulty>('medium');
   const router = useRouter();
 
   const initialSetup = initialBoardSetup();
@@ -189,15 +194,15 @@ export default function ChessPage() {
     setGameStatusMessage(reason);
     
     if (gameMode === 'ai') {
-        setIsCalculatingReward(true);
-        const didWin = winnerColor === 'w'; 
+        const didWin = winnerColor === humanPlayerColor; 
         updateGameStats({ gameId: 'chess', didWin });
-
+        
+        setIsCalculatingReward(true);
         try {
             const rewards = await calculateRewards({
-                gameId: 'chess',
-                difficulty: winnerColor === 'w' ? 'hard' : (winnerColor === 'b' ? 'easy' : 'medium'),
-                performanceMetrics: { result: winnerColor === 'w' ? 'win' : (winnerColor === 'draw' ? 'draw' : 'loss') }
+                gameId: 'chess-ai',
+                difficulty: aiDifficulty,
+                performanceMetrics: { result: winnerColor === humanPlayerColor ? 'win' : (winnerColor === 'draw' ? 'draw' : 'loss') }
             });
 
             const earned = applyRewards(rewards.sPoints, rewards.sCoins, `Chess Game vs AI: ${reason}`);
@@ -210,7 +215,7 @@ export default function ChessPage() {
             setIsCalculatingReward(false);
         }
     }
-  }, [gameMode, toast]);
+  }, [gameMode, humanPlayerColor, toast, aiDifficulty]);
 
 
   useEffect(() => {
@@ -218,15 +223,11 @@ export default function ChessPage() {
 
     const timer = setInterval(() => {
       setPlayerTimers(prevTimers => {
-        if (prevTimers[currentPlayer] <= 0) {
-          clearInterval(timer);
-          return prevTimers;
-        }
         const newTimers = { ...prevTimers, [currentPlayer]: prevTimers[currentPlayer] - 1 };
-        if (newTimers[currentPlayer] === 0) {
+        if (newTimers[currentPlayer] <= 0) {
+          clearInterval(timer);
           const winnerColor = currentPlayer === 'w' ? 'b' : 'w';
           handleGameEnd(winnerColor, `Time's up! ${winnerColor === 'w' ? playerNames.w : playerNames.b} wins!`);
-          clearInterval(timer);
         }
         return newTimers;
       });
@@ -509,8 +510,8 @@ export default function ChessPage() {
   }, [board, castlingRights, currentPlayer, enPassantTarget, getAllLegalMovesForPlayer, getPieceAt, handleGameEnd, isSquareAttacked, kingPositions, playerNames]);
 
   const makeAIMove = useCallback(() => {
-    const aiColor = 'b';
-    if(currentPlayer !== aiColor || gameState !== 'playing' || !gameMode) return;
+    const aiColor = humanPlayerColor === 'w' ? 'b' : 'w';
+    if(currentPlayer !== aiColor || gameState !== 'playing' || gameMode !== 'ai') return;
     
     const allMoves = getAllLegalMovesForPlayer(board, aiColor, kingPositions);
     if(allMoves.length === 0) return;
@@ -544,23 +545,22 @@ export default function ChessPage() {
     const randomMove = allMoves[Math.floor(Math.random() * allMoves.length)];
     performMove(randomMove.from, randomMove.to);
 
-  }, [board, currentPlayer, gameState, getAllLegalMovesForPlayer, kingPositions, getPieceAt, isSquareAttacked, performMove, gameMode]);
+  }, [board, currentPlayer, gameState, getAllLegalMovesForPlayer, kingPositions, getPieceAt, isSquareAttacked, performMove, gameMode, humanPlayerColor]);
 
   useEffect(() => {
-    if(gameMode === 'ai' && currentPlayer === 'b' && gameState === 'playing' && winner === null) {
+    if(gameMode === 'ai' && currentPlayer !== humanPlayerColor && gameState === 'playing' && winner === null) {
       const aiMoveTimeout = setTimeout(makeAIMove, 1000);
       return () => clearTimeout(aiMoveTimeout);
     }
-  }, [gameMode, currentPlayer, gameState, winner, makeAIMove]);
+  }, [gameMode, currentPlayer, gameState, winner, makeAIMove, humanPlayerColor]);
   
   const handleSquareClick = (row: number, col: number) => {
     if (promotionSquare || gameState !== 'playing' || winner) return;
-    if (gameMode === 'ai' && currentPlayer === 'b') return; // Prevent human from moving AI pieces
+    if (gameMode === 'ai' && currentPlayer !== humanPlayerColor) return;
 
     const clickedSquarePiece = getPieceAt(board, row, col);
 
     if (selectedPiece) {
-      const { row: fromRow, col: fromCol } = selectedPiece;
       const isMovePossible = possibleMoves.some(m => m.row === row && m.col === col);
       if (isMovePossible) {
         performMove(selectedPiece, {row, col});
@@ -639,8 +639,15 @@ export default function ChessPage() {
     setPlayerTimers({ w: 600, b: 600 });
     setLastReward(null);
     toast({ title: "Game Reset", description: "The board has been reset." });
-    setGameState('playing');
-    if (newMode) setGameMode(newMode);
+    
+    if (newMode === 'ai') {
+        setGameState('aiConfig');
+    } else if (newMode === 'pvp') {
+        setIsSetupDialogOpen(true);
+    } else {
+        setGameState('playing');
+        if (newMode) setGameMode(newMode);
+    }
   };
   
   const movePairs = [];
@@ -648,39 +655,49 @@ export default function ChessPage() {
     movePairs.push(moveHistory.slice(i, i + 2));
   }
   
-  const startGame = (mode: GameMode, names: { w: string, b: string }) => {
+  const startGame = (mode: GameMode, names: { w: string, b: string }, startingPlayer: PlayerColor) => {
     setPlayerNames(names);
     setGameMode(mode);
     setGameState('playing');
-    setGameStatusMessage(`${names.w}'s turn to move.`);
+    setCurrentPlayer(startingPlayer);
+    setGameStatusMessage(`${names[startingPlayer]}'s turn to move.`);
     resetGame(mode);
   }
 
-  if (gameState === 'setup') {
+  if (gameState === 'setup' || gameState === 'aiConfig') {
     return (
         <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
-            <Card className="w-full max-w-md text-center shadow-xl">
-                <CardHeader>
-                    <CardTitle className="text-3xl font-bold">Chess</CardTitle>
-                    <CardDescription>Select a game mode.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <Dialog open={isSetupDialogOpen} onOpenChange={setIsSetupDialogOpen}>
-                        <DialogTrigger asChild>
-                            <Button className="w-full text-lg py-6"><Users className="mr-2"/> Player vs Player</Button>
-                        </DialogTrigger>
-                        <SetupDialog onStart={(names) => startGame('pvp', names)} />
-                    </Dialog>
-                     <Button className="w-full text-lg py-6" onClick={() => startGame('ai', {w: 'You', b: 'Shravya AI'})}>
-                        <Cpu className="mr-2"/> Player vs AI
-                    </Button>
-                </CardContent>
-                 <CardFooter>
-                    <Button asChild variant="ghost" className="w-full">
-                        <a href="/dashboard"><ArrowLeft className="mr-2"/> Back to Homepage</a>
-                    </Button>
-                </CardFooter>
-            </Card>
+            { gameState === 'setup' && (
+                <Card className="w-full max-w-md text-center shadow-xl">
+                    <CardHeader>
+                        <CardTitle className="text-3xl font-bold">Chess</CardTitle>
+                        <CardDescription>Select a game mode.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <Dialog open={isSetupDialogOpen} onOpenChange={setIsSetupDialogOpen}>
+                            <DialogTrigger asChild>
+                                <Button className="w-full text-lg py-6"><Users className="mr-2"/> Player vs Player</Button>
+                            </DialogTrigger>
+                            <SetupDialogPVP onStart={(names) => {
+                                setGameMode('pvp');
+                                setPlayerNames(names);
+                                setGameState('playing');
+                                setCurrentPlayer('w');
+                                setGameStatusMessage(`${names.w}'s turn.`);
+                            }} />
+                        </Dialog>
+                         <Button className="w-full text-lg py-6" onClick={() => setGameState('aiConfig')}>
+                            <Cpu className="mr-2"/> Player vs AI
+                        </Button>
+                    </CardContent>
+                     <CardFooter>
+                        <Button asChild variant="ghost" className="w-full">
+                            <a href="/dashboard"><ArrowLeft className="mr-2"/> Back to Homepage</a>
+                        </Button>
+                    </CardFooter>
+                </Card>
+            )}
+             { gameState === 'aiConfig' && <SetupDialogAI onStart={startGame} onBack={() => setGameState('setup')} />}
         </div>
     );
   }
@@ -740,7 +757,7 @@ export default function ChessPage() {
                   const isPossMove = possibleMoves.some(m => m.row === rowIndex && m.col === colIndex);
                   const isKingSquareInCheck = piece?.type === 'K' && piece.color === kingUnderAttack;
                   return (
-                    <ChessSquare key={`${rowIndex}-${colIndex}`} piece={piece} isLight={isLight} onClick={() => handleSquareClick(rowIndex, colIndex)} isSelected={isSel} isPossibleMove={isPossMove} isInCheck={isKingSquareInCheck} isDisabled={!!promotionSquare || gameState !== 'playing' || (gameMode === 'ai' && currentPlayer === 'b')} />
+                    <ChessSquare key={`${rowIndex}-${colIndex}`} piece={piece} isLight={isLight} onClick={() => handleSquareClick(rowIndex, colIndex)} isSelected={isSel} isPossibleMove={isPossMove} isInCheck={isKingSquareInCheck} isDisabled={!!promotionSquare || gameState !== 'playing' || (gameMode === 'ai' && currentPlayer !== humanPlayerColor)} />
                   );
                 })
               )}
@@ -786,7 +803,6 @@ export default function ChessPage() {
             </CardContent>
         </Card>
 
-        {/* Desktop History */}
         <Card className="shadow-lg hidden lg:block">
           <CardHeader>
             <CardTitle className="text-xl flex items-center gap-2"><ListChecks /> Move History</CardTitle>
@@ -805,7 +821,6 @@ export default function ChessPage() {
           </CardContent>
         </Card>
 
-        {/* Mobile History Button */}
         <div className="lg:hidden">
             <Dialog>
                 <DialogTrigger asChild>
@@ -835,12 +850,8 @@ export default function ChessPage() {
   );
 }
 
-// Setup Dialog Component Component
-interface SetupDialogProps {
-  onStart: (names: { w: string; b: string }) => void;
-}
-
-function SetupDialog({ onStart }: SetupDialogProps) {
+// Setup Dialog Component for PvP
+function SetupDialogPVP({ onStart }: { onStart: (names: { w: string; b: string }) => void; }) {
   const [p1Name, setP1Name] = useState('Player 1 (White)');
   const [p2Name, setP2Name] = useState('Player 2 (Black)');
   
@@ -874,4 +885,81 @@ function SetupDialog({ onStart }: SetupDialogProps) {
         </form>
     </DialogContent>
   );
+}
+
+// Setup Dialog for Player vs AI
+function SetupDialogAI({ onStart, onBack }: { onStart: (mode: 'ai', names: { w: string; b: string }, startingPlayer: PlayerColor) => void, onBack: () => void }) {
+    const [playerName, setPlayerName] = useState('Player');
+    const [playerColor, setPlayerColor] = useState<PlayerColor>('w');
+    const [difficulty, setDifficulty] = useState<AIDifficulty>('medium');
+    const [tossResult, setTossResult] = useState<string | null>(null);
+
+    const handleToss = () => {
+        const result = Math.random() < 0.5 ? 'You win the toss!' : 'Shravya AI wins the toss!';
+        setTossResult(result);
+    };
+
+    const handleSubmit = () => {
+        if (!tossResult) {
+            alert("Please toss the coin to decide who starts!");
+            return;
+        }
+        const startingPlayer = tossResult.startsWith('You') ? playerColor : (playerColor === 'w' ? 'b' : 'w');
+        const names = playerColor === 'w' ? { w: playerName, b: 'Shravya AI' } : { w: 'Shravya AI', b: playerName };
+        onStart('ai', names, startingPlayer);
+    };
+
+    return (
+        <Card className="w-full max-w-lg shadow-xl">
+            <CardHeader className="text-center">
+                <CardTitle className="text-2xl font-bold flex items-center justify-center gap-2">
+                    <Cpu className="text-primary" /> Setup vs Shravya AI
+                </CardTitle>
+                <CardDescription>Configure your match against the AI.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+                 <div className="space-y-2">
+                    <Label htmlFor="playerName">Your Name</Label>
+                    <Input id="playerName" value={playerName} onChange={(e) => setPlayerName(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                    <Label>Choose Your Pieces</Label>
+                    <RadioGroup defaultValue="w" onValueChange={(v) => setPlayerColor(v as PlayerColor)} className="grid grid-cols-2 gap-4">
+                        <Label className="flex items-center space-x-2 rounded-md border p-4 cursor-pointer hover:bg-accent">
+                            <RadioGroupItem value="w" id="color-w" />
+                            <UserIcon /><span>White</span>
+                        </Label>
+                        <Label className="flex items-center space-x-2 rounded-md border p-4 cursor-pointer hover:bg-accent">
+                            <RadioGroupItem value="b" id="color-b" />
+                            <UserIcon className="text-neutral-800" /><span>Black</span>
+                        </Label>
+                    </RadioGroup>
+                </div>
+                 <div className="space-y-2">
+                    <Label>AI Difficulty</Label>
+                    <RadioGroup defaultValue="medium" onValueChange={(v) => setDifficulty(v as AIDifficulty)} className="grid grid-cols-3 gap-2">
+                        <Label className="p-2 text-center rounded-md border cursor-pointer hover:bg-accent">
+                            <RadioGroupItem value="easy" id="diff-easy" className="sr-only"/>Easy</Label>
+                        <Label className="p-2 text-center rounded-md border cursor-pointer hover:bg-accent">
+                           <RadioGroupItem value="medium" id="diff-medium" className="sr-only"/>Medium</Label>
+                        <Label className="p-2 text-center rounded-md border cursor-pointer hover:bg-accent">
+                           <RadioGroupItem value="hard" id="diff-hard" className="sr-only"/>Hard</Label>
+                    </RadioGroup>
+                </div>
+
+                <div className="text-center space-y-3 pt-4 border-t">
+                    <Button type="button" onClick={handleToss} variant="outline">
+                        <Coins className="mr-2"/> Toss to Start
+                    </Button>
+                    {tossResult && (
+                        <p className="font-semibold text-lg text-primary animate-pulse">{tossResult} You will play as {playerColor === 'w' ? 'White' : 'Black'}.</p>
+                    )}
+                </div>
+            </CardContent>
+            <CardFooter className="flex justify-between">
+                <Button variant="ghost" onClick={onBack}><ArrowLeft className="mr-2"/>Back</Button>
+                <Button onClick={handleSubmit} disabled={!tossResult}>Start Game</Button>
+            </CardFooter>
+        </Card>
+    );
 }
