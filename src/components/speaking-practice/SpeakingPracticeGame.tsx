@@ -76,7 +76,22 @@ export default function SpeakingPracticeGame({ sessionDuration, voice, onBack }:
         speechSynthesis.cancel();
         
         const utterance = new SpeechSynthesisUtterance(text);
-        utterance.voice = speechSynthesis.getVoices().find(v => v.name.includes(voice === 'female' ? 'Female' : 'Male') && v.lang.startsWith('en')) || null;
+        const allVoices = speechSynthesis.getVoices();
+        
+        // Improved voice selection logic
+        const desiredGender = voice;
+        const englishVoices = allVoices.filter(v => v.lang.startsWith('en'));
+        
+        let selectedVoice =
+            // Prefer a voice that explicitly matches gender
+            englishVoices.find(v => v.name.toLowerCase().includes(desiredGender)) ||
+            // Fallback for Zira/David on some systems
+            englishVoices.find(v => (desiredGender === 'female' && v.name.includes('Zira')) || (desiredGender === 'male' && v.name.includes('David'))) ||
+            // General fallback
+            englishVoices[0] ||
+            null;
+        
+        utterance.voice = selectedVoice;
         utterance.onstart = () => setIsSpeaking(true);
         utterance.onend = () => {
             setIsSpeaking(false);
@@ -126,7 +141,7 @@ export default function SpeakingPracticeGame({ sessionDuration, voice, onBack }:
         if (!browserSupport.stt) return;
         
         const recognition = new SpeechRecognition();
-        recognition.continuous = true;
+        recognition.continuous = false; // <<< FIX: Set to false to prevent self-triggering
         recognition.interimResults = true;
 
         recognition.onstart = () => {
