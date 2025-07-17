@@ -27,10 +27,10 @@ export default function Header() {
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2 md:gap-4">
             <Link href="/dashboard" className="flex items-center gap-3 text-primary-foreground hover:opacity-80 transition-opacity">
-              <PlaySquare size={32} className="text-accent" />
+              <PlaySquare size={32} className="text-white" />
               <div className="hidden sm:flex flex-col font-bold leading-tight">
-                  <span className="text-lg">Firebase</span>
-                  <span className="text-lg">Studio</span>
+                  <span className="text-lg">Shravya</span>
+                  <span className="text-lg">PlayLab</span>
               </div>
             </Link>
             <Navigation side="left" />

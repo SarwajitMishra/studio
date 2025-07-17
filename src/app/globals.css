@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -5,32 +6,32 @@
 @layer base {
   :root {
     /* Define default HSL components for the 'default' theme (light mode) */
-    --theme-background-h: 207;
-    --theme-background-s: 83%;
-    --theme-background-l: 93%;
+    --theme-background-h: 30;
+    --theme-background-s: 100%;
+    --theme-background-l: 97%;
     --theme-foreground-h: 215;
     --theme-foreground-s: 25%;
     --theme-foreground-l: 27%;
-    --theme-primary-h: 197;
-    --theme-primary-s: 71%;
-    --theme-primary-l: 73%;
-    --theme-accent-h: 51;
-    --theme-accent-s: 100%;
-    --theme-accent-l: 50%;
+    --theme-primary-h: 30;
+    --theme-primary-s: 100%;
+    --theme-primary-l: 60%;
+    --theme-accent-h: 192;
+    --theme-accent-s: 69%;
+    --theme-accent-l: 82%;
     
     /* Define default HSL components for the 'default' theme (dark mode) */
     --theme-dark-background-h: 215;
     --theme-dark-background-s: 25%;
     --theme-dark-background-l: 15%;
-    --theme-dark-foreground-h: 207;
-    --theme-dark-foreground-s: 83%;
-    --theme-dark-foreground-l: 93%;
-    --theme-dark-primary-h: 197;
-    --theme-dark-primary-s: 71%;
-    --theme-dark-primary-l: 65%;
-    --theme-dark-accent-h: 51;
-    --theme-dark-accent-s: 100%;
-    --theme-dark-accent-l: 55%;
+    --theme-dark-foreground-h: 30;
+    --theme-dark-foreground-s: 100%;
+    --theme-dark-foreground-l: 97%;
+    --theme-dark-primary-h: 30;
+    --theme-dark-primary-s: 100%;
+    --theme-dark-primary-l: 60%;
+    --theme-dark-accent-h: 192;
+    --theme-dark-accent-s: 69%;
+    --theme-dark-accent-l: 75%;
 
     /* Light Mode Theme Variables */
     --background: var(--theme-background-h) var(--theme-background-s) var(--theme-background-l);
@@ -42,22 +43,22 @@
     --card-foreground: var(--theme-foreground-h) var(--theme-foreground-s) var(--theme-foreground-l);
     --popover: 0 0% 100%;
     --popover-foreground: var(--theme-foreground-h) var(--theme-foreground-s) var(--theme-foreground-l);
-    --primary-foreground: var(--theme-foreground-h) var(--theme-foreground-s) var(--theme-foreground-l);
-    --secondary: var(--theme-primary-h) var(--theme-primary-s) 88%;
-    --secondary-foreground: var(--theme-foreground-h) var(--theme-foreground-s) var(--theme-foreground-l);
-    --muted: var(--theme-primary-h) var(--theme-primary-s) 85%;
-    --muted-foreground: var(--theme-foreground-h) 30% 45%;
-    --accent-foreground: var(--theme-foreground-h) var(--theme-foreground-s) var(--theme-foreground-l);
+    --primary-foreground: 215 25% 10%;
+    --secondary: 30 48% 64%; /* Muted Gold */
+    --secondary-foreground: 215 25% 10%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent-foreground: 222.2 47.4% 11.2%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: var(--theme-primary-h) var(--theme-primary-s) 85%;
-    --input: var(--theme-primary-h) var(--theme-primary-s) 88%;
-    --ring: var(--theme-accent-h) var(--theme-accent-s) var(--theme-accent-l);
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: var(--theme-primary-h) var(--theme-primary-s) var(--theme-primary-l);
     --radius: 0.5rem;
 
     --chart-1: var(--theme-primary-h) var(--theme-primary-s) 65%;
     --chart-2: var(--theme-accent-h) var(--theme-accent-s) 60%;
-    --chart-3: var(--theme-primary-h) 83% 70%;
+    --chart-3: 30 48% 64%;
     --chart-4: var(--theme-primary-h) 50% 50%;
     --chart-5: var(--theme-accent-h) 80% 40%;
   }
@@ -69,25 +70,25 @@
     --primary: var(--theme-dark-primary-h) var(--theme-dark-primary-s) var(--theme-dark-primary-l);
     --accent: var(--theme-dark-accent-h) var(--theme-dark-accent-s) var(--theme-dark-accent-l);
     
-    --card: var(--theme-dark-background-h) var(--theme-dark-background-s) calc(var(--theme-dark-background-l) + 2%);
-    --card-foreground: var(--theme-dark-foreground-h) var(--theme-dark-foreground-s) var(--theme-dark-foreground-l);
-    --popover: var(--theme-dark-background-h) var(--theme-dark-background-s) var(--theme-dark-background-l);
-    --popover-foreground: var(--theme-dark-foreground-h) var(--theme-dark-foreground-s) var(--theme-dark-foreground-l);
+    --card: var(--theme-dark-background-h) var(--theme-dark-background-s) 17%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
     --primary-foreground: 215 25% 10%;
-    --secondary: var(--theme-dark-primary-h) var(--theme-dark-primary-s) 25%;
-    --secondary-foreground: var(--theme-dark-foreground-h) var(--theme-dark-foreground-s) var(--theme-dark-foreground-l);
-    --muted: var(--theme-dark-primary-h) var(--theme-dark-primary-s) 25%;
-    --muted-foreground: var(--theme-dark-foreground-h) 83% 75%;
-    --accent-foreground: 215 25% 10%;
+    --secondary: 30 48% 50%;
+    --secondary-foreground: 30 100% 95%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: var(--theme-dark-primary-h) var(--theme-dark-primary-s) 25%;
-    --input: var(--theme-dark-primary-h) var(--theme-dark-primary-s) 25%;
-    --ring: var(--theme-dark-accent-h) var(--theme-dark-accent-s) var(--theme-dark-accent-l);
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: var(--theme-dark-primary-h) var(--theme-dark-primary-s) var(--theme-dark-primary-l);
 
     --chart-1: var(--theme-dark-primary-h) var(--theme-dark-primary-s) 60%;
     --chart-2: var(--theme-dark-accent-h) var(--theme-dark-accent-s) 65%;
-    --chart-3: var(--theme-dark-primary-h) 83% 65%;
+    --chart-3: 30 48% 50%;
     --chart-4: var(--theme-dark-primary-h) 50% 55%;
     --chart-5: var(--theme-dark-accent-h) 80% 45%;
   }

@@ -43,7 +43,7 @@ export default function VisitorCountWidget() {
   if (visitorCount === 0) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 text-xs bg-muted text-foreground px-3 py-1.5 rounded-full shadow-lg flex items-center gap-2">
+    <div className="flex items-center gap-2">
       <Users size={14} />
       <span>Unique Visitors: <strong>{visitorCount}</strong></span>
     </div>

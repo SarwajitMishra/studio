@@ -122,7 +122,7 @@ export default function LoginPage() {
         await createUserProfile(completingUser, additionalData, guestData);
         if (guestData) clearGuestData();
         
-        toast({ title: "Profile Complete!", description: "Welcome to Firebase Studio!" });
+        toast({ title: "Profile Complete!", description: "Welcome to Shravya PlayLab!" });
         setCompletingUser(null);
         router.push('/dashboard?new_user=true');
       } catch (error: any) {
@@ -327,7 +327,7 @@ export default function LoginPage() {
            </Form>
         </DialogContent>
       </Dialog>
-      <div className="flex items-center justify-center min-h-screen py-12">
+      <div className="flex items-center justify-center min-h-screen py-12 bg-orange-50">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl">Welcome Back!</CardTitle>

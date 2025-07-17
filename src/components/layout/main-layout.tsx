@@ -9,6 +9,7 @@ import FloatingActionButtons from './floating-action-buttons';
 import Link from 'next/link';
 import { Separator } from '../ui/separator';
 import VisitorCountWidget from './VisitorCountWidget';
+import DateTimeWidget from './DateTimeWidget';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -27,7 +28,6 @@ export default function MainLayout({ children }: MainLayoutProps) {
         });
         console.log('Screen Wake Lock is active.');
       } catch (err: any) {
-        // Gracefully handle the NotAllowedError which is common in iframes/sandboxed environments
         if (err.name === 'NotAllowedError') {
           console.log('Screen Wake Lock request failed. This is expected in some secure contexts (like iframes) and can be safely ignored.');
         } else {
@@ -67,18 +67,34 @@ export default function MainLayout({ children }: MainLayoutProps) {
       <main className="flex-grow container mx-auto px-4 py-8">
         {children}
       </main>
-      <footer className="bg-primary/10 text-center py-6 text-sm text-foreground/70">
-        <div className="container mx-auto space-y-4">
-          <div className="flex justify-center items-center gap-x-4 gap-y-2 flex-wrap text-foreground/90 font-medium">
-             <Link href="/terms-and-conditions" className="hover:text-primary transition-colors">Terms & Conditions</Link>
-             <Separator orientation="vertical" className="h-4 hidden sm:block" />
-             <Link href="/privacy-policy" className="hover:text-primary transition-colors">Privacy Policy</Link>
-             <Separator orientation="vertical" className="h-4 hidden sm:block" />
-             <Link href="/cookies-policy" className="hover:text-primary transition-colors">Cookies Policy</Link>
-             <Separator orientation="vertical" className="h-4 hidden sm:block" />
-             <Link href="/community-guidelines" className="hover:text-primary transition-colors">Community Guidelines</Link>
+      <footer className="bg-gray-800 text-gray-300 py-8">
+        <div className="container">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left">
+            <div>
+              <h3 className="font-bold text-white mb-2">Shravya PlayLab</h3>
+              <p className="text-sm">A project by the Shravya Foundation, dedicated to making learning accessible and fun.</p>
+              <div className="mt-4">
+                  <a href="mailto:hello@shravya.foundation" className="text-sm hover:text-white">hello@shravya.foundation</a>
+              </div>
+            </div>
+            <div>
+                <h3 className="font-bold text-white mb-2">Quick Links</h3>
+                <ul className="space-y-1 text-sm">
+                    <li><Link href="/info" className="hover:text-white">About Us</Link></li>
+                    <li><Link href="/privacy-policy" className="hover:text-white">Privacy & Child Safety</Link></li>
+                    <li><Link href="/contact-us" className="hover:text-white">Contact</Link></li>
+                </ul>
+            </div>
+             <div>
+                <h3 className="font-bold text-white mb-2">Session Info</h3>
+                <div className="text-sm space-y-2">
+                    <div className="text-gray-400"><DateTimeWidget /></div>
+                    <div className="text-gray-400"><VisitorCountWidget /></div>
+                </div>
+            </div>
           </div>
-          <p>&copy; {new Date().getFullYear()} Shravya Playlab. All rights reserved.</p>
+           <Separator className="my-6 bg-gray-700" />
+           <p className="text-center text-xs">&copy; {new Date().getFullYear()} Shravya Foundation. All Rights Reserved.</p>
         </div>
       </footer>
       
@@ -86,7 +102,6 @@ export default function MainLayout({ children }: MainLayoutProps) {
         <>
           <FloatingActionButtons />
           <FloatingChatButton />
-          <VisitorCountWidget />
         </>
       )}
     </div>

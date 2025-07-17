@@ -1,10 +1,7 @@
 
 [
   {
-    "origin": [
-      "https://your-production-domain.com",
-      "https://your-new-cloud-workstation-url.cloudworkstations.dev"
-    ],
+    "origin": [],
     "method": [
       "GET",
       "PUT",

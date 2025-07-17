@@ -7,6 +7,9 @@ import { Toaster } from "@/components/ui/toaster";
 import MainLayout from '@/components/layout/main-layout';
 import PWALoader from '@/components/pwa-loader';
 import ThemeProvider from '@/components/theme-provider';
+import { Inter } from 'next/font/google';
+
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export default function RootLayout({
   children,
@@ -15,21 +18,17 @@ export default function RootLayout({
 }>) {
   const pathname = usePathname();
   // Define all pages that should not have the main layout
-  const standalonePages = ['/', '/login', '/signup'];
-  const isStandalonePage = standalonePages.includes(pathname);
+  const standalonePages = ['/'];
+  const isStandalonePage = standalonePages.includes(pathname) || pathname.startsWith('/login') || pathname.startsWith('/signup');
 
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className={inter.variable}>
       <head>
-        <title>Firebase Studio</title>
+        <title>Shravya PlayLab</title>
         <meta name="description" content="Fun and educational games for kids!"/>
-        <meta name="theme-color" content="#87CEEB" />
+        <meta name="theme-color" content="#FF9933" />
         <link rel="manifest" href="/manifest.json" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
       </head>
-      {/* The body tag no longer needs the font variable */}
       <body className="font-sans antialiased" suppressHydrationWarning>
         <ThemeProvider>
           {isStandalonePage ? (
