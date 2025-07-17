@@ -4,7 +4,7 @@ import { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Privacy Policy',
-  description: 'Learn how Shravya Playhouse collects, uses, and protects your data.',
+  description: 'Learn how our app collects, uses, and protects your data.',
 };
 
 export default function PrivacyPolicyPage() {
@@ -19,7 +19,7 @@ export default function PrivacyPolicyPage() {
           </div>
         </CardHeader>
         <CardContent className="prose prose-sm sm:prose-base dark:prose-invert max-w-none space-y-4">
-          <p>Shravya Playhouse is committed to protecting the privacy of our users, especially children. This policy outlines how we collect, use, and safeguard your information.</p>
+          <p>Firebase Studio is committed to protecting the privacy of our users, especially children. This policy outlines how we collect, use, and safeguard your information.</p>
 
           <section>
             <h3>1. What Information We Collect</h3>
@@ -45,7 +45,7 @@ export default function PrivacyPolicyPage() {
           
           <section>
             <h3>3. Child Data and COPPA Compliance</h3>
-            <p>Shravya Playhouse is designed for a general audience but includes content suitable for children. We are committed to complying with the Children's Online Privacy Protection Act (COPPA). We do not knowingly collect personal information from children under 13 without verifiable parental consent. Features requiring personal data, like parental dashboards, will require consent from a parent or guardian.</p>
+            <p>Firebase Studio is designed for a general audience but includes content suitable for children. We are committed to complying with the Children's Online Privacy Protection Act (COPPA). We do not knowingly collect personal information from children under 13 without verifiable parental consent. Features requiring personal data, like parental dashboards, will require consent from a parent or guardian.</p>
           </section>
 
           <section>
@@ -75,7 +75,7 @@ export default function PrivacyPolicyPage() {
 
           <section>
             <h3>9. Contact Us</h3>
-            <p>If you have any questions or concerns about our privacy practices, please contact us at: <a href="mailto:help.shravyaplayhouse@gmail.com">help.shravyaplayhouse@gmail.com</a></p>
+            <p>If you have any questions or concerns about our privacy practices, please contact us at: <a href="mailto:help.firebasestudio@example.com">help.firebasestudio@example.com</a></p>
           </section>
         </CardContent>
       </Card>

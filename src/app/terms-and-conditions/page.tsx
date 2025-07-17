@@ -4,7 +4,7 @@ import { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Terms and Conditions',
-  description: 'Read the terms and conditions for using Shravya Playhouse.',
+  description: 'Read the terms and conditions for using the app.',
 };
 
 export default function TermsAndConditionsPage() {
@@ -19,7 +19,7 @@ export default function TermsAndConditionsPage() {
           </div>
         </CardHeader>
         <CardContent className="prose prose-sm sm:prose-base dark:prose-invert max-w-none space-y-4">
-          <p>Welcome to **Shravya Playhouse**! These terms and conditions outline the rules and regulations for the use of our gaming platform.</p>
+          <p>Welcome to **Firebase Studio**! These terms and conditions outline the rules and regulations for the use of our gaming platform.</p>
 
           <section>
             <h3>1. Acceptance of Terms</h3>
@@ -33,7 +33,7 @@ export default function TermsAndConditionsPage() {
 
           <section>
             <h3>3. Use of the Platform</h3>
-            <p>You agree to use Shravya Playhouse only for its intended purposes. The following activities are strictly prohibited:</p>
+            <p>You agree to use Firebase Studio only for its intended purposes. The following activities are strictly prohibited:</p>
             <ul>
               <li>Engaging in any illegal or unauthorized activities.</li>
               <li>Exploiting software bugs, glitches, or using cheats to gain an unfair advantage.</li>
@@ -44,17 +44,17 @@ export default function TermsAndConditionsPage() {
 
           <section>
             <h3>4. Rewards System (S-Points and S-Coins)</h3>
-            <p>S-Points and S-Coins are virtual reward points earned through gameplay. They are intended to enhance the gaming experience and do not hold any real-world monetary value, except where explicitly stated in the context of official gift contests or promotional events organized by Shravya Playhouse.</p>
+            <p>S-Points and S-Coins are virtual reward points earned through gameplay. They are intended to enhance the gaming experience and do not hold any real-world monetary value, except where explicitly stated in the context of official gift contests or promotional events organized by Firebase Studio.</p>
           </section>
 
           <section>
             <h3>5. Account Security</h3>
-            <p>You are responsible for safeguarding your login credentials. You must notify us immediately of any unauthorized use of your account. Shravya Playhouse cannot be held liable for any loss or damage arising from your failure to protect your account information.</p>
+            <p>You are responsible for safeguarding your login credentials. You must notify us immediately of any unauthorized use of your account. Firebase Studio cannot be held liable for any loss or damage arising from your failure to protect your account information.</p>
           </section>
           
           <section>
             <h3>6. Content Ownership and Intellectual Property</h3>
-            <p>All game designs, artwork, characters, icons, and other content on the Shravya Playhouse platform are the exclusive property of Shravya Playhouse and are protected by copyright and other intellectual property laws, unless otherwise credited. You may not use any of our content without prior written consent.</p>
+            <p>All game designs, artwork, characters, icons, and other content on the Firebase Studio platform are the exclusive property of Firebase Studio and are protected by copyright and other intellectual property laws, unless otherwise credited. You may not use any of our content without prior written consent.</p>
           </section>
 
           <section>
@@ -69,7 +69,7 @@ export default function TermsAndConditionsPage() {
 
           <section>
             <h3>9. Limitation of Liability</h3>
-            <p>In no event shall Shravya Playhouse, nor its directors, employees, or agents, be liable for any indirect, incidental, special, consequential, or punitive damages arising out of your use of the platform.</p>
+            <p>In no event shall Firebase Studio, nor its directors, employees, or agents, be liable for any indirect, incidental, special, consequential, or punitive damages arising out of your use of the platform.</p>
           </section>
 
           <section>
@@ -79,7 +79,7 @@ export default function TermsAndConditionsPage() {
 
           <section>
             <h3>11. Contact Information</h3>
-            <p>For any questions or support inquiries regarding these terms, please contact us at: <a href="mailto:help.shravyaplayhouse@gmail.com">help.shravyaplayhouse@gmail.com</a></p>
+            <p>For any questions or support inquiries regarding these terms, please contact us at: <a href="mailto:help.firebasestudio@example.com">help.firebasestudio@example.com</a></p>
           </section>
         </CardContent>
       </Card>

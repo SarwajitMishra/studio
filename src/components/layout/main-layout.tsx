@@ -78,7 +78,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
              <Separator orientation="vertical" className="h-4 hidden sm:block" />
              <Link href="/community-guidelines" className="hover:text-primary transition-colors">Community Guidelines</Link>
           </div>
-          <p>&copy; {new Date().getFullYear()} Shravya Playhouse. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} Firebase Studio. All rights reserved.</p>
         </div>
       </footer>
       

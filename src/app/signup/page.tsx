@@ -171,7 +171,7 @@ export default function SignupPage() {
         clearGuestData();
       }
       
-      toast({ title: "Account Created!", description: "Welcome to Shravya Playhouse!" });
+      toast({ title: "Account Created!", description: "Welcome to Firebase Studio!" });
       router.push('/dashboard?new_user=true');
     } catch (error: any) {
       console.error("Error signing up:", error);
@@ -227,7 +227,7 @@ export default function SignupPage() {
           clearGuestData();
         }
         
-        toast({ title: "Profile Complete!", description: "Welcome to Shravya Playhouse!" });
+        toast({ title: "Profile Complete!", description: "Welcome to Firebase Studio!" });
         setCompletingUser(null);
         router.push('/dashboard?new_user=true');
 
@@ -399,7 +399,7 @@ export default function SignupPage() {
       <Card className="w-full max-w-2xl">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">Create Your Account</CardTitle>
-          <CardDescription>Join Shravya Playhouse today!</CardDescription>
+          <CardDescription>Join Firebase Studio today!</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -566,7 +566,7 @@ export default function SignupPage() {
                     </SelectContent>
                   </Select><FormMessage /></FormItem>
               )} />
-              <Button type="submit" className="w-full md:col-span-2" disabled={isLoading || googleLoading}>
+              <Button type="submit" className="w-full md:col-span-2" disabled={emailLoading || googleLoading}>
                  {emailLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Sign Up"}
               </Button>
             </form>

@@ -12,7 +12,7 @@ export default function SupportUsPage() {
 
   const handleShare = async () => {
     const shareData = {
-      title: 'Shravya Playhouse',
+      title: 'Firebase Studio',
       text: 'Check out this cool and fun educational gaming app for kids!',
       url: window.location.origin + '/dashboard'
     };
@@ -46,7 +46,7 @@ export default function SupportUsPage() {
       <Card className="shadow-lg text-center">
         <CardHeader>
           <Heart className="h-12 w-12 text-primary mx-auto mb-4" />
-          <CardTitle className="text-3xl font-bold text-primary">Support Shravya Playhouse</CardTitle>
+          <CardTitle className="text-3xl font-bold text-primary">Support Firebase Studio</CardTitle>
           <CardDescription>
             Your support helps us keep the platform ad-free, safe, and constantly improving with new games and features.
           </CardDescription>
@@ -57,7 +57,7 @@ export default function SupportUsPage() {
                 <Share2 className="h-8 w-8 text-accent"/>
                 <h3 className="text-xl font-semibold">Spread the Word</h3>
                 <p className="text-muted-foreground">
-                The best way to support us is by sharing Shravya Playhouse with friends and family who might enjoy it.
+                The best way to support us is by sharing Firebase Studio with friends and family who might enjoy it.
                 </p>
                 <Button onClick={handleShare} variant="outline">Share Now</Button>
             </div>

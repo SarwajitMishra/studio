@@ -122,7 +122,7 @@ export default function LoginPage() {
         await createUserProfile(completingUser, additionalData, guestData);
         if (guestData) clearGuestData();
         
-        toast({ title: "Profile Complete!", description: "Welcome to Shravya Playhouse!" });
+        toast({ title: "Profile Complete!", description: "Welcome to Firebase Studio!" });
         setCompletingUser(null);
         router.push('/dashboard?new_user=true');
       } catch (error: any) {

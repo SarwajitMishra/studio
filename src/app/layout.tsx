@@ -21,8 +21,8 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <title>Shravya Playhouse</title>
-        <meta name="description" content="Fun and educational games for kids at Shravya Playhouse!"/>
+        <title>Firebase Studio</title>
+        <meta name="description" content="Fun and educational games for kids!"/>
         <meta name="theme-color" content="#87CEEB" />
         <link rel="manifest" href="/manifest.json" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />

@@ -29,8 +29,8 @@ export default function Header() {
             <Link href="/dashboard" className="flex items-center gap-3 text-primary-foreground hover:opacity-80 transition-opacity">
               <PlaySquare size={32} className="text-accent" />
               <div className="hidden sm:flex flex-col font-bold leading-tight">
-                  <span className="text-lg">Shravya</span>
-                  <span className="text-lg">Playhouse</span>
+                  <span className="text-lg">Firebase</span>
+                  <span className="text-lg">Studio</span>
               </div>
             </Link>
             <Navigation side="left" />

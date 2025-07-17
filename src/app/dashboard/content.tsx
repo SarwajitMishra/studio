@@ -96,7 +96,7 @@ export default function DashboardContent() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="text-2xl text-primary flex items-center justify-center gap-2">
-                <Award size={28} /> Welcome to Shravya Playhouse!
+                <Award size={28} /> Welcome to Firebase Studio!
             </AlertDialogTitle>
             <AlertDialogDescription className="text-center text-base pt-2">
                 As a special welcome gift, we've added some rewards to your account to get you started.
@@ -121,7 +121,7 @@ export default function DashboardContent() {
       </AlertDialog>
 
       <header className="text-center py-8 bg-primary/10 rounded-lg shadow">
-        <h1 className="text-4xl font-bold text-primary tracking-tight">Welcome to Shravya Playhouse!</h1>
+        <h1 className="text-4xl font-bold text-primary tracking-tight">Welcome to Firebase Studio!</h1>
         <p className="mt-3 text-lg text-foreground/80 max-w-2xl mx-auto">
           Explore a world of fun and learning with our exciting collection of games and features.
         </p>
