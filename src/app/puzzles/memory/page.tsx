@@ -19,8 +19,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 const HeadMetadata = () => {
   return (
     <>
-      <title>Memory Matching Puzzle | Shravya Playhouse</title>
-      <meta name="description" content="Test your memory by matching pairs of icons in Shravya Playhouse!" />
+      <title>Memory Matching Puzzle | Shravya Playlab</title>
+      <meta name="description" content="Test your memory by matching pairs of icons in Shravya Playlab!" />
     </>
   );
 };

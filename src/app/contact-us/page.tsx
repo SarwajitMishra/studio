@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 
 export const metadata: Metadata = {
   title: 'Contact Us',
-  description: 'Get in touch with the Shravya Playhouse team.',
+  description: 'Get in touch with the Shravya Playlab team.',
 };
 
 export default function ContactUsPage() {
@@ -27,7 +27,7 @@ export default function ContactUsPage() {
               <div>
                 <h3 className="font-semibold">Email</h3>
                 <p className="text-muted-foreground">For general inquiries, support, or feedback:</p>
-                <a href="mailto:help.shravyaplayhouse@gmail.com" className="text-primary hover:underline">help.shravyaplayhouse@gmail.com</a>
+                <a href="mailto:help.shravyaplaylab@gmail.com" className="text-primary hover:underline">help.shravyaplaylab@gmail.com</a>
               </div>
             </div>
              <div className="flex items-start gap-4">
@@ -49,7 +49,7 @@ export default function ContactUsPage() {
           
           <div className="space-y-4">
              <h3 className="text-xl font-semibold border-b pb-2">Send us a message</h3>
-             <form className="space-y-4" action="mailto:help.shravyaplayhouse@gmail.com" method="get" encType="text/plain">
+             <form className="space-y-4" action="mailto:help.shravyaplaylab@gmail.com" method="get" encType="text/plain">
                 <div className="space-y-2">
                     <Label htmlFor="name">Name</Label>
                     <Input id="name" name="subject" placeholder="Your Name" />

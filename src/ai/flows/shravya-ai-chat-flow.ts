@@ -3,7 +3,7 @@
 /**
  * @fileOverview A chatbot flow for Shravya AI to answer game-related questions.
  *
- * - shravyaAIChat - A function that handles user queries about games in Shravya Playhouse.
+ * - shravyaAIChat - A function that handles user queries about games in Shravya Playlab.
  * - ShravyaAIChatInput - The input type for the shravyaAIChat function.
  * - ShravyaAIChatOutput - The return type for the shravyaAIChat function.
  */
@@ -13,7 +13,7 @@ import { GAMES, MATH_PUZZLE_TYPES, ENGLISH_PUZZLE_TYPES } from '@/lib/constants'
 import { z } from 'genkit';
 
 const ShravyaAIChatInputSchema = z.object({
-  userInput: z.string().describe('The user question about games in Shravya Playhouse.'),
+  userInput: z.string().describe('The user question about games in Shravya Playlab.'),
 });
 export type ShravyaAIChatInput = z.infer<typeof ShravyaAIChatInputSchema>;
 
@@ -39,7 +39,7 @@ const chatPrompt = ai.definePrompt({
   name: 'shravyaAIChatPrompt',
   input: { schema: ShravyaAIChatInputSchema.extend({ games: z.any() }) },
   output: { schema: ShravyaAIChatOutputSchema },
-  prompt: `You are Shravya AI, a fun, friendly, and helpful assistant for Shravya Playhouse. Your personality is like a playful older sibling or a fun guide.
+  prompt: `You are Shravya AI, a fun, friendly, and helpful assistant for Shravya Playlab. Your personality is like a playful older sibling or a fun guide.
 Your role is to answer questions specifically about the games available in the playhouse. Be casual, positive, and use emojis to make the conversation engaging! 🌟
 
 **Language Rules:**
@@ -48,10 +48,10 @@ Your role is to answer questions specifically about the games available in the p
 - For any other language, "Your answer" MUST be in conversational English. Set "responseLanguage" to "en".
 
 **Conversation Rules:**
-- If the question is not about the games in the provided list, or if you don't know the answer, politely say something like "Hmm, that's not about our games! I'm the expert on all the fun stuff inside Shravya Playhouse. Got any game questions? 😊" in the detected language.
+- If the question is not about the games in the provided list, or if you don't know the answer, politely say something like "Hmm, that's not about our games! I'm the expert on all the fun stuff inside Shravya Playlab. Got any game questions? 😊" in the detected language.
 - Keep your answers concise but fun!
 
-Here are all the games currently available in Shravya Playhouse (use this information for your answers):
+Here are all the games currently available in Shravya Playlab (use this information for your answers):
 {{#each games}}
 - **{{this.title}}** (Category: {{this.category}}) - {{this.description}}
 {{/each}}

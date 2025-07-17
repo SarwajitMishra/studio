@@ -4,7 +4,7 @@ import { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Contest & Rewards Policy',
-  description: 'Rules and policies for participating in contests at Shravya Playhouse.',
+  description: 'Rules and policies for participating in contests at Shravya Playlab.',
 };
 
 export default function ContestPolicyPage() {
@@ -13,10 +13,10 @@ export default function ContestPolicyPage() {
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle className="text-3xl font-bold text-primary">Contest & Rewards Policy</CardTitle>
-           <CardDescription>Official rules for participating in contests and earning rewards on Shravya Playhouse.</CardDescription>
+           <CardDescription>Official rules for participating in contests and earning rewards on Shravya Playlab.</CardDescription>
         </CardHeader>
         <CardContent className="prose prose-sm sm:prose-base dark:prose-invert max-w-none space-y-4">
-          <p>Shravya Playhouse regularly hosts contests to reward our dedicated players. Please read the following rules carefully.</p>
+          <p>Shravya Playlab regularly hosts contests to reward our dedicated players. Please read the following rules carefully.</p>
           
           <section>
             <h3>1. Eligibility</h3>
@@ -39,7 +39,7 @@ export default function ContestPolicyPage() {
             <ul>
               <li>A parent or legal guardian must verify the shipping address through our secure parental dashboard.</li>
               <li>Shipping is currently available only in selected regions (e.g., India only). This will be clearly stated in the contest rules.</li>
-              <li>Shravya Playhouse is not responsible for any customs fees, duties, or taxes that may apply to international shipping if it becomes available in the future.</li>
+              <li>Shravya Playlab is not responsible for any customs fees, duties, or taxes that may apply to international shipping if it becomes available in the future.</li>
             </ul>
           </section>
           

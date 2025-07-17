@@ -50,7 +50,7 @@ export default function FloatingChatButton() {
               Chat with Shravya AI
             </DialogTitle>
             <DialogDescription className="text-sm sm:text-base text-foreground/80">
-              Ask about games in Shravya Playhouse!
+              Ask about games in Shravya Playlab!
             </DialogDescription>
           </DialogHeader>
           <div className="p-4 sm:p-6 overflow-hidden flex-grow">

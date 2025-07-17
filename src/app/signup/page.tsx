@@ -171,7 +171,7 @@ export default function SignupPage() {
         clearGuestData();
       }
       
-      toast({ title: "Account Created!", description: "Welcome to Firebase Studio!" });
+      toast({ title: "Account Created!", description: "Welcome to Shravya Playlab!" });
       router.push('/dashboard?new_user=true');
     } catch (error: any) {
       console.error("Error signing up:", error);
@@ -227,7 +227,7 @@ export default function SignupPage() {
           clearGuestData();
         }
         
-        toast({ title: "Profile Complete!", description: "Welcome to Firebase Studio!" });
+        toast({ title: "Profile Complete!", description: "Welcome to Shravya Playlab!" });
         setCompletingUser(null);
         router.push('/dashboard?new_user=true');
 
@@ -399,7 +399,7 @@ export default function SignupPage() {
       <Card className="w-full max-w-2xl">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">Create Your Account</CardTitle>
-          <CardDescription>Join Firebase Studio today!</CardDescription>
+          <CardDescription>Join Shravya Playlab today!</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">

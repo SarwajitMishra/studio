@@ -4,7 +4,7 @@ import { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Content & Community Guidelines',
-  description: 'Guidelines for participating in the Shravya Playhouse community.',
+  description: 'Guidelines for participating in the Shravya Playlab community.',
 };
 
 export default function CommunityGuidelinesPage() {
@@ -13,10 +13,10 @@ export default function CommunityGuidelinesPage() {
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle className="text-3xl font-bold text-primary">Content & Community Guidelines</CardTitle>
-           <CardDescription>Help us keep Shravya Playhouse a safe, fun, and respectful environment for everyone.</CardDescription>
+           <CardDescription>Help us keep Shravya Playlab a safe, fun, and respectful environment for everyone.</CardDescription>
         </CardHeader>
         <CardContent className="prose prose-sm sm:prose-base dark:prose-invert max-w-none space-y-4">
-          <p>Welcome to the Shravya Playhouse community! To ensure a positive experience for all users, we ask that you adhere to the following guidelines, especially for features like blogs, essays, and leaderboards.</p>
+          <p>Welcome to the Shravya Playlab community! To ensure a positive experience for all users, we ask that you adhere to the following guidelines, especially for features like blogs, essays, and leaderboards.</p>
           
           <section>
             <h3>1. Be Respectful and Kind</h3>

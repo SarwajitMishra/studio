@@ -31,9 +31,9 @@ export default function BlogsPage() {
     return (
         <div className="space-y-8">
             <header className="text-center py-8 bg-primary/10 rounded-lg shadow-inner">
-                <h1 className="text-4xl font-bold text-primary">Playhouse Chronicles</h1>
+                <h1 className="text-4xl font-bold text-primary">Playlab Chronicles</h1>
                 <p className="mt-3 text-lg text-foreground/80 max-w-2xl mx-auto">
-                    Articles, stories, and tips from the Shravya Playhouse community.
+                    Articles, stories, and tips from the Shravya Playlab community.
                 </p>
                 <Button asChild className="mt-6">
                   <Link href="/blogs/create">

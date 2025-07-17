@@ -6,7 +6,7 @@ import { calculateRewards as calculateRewardsFlow, type RewardCalculationInput }
 
 const S_POINTS_TO_S_COIN_CONVERSION_THRESHOLD = 500;
 const DAILY_S_COIN_CAP = 100;
-const LOCAL_STORAGE_S_COIN_TALLY_KEY = 'shravyaPlayhouse_sCoinTally';
+const LOCAL_STORAGE_S_COIN_TALLY_KEY = 'shravyaPlaylab_sCoinTally';
 
 export interface RewardEvent {
   id: string;

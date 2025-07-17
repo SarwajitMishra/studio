@@ -63,7 +63,7 @@ export default function PreferencesPage() {
             <Card className="shadow-lg">
                 <CardHeader>
                 <CardTitle>Theme &amp; Preferences</CardTitle>
-                <CardDescription>Customize your Shravya Playhouse experience. These settings are saved in your browser.</CardDescription>
+                <CardDescription>Customize your Shravya Playlab experience. These settings are saved in your browser.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-8 pt-6">
                 <div className="space-y-3">

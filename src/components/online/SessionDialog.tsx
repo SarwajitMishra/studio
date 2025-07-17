@@ -114,8 +114,8 @@ export function SessionDialog({ open, onOpenChange }: SessionDialogProps) {
   const handleShare = async () => {
     if (!session?.id) return;
     const shareData = {
-      title: 'Join my Shravya Playhouse Session!',
-      text: `Join my game session on Shravya Playhouse with this code: ${session.id}`,
+      title: 'Join my Shravya Playlab Session!',
+      text: `Join my game session on Shravya Playlab with this code: ${session.id}`,
       url: window.location.origin, // optional
     };
 

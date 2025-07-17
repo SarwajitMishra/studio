@@ -29,7 +29,7 @@ import {
   LOCAL_STORAGE_S_COINS_KEY,
   BADGES,
   type Badge,
-} from "@/lib/constants";
+} from '@/lib/constants';
 import { UserCircle, BarChart3, Settings, CheckCircle, LogIn, LogOut, UploadCloud, Edit3, User as UserIcon, Palette, Sun, Moon, Trophy, Gamepad2, Star, Coins, AlertTriangle, Loader2, History, Bookmark, Lock, BookOpen, X } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -46,8 +46,8 @@ import { getRewardHistory, type RewardEvent } from '@/lib/rewards';
 import { addNotification } from '@/lib/notifications';
 import { getUserProfile, type UserProfile } from '@/lib/users';
 
-const LOCAL_STORAGE_USER_NAME_KEY = 'shravyaPlayhouse_userName';
-const LOCAL_STORAGE_AVATAR_KEY = 'shravyaPlayhouse_avatar';
+const LOCAL_STORAGE_USER_NAME_KEY = 'shravyaPlaylab_userName';
+const LOCAL_STORAGE_AVATAR_KEY = 'shravyaPlaylab_avatar';
 const DEFAULT_AVATAR_SRC = '/images/avatars/modern_girl.png';
 const DEFAULT_USER_NAME = "Kiddo";
 

@@ -20,7 +20,7 @@ import MagicSquareGame from "@/components/number-puzzles/MagicSquareGame";
 
 // Client component to inject metadata
 const HeadMetadata = ({ puzzleName }: { puzzleName?: string }) => {
-  const baseTitle = "Number Puzzles | Shravya Playhouse";
+  const baseTitle = "Number Puzzles | Shravya Playlab";
   const title = puzzleName ? `${puzzleName} - ${baseTitle}` : baseTitle;
   const description = puzzleName
     ? `Play ${puzzleName} and test your logic skills!`

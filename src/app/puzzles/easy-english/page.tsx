@@ -15,7 +15,7 @@ import CrosswordGame from "@/components/english-puzzles/CrosswordGame";
 
 // Client component to inject metadata
 const HeadMetadata = ({ puzzleName }: { puzzleName?: string }) => {
-  const baseTitle = "Easy English Fun | Shravya Playhouse";
+  const baseTitle = "Easy English Fun | Shravya Playlab";
   const title = puzzleName ? `${puzzleName} - ${baseTitle}` : baseTitle;
   const description = puzzleName
     ? `Play ${puzzleName} to improve your English vocabulary!`

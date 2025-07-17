@@ -1,7 +1,7 @@
 
 'use client';
 
-export const LOCAL_STORAGE_NOTIFICATIONS_KEY = 'shravyaPlayhouse_notifications';
+export const LOCAL_STORAGE_NOTIFICATIONS_KEY = 'shravyaPlaylab_notifications';
 
 export interface Notification {
     id: string;

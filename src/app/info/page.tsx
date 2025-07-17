@@ -36,7 +36,7 @@ export default function InfoPage() {
         <div className="max-w-4xl mx-auto space-y-8">
             <header className="text-center py-6 bg-primary/10 rounded-lg shadow">
                 <h1 className="text-4xl font-bold text-primary tracking-tight flex items-center justify-center gap-3">
-                    <Info size={36} /> Shravya Playhouse Info Center
+                    <Info size={36} /> Shravya Playlab Info Center
                 </h1>
                 <p className="mt-3 text-lg text-foreground/80 max-w-2xl mx-auto">
                     Everything you need to know about our games, mission, and achievements.
@@ -95,7 +95,7 @@ export default function InfoPage() {
             <Card>
                 <CardHeader>
                     <CardTitle>Badges & Achievements</CardTitle>
-                    <CardDescription>Unlock these titles and badges by reaching milestones in the Playhouse!</CardDescription>
+                    <CardDescription>Unlock these titles and badges by reaching milestones in the Playlab!</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <ScrollArea className="h-72 w-full pr-4">
@@ -115,7 +115,7 @@ export default function InfoPage() {
             </Card>
             
             <div className="text-center text-sm text-muted-foreground">
-                <p>Shravya Playhouse Version: {appVersion}</p>
+                <p>Shravya Playlab Version: {appVersion}</p>
             </div>
         </div>
     );

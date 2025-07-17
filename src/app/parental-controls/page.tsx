@@ -4,7 +4,7 @@ import { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Parental Controls & Consent',
-  description: 'Information about parental controls and consent policies at Shravya Playhouse.',
+  description: 'Information about parental controls and consent policies at Shravya Playlab.',
 };
 
 export default function ParentalControlsPage() {
@@ -13,10 +13,10 @@ export default function ParentalControlsPage() {
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle className="text-3xl font-bold text-primary">Parental Controls & Consent Policy</CardTitle>
-           <CardDescription>A guide for parents and guardians to manage their child's experience on Shravya Playhouse.</CardDescription>
+           <CardDescription>A guide for parents and guardians to manage their child's experience on Shravya Playlab.</CardDescription>
         </CardHeader>
         <CardContent className="prose prose-sm sm:prose-base dark:prose-invert max-w-none space-y-4">
-          <p>At Shravya Playhouse, we believe in creating a safe and positive digital environment for children. We provide parents and guardians with tools to supervise and manage their child's account and activities.</p>
+          <p>At Shravya Playlab, we believe in creating a safe and positive digital environment for children. We provide parents and guardians with tools to supervise and manage their child's account and activities.</p>
           
           <section>
             <h3>1. Verifiable Parental Consent (COPPA)</h3>

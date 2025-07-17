@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 export const metadata: Metadata = {
   title: 'Request a Feature',
-  description: 'Share your ideas and feedback with the Shravya Playhouse team.',
+  description: 'Share your ideas and feedback with the Shravya Playlab team.',
 };
 
 export default function RequestFeaturePage() {
@@ -25,7 +25,7 @@ export default function RequestFeaturePage() {
           <CardDescription>Have a great idea for a new game or an improvement? We want to hear it!</CardDescription>
         </CardHeader>
         <CardContent>
-          <form className="space-y-6" action="mailto:help.shravyaplayhouse@gmail.com" method="get" encType="text/plain">
+          <form className="space-y-6" action="mailto:help.shravyaplaylab@gmail.com" method="get" encType="text/plain">
              <div className="space-y-2">
                 <Label htmlFor="subject">Subject</Label>
                 <Input id="subject" name="subject" placeholder="e.g., Idea for a new space-themed game" required />

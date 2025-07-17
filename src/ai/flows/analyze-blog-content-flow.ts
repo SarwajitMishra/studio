@@ -36,7 +36,7 @@ const prompt = ai.definePrompt({
   name: 'analyzeBlogContentPrompt',
   input: { schema: AnalyzeBlogContentInputSchema },
   output: { schema: AnalyzeBlogContentOutputSchema },
-  prompt: `You are a friendly and helpful writing assistant for a children's educational app called Shravya Playhouse. Your task is to analyze a blog post written by a community member and provide constructive feedback.
+  prompt: `You are a friendly and helpful writing assistant for a children's educational app called Shravya Playlab. Your task is to analyze a blog post written by a community member and provide constructive feedback.
 
 The target audience is parents and children. The tone should be positive, encouraging, and clear.
 

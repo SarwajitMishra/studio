@@ -7,21 +7,21 @@ import ReactMarkdown from 'react-markdown';
 
 // Static data for the blog post
 const blog = {
-  title: "Welcome to Shravya Playhouse – A Magical World of Learning & Fun!",
-  authorName: "Team Shravya Playhouse",
+  title: "Welcome to Shravya Playlab – A Magical World of Learning & Fun!",
+  authorName: "Team Shravya Playlab",
   authorAvatar: "/images/custom-chat-icon.png",
   publishedAt: "2025-07-10T12:00:00.000Z",
   content: `
 👋 **Hello Parents, Guardians, and our Little Superstars!**
 
-We are incredibly excited to welcome you to Shravya Playhouse, a safe, playful, and learning-focused digital playground designed especially for children aged 3 to 12.
+We are incredibly excited to welcome you to Shravya Playlab, a safe, playful, and learning-focused digital playground designed especially for children aged 3 to 12.
 
 Born out of love and creativity on the occasion of our little angel Shravya turning 6 months old, this platform is crafted to make screen time productive, engaging, and educational.
 
 ---
 
-### 🌟 What is Shravya Playhouse?
-Shravya Playhouse is a game-based learning hub packed with:
+### 🌟 What is Shravya Playlab?
+Shravya Playlab is a game-based learning hub packed with:
 
 -   🧩 Brain-tickling puzzles
 -   🎮 Classic and modern strategy games
@@ -70,20 +70,20 @@ We also give guardians complete control over their child’s profile, progress r
 ### 📬 Contact Us
 We love hearing from our community! Have a suggestion, issue, or just want to say hi?
 
--   **📧 Email:** [help.shravyaplayhouse@gmail.com](mailto:help.shravyaplayhouse@gmail.com)
--   **📱 Instagram:** [@shravyaplayhouse](https://instagram.com/shravyaplayhouse)
+-   **📧 Email:** [help.shravyaplaylab@gmail.com](mailto:help.shravyaplaylab@gmail.com)
+-   **📱 Instagram:** [@shravyaplaylab](https://instagram.com/shravyaplaylab)
 -   **📞 WhatsApp Support:** [Message us on WhatsApp](https://wa.me/message/4XRZPF6RLB6KC1)
 
 🎈 Thank you for joining this journey with us. Let's make learning joyful and magical – together!
 
 With love,  
-**Team Shravya Playhouse** 💖
+**Team Shravya Playlab** 💖
   `,
 };
 
 export const metadata: Metadata = {
   title: blog.title,
-  description: "Welcome to Shravya Playhouse, a safe, playful, and learning-focused digital playground designed especially for children.",
+  description: "Welcome to Shravya Playlab, a safe, playful, and learning-focused digital playground designed especially for children.",
 };
 
 export default function StaticBlogPostPage() {

@@ -29,8 +29,8 @@ import { getNotifications, markAsRead, type Notification } from '@/lib/notificat
 
 const DEFAULT_AVATAR_SRC = '/images/avatars/modern_girl.png';
 const DEFAULT_USER_NAME = "Kiddo";
-const LOCAL_STORAGE_AVATAR_KEY = 'shravyaPlayhouse_avatar';
-const LOCAL_STORAGE_USER_NAME_KEY = 'shravyaPlayhouse_userName';
+const LOCAL_STORAGE_AVATAR_KEY = 'shravyaPlaylab_avatar';
+const LOCAL_STORAGE_USER_NAME_KEY = 'shravyaPlaylab_userName';
 
 interface NavigationProps {
   side: 'left' | 'right';
