@@ -107,58 +107,12 @@ export async function getPublishedBlogs(): Promise<BlogPost[]> {
     // Map and then sort in code
     const posts = querySnapshot.docs.map(processPost);
     posts.sort((a, b) => {
-        const dateA = new Date(a.publishedAt).getTime();
-        const dateB = new Date(b.publishedAt).getTime();
+        const dateA = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
+        const dateB = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
         return dateB - dateA; // Sort descending
     });
 
     return posts;
-}
-
-/**
- * Fetches all blog posts with 'pending' status, sorted by creation date.
- * @returns An array of pending blog posts.
- */
-export async function getPendingBlogs(): Promise<BlogPost[]> {
-    const blogsCollectionRef = collection(db, 'blogs');
-     // Fetch all pending posts without sorting at the DB level
-    const q = query(blogsCollectionRef, where("status", "==", "pending"));
-    const querySnapshot = await getDocs(q);
-    
-    // Map and then sort in code
-    const posts = querySnapshot.docs.map(processPost);
-    posts.sort((a, b) => {
-        const dateA = new Date(a.createdAt).getTime();
-        const dateB = new Date(b.createdAt).getTime();
-        return dateB - dateA; // Sort descending
-    });
-
-    return posts;
-}
-
-
-/**
- * Updates the status of a blog post.
- * Used by admins to publish or reject posts.
- * @param blogId The ID of the blog post to update.
- * @param newStatus The new status to set ('published' or 'rejected').
- * @returns An object indicating success or failure.
- */
-export async function updateBlogStatus(blogId: string, newStatus: 'published' | 'rejected'): Promise<{ success: boolean; error?: string }> {
-    try {
-        const blogDocRef = doc(db, 'blogs', blogId);
-        const updateData: any = { status: newStatus };
-        
-        if (newStatus === 'published') {
-            updateData.publishedAt = serverTimestamp();
-        }
-
-        await updateDoc(blogDocRef, updateData);
-        return { success: true };
-    } catch (error: any) {
-        console.error(`Error updating blog ${blogId} to ${newStatus}:`, error);
-        return { success: false, error: error.message };
-    }
 }
 
 /**

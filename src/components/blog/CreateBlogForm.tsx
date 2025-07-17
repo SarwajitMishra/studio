@@ -34,8 +34,6 @@ const blogSchema = z.object({
 
 type BlogFormValues = z.infer<typeof blogSchema>;
 
-// This component is now only for creating posts that will be submitted for review.
-// The isAdmin prop has been removed to simplify logic and fix permission issues.
 export default function CreateBlogForm() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -80,13 +78,12 @@ export default function CreateBlogForm() {
       photoURL: currentUser.photoURL,
     };
 
-    // All posts are now created with 'pending' status. Admins can publish from the dashboard.
+    // All posts are created with 'pending' status for external review.
     const result = await createBlogPost(data, authorInfo, 'pending');
     setIsLoading(false);
 
     if (result.success) {
       toast({ title: "Success!", description: "Your post has been submitted for review." });
-      // Redirect all users to the main blogs page after submission.
       router.push('/blogs');
     } else {
       toast({ variant: 'destructive', title: 'Error', description: result.error || 'Failed to save post.' });
@@ -154,7 +151,7 @@ export default function CreateBlogForm() {
         <CardHeader>
           <CardTitle>Write a New Blog Post</CardTitle>
           <CardDescription>
-            Share your thoughts with the Shravya Playhouse community. Your post will be reviewed by our team before publishing.
+            Share your thoughts with the Firebase Studio community. Your post will be reviewed before publishing.
           </CardDescription>
         </CardHeader>
         <CardContent>

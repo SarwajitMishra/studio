@@ -189,37 +189,3 @@ export async function syncLocalDataToFirebase() {
         await syncGuestDataToProfile(user.uid, guestData);
     }
 }
-
-
-/**
- * Checks if a user has admin privileges.
- * @param userId The UID of the user to check.
- * @returns {Promise<boolean>} True if the user is an admin, false otherwise.
- */
-export async function isUserAdmin(userId: string): Promise<boolean> {
-  if (!userId) return false;
-  try {
-    const roleDocRef = doc(db, 'roles', userId);
-    const roleDocSnap = await getDoc(roleDocRef);
-    if (roleDocSnap.exists()) {
-      return roleDocSnap.data().isAdmin === true;
-    }
-    return false;
-  } catch (error) {
-    console.error("Error checking admin status:", error);
-    return false;
-  }
-}
-
-
-/**
- * Fetches all user profiles from the 'users' collection.
- * This function should only be callable by an admin, enforced by Firestore rules.
- * @returns {Promise<UserProfile[]>} A list of user profiles.
- */
-export async function getAllUsers(): Promise<UserProfile[]> {
-    const usersCol = collection(db, 'users');
-    const userSnapshot = await getDocs(usersCol);
-    const userList = userSnapshot.docs.map(doc => doc.data() as UserProfile);
-    return userList;
-}

@@ -24,7 +24,6 @@ import { Settings, Home, Store, BookOpen, Bell, BookText, LogOut, Shield, Zap, C
 import { SETTINGS_MENU_ITEMS } from '@/lib/constants';
 import { auth, signOut as firebaseSignOut, onAuthStateChanged, type User } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { isUserAdmin } from '@/lib/users';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { getNotifications, markAsRead, type Notification } from '@/lib/notifications';
 
@@ -42,7 +41,6 @@ export default function Navigation({ side }: NavigationProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState(DEFAULT_AVATAR_SRC);
   const [userName, setUserName] = useState(DEFAULT_USER_NAME);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -68,11 +66,6 @@ export default function Navigation({ side }: NavigationProps) {
 
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
-      if (user) {
-        setIsAdmin(await isUserAdmin(user.uid));
-      } else {
-        setIsAdmin(false);
-      }
       updateProfileDisplay();
     });
     
@@ -259,17 +252,6 @@ export default function Navigation({ side }: NavigationProps) {
                 </Link>
               </DropdownMenuItem>
             ))}
-            {isAdmin && (
-              <>
-                <DropdownMenuSeparator />
-                 <DropdownMenuItem asChild className="cursor-pointer">
-                  <Link href="/admin">
-                    <Shield className="mr-2 h-4 w-4" />
-                    <span>Admin Panel</span>
-                  </Link>
-                </DropdownMenuItem>
-              </>
-            )}
             {currentUser && (
               <>
                 <DropdownMenuSeparator />
