@@ -6,7 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '@/components/ui/sheet';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Menu, X, Home, LogIn, UserPlus } from 'lucide-react';
 import { auth, onAuthStateChanged, signOut, type User } from '@/lib/firebase';
@@ -115,6 +115,12 @@ export default function Header() {
                             </Button>
                         </SheetTrigger>
                         <SheetContent side="left">
+                            <SheetHeader className="sr-only">
+                              <SheetTitle>Main Menu</SheetTitle>
+                              <SheetDescription>
+                                Main navigation menu for the Shravya PlayLab application.
+                              </SheetDescription>
+                            </SheetHeader>
                             <div className="p-4">
                                 <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)} className="absolute top-3 right-3">
                                     <X />
