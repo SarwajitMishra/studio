@@ -9,7 +9,7 @@ import PWALoader from '@/components/pwa-loader';
 import ThemeProvider from '@/components/theme-provider';
 import { Inter } from 'next/font/google';
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
+const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
 export default function RootLayout({
   children,
@@ -18,13 +18,13 @@ export default function RootLayout({
 }>) {
   const pathname = usePathname();
   // Define all pages that should not have the main layout
-  const standalonePages = ['/'];
-  const isStandalonePage = standalonePages.includes(pathname) || pathname.startsWith('/login') || pathname.startsWith('/signup');
+  const standalonePages = ['/login', '/signup'];
+  const isStandalonePage = standalonePages.includes(pathname);
 
   return (
     <html lang="en" suppressHydrationWarning className={inter.variable}>
       <head>
-        <title>Shravya PlayLab</title>
+        <title>Firebase Studio</title>
         <meta name="description" content="Fun and educational games for kids!"/>
         <meta name="theme-color" content="#FF9933" />
         <link rel="manifest" href="/manifest.json" />

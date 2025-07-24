@@ -6,91 +6,49 @@
 @layer base {
   :root {
     /* Define default HSL components for the 'default' theme (light mode) */
-    --theme-background-h: 30;
-    --theme-background-s: 100%;
-    --theme-background-l: 97%;
-    --theme-foreground-h: 215;
-    --theme-foreground-s: 25%;
-    --theme-foreground-l: 27%;
-    --theme-primary-h: 30;
-    --theme-primary-s: 100%;
-    --theme-primary-l: 60%;
-    --theme-accent-h: 192;
-    --theme-accent-s: 69%;
-    --theme-accent-l: 82%;
-    
-    /* Define default HSL components for the 'default' theme (dark mode) */
-    --theme-dark-background-h: 215;
-    --theme-dark-background-s: 25%;
-    --theme-dark-background-l: 15%;
-    --theme-dark-foreground-h: 30;
-    --theme-dark-foreground-s: 100%;
-    --theme-dark-foreground-l: 97%;
-    --theme-dark-primary-h: 30;
-    --theme-dark-primary-s: 100%;
-    --theme-dark-primary-l: 60%;
-    --theme-dark-accent-h: 192;
-    --theme-dark-accent-s: 69%;
-    --theme-dark-accent-l: 75%;
-
-    /* Light Mode Theme Variables */
-    --background: var(--theme-background-h) var(--theme-background-s) var(--theme-background-l);
-    --foreground: var(--theme-foreground-h) var(--theme-foreground-s) var(--theme-foreground-l);
-    --primary: var(--theme-primary-h) var(--theme-primary-s) var(--theme-primary-l);
-    --accent: var(--theme-accent-h) var(--theme-accent-s) var(--theme-accent-l);
-    
+    --background: 0 0% 100%;
+    --foreground: 224 71.4% 4.1%;
     --card: 0 0% 100%;
-    --card-foreground: var(--theme-foreground-h) var(--theme-foreground-s) var(--theme-foreground-l);
+    --card-foreground: 224 71.4% 4.1%;
     --popover: 0 0% 100%;
-    --popover-foreground: var(--theme-foreground-h) var(--theme-foreground-s) var(--theme-foreground-l);
-    --primary-foreground: 215 25% 10%;
-    --secondary: 30 48% 64%; /* Muted Gold */
-    --secondary-foreground: 215 25% 10%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --popover-foreground: 224 71.4% 4.1%;
+    --primary: 33 94% 50%; /* Vibrant Orange */
+    --primary-foreground: 40 100% 10%;
+    --secondary: 220 14.3% 95.9%;
+    --secondary-foreground: 220 13% 9%;
+    --muted: 220 14.3% 95.9%;
+    --muted-foreground: 220 8.9% 43.1%;
+    --accent: 195 85% 78%; /* Sky Blue */
+    --accent-foreground: 220 13% 9%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: var(--theme-primary-h) var(--theme-primary-s) var(--theme-primary-l);
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 33 94% 50%; /* Vibrant Orange for ring */
     --radius: 0.5rem;
-
-    --chart-1: var(--theme-primary-h) var(--theme-primary-s) 65%;
-    --chart-2: var(--theme-accent-h) var(--theme-accent-s) 60%;
-    --chart-3: 30 48% 64%;
-    --chart-4: var(--theme-primary-h) 50% 50%;
-    --chart-5: var(--theme-accent-h) 80% 40%;
   }
 
   .dark {
     /* Dark Mode Theme Variables */
-    --background: var(--theme-dark-background-h) var(--theme-dark-background-s) var(--theme-dark-background-l);
-    --foreground: var(--theme-dark-foreground-h) var(--theme-dark-foreground-s) var(--theme-dark-foreground-l);
-    --primary: var(--theme-dark-primary-h) var(--theme-dark-primary-s) var(--theme-dark-primary-l);
-    --accent: var(--theme-dark-accent-h) var(--theme-dark-accent-s) var(--theme-dark-accent-l);
-    
-    --card: var(--theme-dark-background-h) var(--theme-dark-background-s) 17%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary-foreground: 215 25% 10%;
-    --secondary: 30 48% 50%;
-    --secondary-foreground: 30 100% 95%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --background: 224 71.4% 4.1%;
+    --foreground: 0 0% 98%;
+    --card: 224 71.4% 4.1%;
+    --card-foreground: 0 0% 98%;
+    --popover: 224 71.4% 4.1%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 33 94% 50%; /* Vibrant Orange */
+    --primary-foreground: 40 100% 10%;
+    --secondary: 215 27.9% 16.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 215 27.9% 16.9%;
+    --muted-foreground: 217.9 10.6% 64.9%;
+    --accent: 195 85% 78%; /* Sky Blue */
+    --accent-foreground: 220 13% 9%;
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: var(--theme-dark-primary-h) var(--theme-dark-primary-s) var(--theme-dark-primary-l);
-
-    --chart-1: var(--theme-dark-primary-h) var(--theme-dark-primary-s) 60%;
-    --chart-2: var(--theme-dark-accent-h) var(--theme-dark-accent-s) 65%;
-    --chart-3: 30 48% 50%;
-    --chart-4: var(--theme-dark-primary-h) 50% 55%;
-    --chart-5: var(--theme-dark-accent-h) 80% 45%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 215 27.9% 16.9%;
+    --input: 215 27.9% 16.9%;
+    --ring: 33 94% 50%; /* Vibrant Orange for ring */
   }
 }
 
@@ -102,18 +60,4 @@
     @apply bg-background text-foreground;
     @apply antialiased; /* Ensures font smoothing */
   }
-}
-
-/* Custom animation for gentle bounce */
-@keyframes gentle-bounce {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-3px);
-  }
-}
-
-.animate-gentle-bounce {
-  animation: gentle-bounce 0.5s ease-in-out;
 }
