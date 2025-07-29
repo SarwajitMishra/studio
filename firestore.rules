@@ -2,62 +2,67 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Default deny all
-    match /{document=**} {
-      allow read, write: if false;
-    }
 
-    // Allow anyone to create a document in the 'visitors' collection.
-    // This lets the visitor counter work.
-    // Deny updates or deletes to prevent tampering.
-    match /visitors/{visitorId} {
-      allow create, read: if true;
-      allow update, delete: if false;
-    }
-    
-    // Allow users to read and update their own profile.
+    // Allow public read access to users' profiles for display purposes,
+    // but only the user can write to their own document.
     match /users/{userId} {
-      allow read, update: if request.auth != null && request.auth.uid == userId;
-      // Allow admins to read any user profile.
-      allow get: if request.auth != null && get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.isAdmin == true;
-    }
-    
-    // Allow admins to list all users.
-    match /users/{userId} {
-        allow list: if request.auth != null && get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.isAdmin == true;
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Allow users to read their own role, but only admins can write roles.
-    match /roles/{userId} {
-      allow get: if request.auth != null && request.auth.uid == userId;
-      allow read, write: if request.auth != null && get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.isAdmin == true;
-    }
-    
-    // Allow any authenticated user to create pending blog posts.
-    // Allow anyone to read published posts.
-    match /blogs/{blogId} {
-        allow read: if resource.data.status == 'published';
-        allow create: if request.auth != null && request.resource.data.status == 'pending';
-        // Allow author to update/delete their own drafts/pending posts
-        allow update, delete: if request.auth != null && request.auth.uid == resource.data.authorId && (resource.data.status == 'draft' || resource.data.status == 'pending');
-        // Allow admins to manage any post
-        allow get, list, update, delete: if request.auth != null && get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.isAdmin == true;
+    // Rules for the Forum
+    match /forum-topics/{topicId} {
+      // Anyone can read topics
+      allow read: if true;
+
+      // Only authenticated users can create new topics.
+      // The new topic's authorId must match the user's UID.
+      allow create: if request.auth != null && request.resource.data.authorId == request.auth.uid;
+
+      // Logged-in users can update replyCount and lastActivity.
+      // The original author could be allowed to edit their post, but that's not implemented yet.
+      allow update: if request.auth != null &&
+                      (
+                        // Allow updating reply count and last activity for new replies
+                        request.resource.data.replyCount == resource.data.replyCount + 1
+                      );
     }
 
-    // Allow admins to read the usernames collection for validation.
-    match /usernames/{username} {
-        allow get: if request.auth != null && get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.isAdmin == true;
-        // Allow users to create their own username entry.
-        allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+    match /forum-topics/{topicId}/replies/{replyId} {
+        // Anyone can read replies
+        allow read: if true;
+        // Only authenticated users can create replies
+        allow create: if request.auth != null && request.resource.data.authorId == request.auth.uid;
+        // Users shouldn't be able to edit or delete replies for now
+        allow update, delete: if false;
     }
-    
-     // Allow admins to manage sessions, and authenticated users to interact with them.
-    match /sessions/{sessionId} {
-      allow read, create, update: if request.auth != null;
-    }
-    
-    match /sessions/{sessionId}/messages/{messageId} {
-        allow read, create: if request.auth != null;
+
+
+    // Rules for the Knowledge Base
+    match /knowledge-base-articles/{articleId} {
+
+      // Allow anyone to read articles that are 'published'.
+      // Allow authenticated users to read their own drafts or pending articles.
+      allow read: if resource.data.status == 'published' ||
+                     (request.auth != null && request.auth.uid == resource.data.authorId);
+
+      // Allow authenticated users to create new articles.
+      // The authorId must match their own UID.
+      // The initial status must be 'draft' or 'pending-review'.
+      allow create: if request.auth != null &&
+                       request.resource.data.authorId == request.auth.uid &&
+                       (request.resource.data.status == 'draft' || request.resource.data.status == 'pending-review');
+
+      // Allow the original author to update their article only if it's still a draft or pending review.
+      // They cannot change the authorId or the status to 'published' or 'rejected'.
+      allow update: if request.auth != null &&
+                       request.auth.uid == resource.data.authorId &&
+                       (resource.data.status == 'draft' || resource.data.status == 'pending-review') &&
+                       request.resource.data.authorId == resource.data.authorId && // Cannot change author
+                       !(request.resource.data.status == 'published' || request.resource.data.status == 'rejected'); // Cannot self-publish or self-reject
+
+      // Do not allow users to delete articles. This should be an admin-only action.
+      allow delete: if false;
     }
   }
 }

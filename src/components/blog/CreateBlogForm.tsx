@@ -151,7 +151,7 @@ export default function CreateBlogForm() {
         <CardHeader>
           <CardTitle>Write a New Blog Post</CardTitle>
           <CardDescription>
-            Share your thoughts with the Firebase Studio community. Your post will be reviewed before publishing.
+            Share your thoughts with theShravya Playhouse community. Your post will be reviewed before publishing.
           </CardDescription>
         </CardHeader>
         <CardContent>

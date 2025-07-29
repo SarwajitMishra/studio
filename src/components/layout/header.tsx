@@ -19,7 +19,7 @@ const navItems = [
 ];
 
 const DEFAULT_AVATAR_SRC = '/images/avatars/modern_girl.png';
-const LOCAL_STORAGE_AVATAR_KEY = 'shravyaPlaylab_avatar';
+const LOCAL_STORAGE_AVATAR_KEY = 'shravyaPlayhouse_avatar';
 
 export default function Header() {
     const [isOpen, setIsOpen] = useState(false);
@@ -78,8 +78,8 @@ export default function Header() {
         <header className="bg-background/80 backdrop-blur-sm border-b sticky top-0 z-50">
             <div className="container mx-auto px-4 py-3 flex items-center justify-between">
                 <Link href="/" className="flex items-center gap-2 font-bold text-xl text-primary">
-                    <Image src="/images/logo.png" alt="Firebase Studio Logo" width={32} height={32} data-ai-hint="logo flame" />
-                    <span>Firebase Studio</span>
+                    <Image src="/images/logo.png" alt="Shravya Playhouse Logo" width={32} height={32} data-ai-hint="logo flame" />
+                    <span>Shravya Playhouse</span>
                 </Link>
 
                 {/* Desktop Navigation */}
@@ -118,7 +118,7 @@ export default function Header() {
                             <SheetHeader className="sr-only">
                               <SheetTitle>Main Menu</SheetTitle>
                               <SheetDescription>
-                                Main navigation menu for the Shravya PlayLab application.
+                                Main navigation menu for the Shravya Playhouse application.
                               </SheetDescription>
                             </SheetHeader>
                             <div className="p-4">

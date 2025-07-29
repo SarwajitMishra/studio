@@ -19,7 +19,7 @@ export default function CookiesPolicyPage() {
           </div>
         </CardHeader>
         <CardContent className="prose prose-sm sm:prose-base dark:prose-invert max-w-none space-y-4">
-          <p>This Cookies Policy explains how Firebase Studio uses cookies and similar technologies to recognize you when you visit our platform. It explains what these technologies are and why we use them, as well as your rights to control our use of them.</p>
+          <p>This Cookies Policy explains howShravya Playhouse uses cookies and similar technologies to recognize you when you visit our platform. It explains what these technologies are and why we use them, as well as your rights to control our use of them.</p>
 
           <section>
             <h3>1. What Are Cookies?</h3>
@@ -47,7 +47,7 @@ export default function CookiesPolicyPage() {
               <li>Block all cookies from being set.</li>
               <li>Delete all cookies when you close your browser.</li>
             </ul>
-            <p>Please note that blocking essential cookies may significantly impact the functionality of Firebase Studio.</p>
+            <p>Please note that blocking essential cookies may significantly impact the functionality ofShravya Playhouse.</p>
           </section>
 
           <section>
