@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Puzzle as PuzzleIcon, CheckCircle, Shield, Gem, Star as StarIcon, ArrowLeft, Timer, Eye, RotateCw, Loader2, Lightbulb, RefreshCw } from "lucide-react";
+import { Puzzle as PuzzleIcon, CheckCircle, Shield, Gem, Star as StarIcon, ArrowLeft, Timer, Eye, RotateCw, Loader2, Lightbulb, RefreshCw, Shrink, Expand } from "lucide-react";
 import Link from "next/link";
 import NextImage from "next/image";
 import { cn } from "@/lib/utils";
@@ -15,6 +15,7 @@ import { applyRewards, calculateRewards } from "@/lib/rewards";
 import { updateGameStats } from "@/lib/progress";
 import { S_COINS_ICON as SCoinsIcon, S_POINTS_ICON as SPointsIcon } from '@/lib/constants';
 import { generatePuzzleImage } from "@/ai/flows/generate-puzzle-image-flow";
+import { useFullscreen } from "@/hooks/use-fullscreen";
 
 type Difficulty = "beginner" | "expert" | "pro";
 
@@ -154,6 +155,8 @@ export default function JigsawPuzzlePage() {
     const [hintsRemaining, setHintsRemaining] = useState(3);
     const { toast } = useToast();
     
+    const gameContainerRef = useRef<HTMLDivElement>(null);
+    const { isFullscreen, enterFullscreen, exitFullscreen } = useFullscreen(gameContainerRef);
     const boardRef = useRef<HTMLDivElement>(null);
     const [boardSize, setBoardSize] = useState(450); // Default size
 
@@ -353,6 +356,7 @@ export default function JigsawPuzzlePage() {
 
         setPuzzlePieces(shufflePieces(generatedPieces, gridSize));
         setViewMode("playing");
+        setTimeout(() => enterFullscreen(), 100);
     };
 
     const swapPieces = useCallback((piece1Id: string, piece2Id: string) => {
@@ -403,6 +407,7 @@ export default function JigsawPuzzlePage() {
     };
     
     const handleReset = () => {
+        exitFullscreen();
         updateGameStats({ gameId: 'jigsaw', didWin: false });
         setViewMode("selectDifficulty");
         setSelectedDifficulty(null);
@@ -451,7 +456,7 @@ export default function JigsawPuzzlePage() {
     // View: Playing
     if (viewMode === "playing" && selectedDifficulty && selectedImage && selectedImage.src) {
         return (
-            <div className="flex flex-col items-center justify-center p-2 sm:p-4 md:p-6 space-y-4">
+            <div ref={gameContainerRef} className={cn("flex flex-col items-center justify-center p-2 sm:p-4 md:p-6 space-y-4", isFullscreen && "bg-background h-screen w-screen")}>
                  <AlertDialog open={isComplete}>
                     <AlertDialogContent>
                         <AlertDialogHeader>
@@ -486,6 +491,7 @@ export default function JigsawPuzzlePage() {
                         </div>
                         <AlertDialogFooter>
                         <AlertDialogAction onClick={() => {
+                          exitFullscreen();
                           setLastReward(null);
                           if(selectedDifficulty) handleDifficultySelect(selectedDifficulty);
                         }} disabled={isCalculatingReward}>Choose New Puzzle</AlertDialogAction>
@@ -547,6 +553,7 @@ export default function JigsawPuzzlePage() {
                                 <Lightbulb className="mr-2 h-4 w-4" /> Solve Piece ({hintsRemaining})
                            </Button>
                            <Button variant="outline" onClick={() => {
+                             exitFullscreen();
                              if(selectedDifficulty) handleDifficultySelect(selectedDifficulty);
                             }}>
                                <ArrowLeft className="mr-2 h-4 w-4" /> Change Image

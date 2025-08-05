@@ -6,14 +6,15 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card as ShadCNCard, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { RefreshCw, Award, Brain, Timer, ArrowLeft, Shield, Star as StarIcon, Gem, Loader2 } from 'lucide-react';
+import { RefreshCw, Award, Brain, Timer, ArrowLeft, Shield, Star as StarIcon, Gem, Loader2, Shrink, Expand } from 'lucide-react';
 import { MEMORY_ICONS, S_COINS_ICON as SCoinsIcon, S_POINTS_ICON as SPointsIcon } from '@/lib/constants';
 import type { LucideIcon } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { applyRewards, calculateRewards } from "@/lib/rewards";
 import { updateGameStats } from "@/lib/progress";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { useFullscreen } from '@/hooks/use-fullscreen';
 
 // Client component to inject metadata
 const HeadMetadata = () => {
@@ -80,6 +81,9 @@ const MemoryMatchPage: NextPage = () => {
   
   const timerRef =  useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
+  
+  const gameContainerRef = useRef<HTMLDivElement>(null);
+  const { isFullscreen, enterFullscreen, exitFullscreen } = useFullscreen(gameContainerRef);
 
   const StarRating = ({ rating }: { rating: number }) => (
     <div className="flex justify-center">
@@ -168,7 +172,8 @@ const MemoryMatchPage: NextPage = () => {
     setIsCalculatingReward(false);
     setLastReward(null);
     setView('playing');
-  }, []);
+    setTimeout(() => enterFullscreen(), 100);
+  }, [enterFullscreen]);
   
   // Timer effect
   useEffect(() => {
@@ -234,6 +239,11 @@ const MemoryMatchPage: NextPage = () => {
     return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const handleExit = () => {
+    exitFullscreen();
+    setView('select');
+  }
+
   if (view === 'select') {
     return (
        <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] py-8">
@@ -280,7 +290,7 @@ const MemoryMatchPage: NextPage = () => {
   }
 
   return (
-    <div className="flex flex-col items-center space-y-6 p-4">
+    <div ref={gameContainerRef} className={cn("flex flex-col items-center space-y-6 p-4", isFullscreen && "bg-background h-screen w-screen justify-center")}>
       <HeadMetadata />
       <AlertDialog open={isGameWon}>
             <AlertDialogContent>
@@ -316,7 +326,7 @@ const MemoryMatchPage: NextPage = () => {
                 </div>
                 <AlertDialogFooter>
                     <AlertDialogAction onClick={() => difficulty && startGame(difficulty)} disabled={isCalculatingReward}>Play Again</AlertDialogAction>
-                    <AlertDialogCancel onClick={() => setView('select')} disabled={isCalculatingReward}>Back to Menu</AlertDialogCancel>
+                    <AlertDialogCancel onClick={handleExit} disabled={isCalculatingReward}>Back to Menu</AlertDialogCancel>
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
@@ -328,8 +338,8 @@ const MemoryMatchPage: NextPage = () => {
               <Brain className="mr-3 h-8 w-8 text-primary" />
               <CardTitle className="text-3xl font-bold text-primary">Memory Matching</CardTitle>
             </div>
-            <Button variant="outline" size="sm" onClick={() => setView('select')}>
-              <ArrowLeft size={16} className="mr-1" /> Change Difficulty
+            <Button variant="outline" size="sm" onClick={handleExit}>
+              <Shrink size={16} className="mr-1" /> Exit
             </Button>
           </div>
           <CardDescription className="text-center text-lg text-foreground/80 pt-1">

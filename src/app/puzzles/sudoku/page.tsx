@@ -1,17 +1,18 @@
 
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Grid3x3, RotateCw, Lightbulb, ArrowLeft, Shield, Star as StarIcon, Gem, Timer, Loader2, Award } from 'lucide-react';
+import { Grid3x3, RotateCw, Lightbulb, ArrowLeft, Shield, Star as StarIcon, Gem, Timer, Loader2, Award, Shrink, Expand } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { applyRewards, calculateRewards } from "@/lib/rewards";
 import { updateGameStats } from "@/lib/progress";
 import { S_COINS_ICON as SCoinsIcon, S_POINTS_ICON as SPointsIcon } from '@/lib/constants';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { useFullscreen } from '@/hooks/use-fullscreen';
 
 type Difficulty = 'easy' | 'medium' | 'hard';
 type SudokuGrid = (number | null)[][];
@@ -57,6 +58,9 @@ export default function SudokuPage() {
     const [isCalculatingReward, setIsCalculatingReward] = useState(false);
     const [lastReward, setLastReward] = useState<{points: number, coins: number, stars: number} | null>(null);
     const { toast } = useToast();
+    
+    const gameContainerRef = useRef<HTMLDivElement>(null);
+    const { isFullscreen, enterFullscreen, exitFullscreen } = useFullscreen(gameContainerRef);
 
     const StarRating = ({ rating }: { rating: number }) => (
         <div className="flex justify-center">
@@ -150,7 +154,8 @@ export default function SudokuPage() {
         setTime(0);
         setIsCalculatingReward(false);
         setLastReward(null);
-    }, [isComplete, difficulty]);
+        setTimeout(() => enterFullscreen(), 100);
+    }, [isComplete, difficulty, enterFullscreen]);
 
     const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>, row: number, col: number) => {
         if (isComplete) return;
@@ -202,6 +207,11 @@ export default function SudokuPage() {
             toast({ title: "All Good!", description: "All your entries so far are correct. Keep going!", className: "bg-green-500 text-white" });
         }
     };
+    
+    const handleExit = () => {
+        exitFullscreen();
+        setDifficulty(null);
+    }
 
     if (!difficulty) {
         return (
@@ -227,7 +237,7 @@ export default function SudokuPage() {
     }
 
     return (
-        <div className="flex flex-col lg:flex-row items-center lg:items-start justify-center p-4 gap-6">
+        <div ref={gameContainerRef} className={cn("flex flex-col lg:flex-row items-center lg:items-start justify-center p-4 gap-6", isFullscreen && "bg-background h-screen w-screen")}>
             <AlertDialog open={isComplete && !!lastReward}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
@@ -262,7 +272,7 @@ export default function SudokuPage() {
                     </div>
                     <AlertDialogFooter>
                     <AlertDialogAction onClick={() => startGame(difficulty)} disabled={isCalculatingReward}>Play Again</AlertDialogAction>
-                    <AlertDialogCancel onClick={() => setDifficulty(null)} disabled={isCalculatingReward}>Back to Menu</AlertDialogCancel>
+                    <AlertDialogCancel onClick={handleExit} disabled={isCalculatingReward}>Back to Menu</AlertDialogCancel>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
@@ -333,7 +343,7 @@ export default function SudokuPage() {
                     <CardContent className="space-y-3">
                         <Button variant="outline" className="w-full" onClick={validateEntries} disabled={isComplete}><Lightbulb className="mr-2"/> Validate</Button>
                         <Button variant="outline" className="w-full" onClick={() => startGame(difficulty)}><RotateCw className="mr-2"/> New Game</Button>
-                        <Button variant="ghost" className="w-full" onClick={() => setDifficulty(null)}><ArrowLeft className="mr-2"/> Change Difficulty</Button>
+                        <Button variant="ghost" className="w-full" onClick={handleExit}><Shrink className="mr-2"/> Exit Fullscreen</Button>
                     </CardContent>
                 </Card>
             </div>

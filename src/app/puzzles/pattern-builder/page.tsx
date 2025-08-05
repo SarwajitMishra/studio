@@ -1,13 +1,13 @@
 
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
   Blocks, Eye, Pointer, RotateCw, ArrowLeft, Shield, Star, Gem, Check, X, Award,
-  Apple, Heart, Sun, Cloud, Gift, Loader2
+  Apple, Heart, Sun, Cloud, Gift, Loader2, Shrink, Expand
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from "@/lib/utils";
@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { applyRewards, calculateRewards } from "@/lib/rewards";
 import { updateGameStats } from "@/lib/progress";
 import { S_COINS_ICON as SCoinsIcon, S_POINTS_ICON as SPointsIcon } from '@/lib/constants';
+import { useFullscreen } from '@/hooks/use-fullscreen';
 
 type Difficulty = 'easy' | 'medium' | 'hard';
 type GameState = 'setup' | 'memorize' | 'build' | 'result';
@@ -68,6 +69,9 @@ export default function PatternBuilderPage() {
   const [peeksUsedThisRound, setPeeksUsedThisRound] = useState(0);
   
   const { toast } = useToast();
+  
+  const gameContainerRef = useRef<HTMLDivElement>(null);
+  const { isFullscreen, enterFullscreen, exitFullscreen } = useFullscreen(gameContainerRef);
 
   const config = difficulty ? DIFFICULTY_CONFIG[difficulty] : null;
 
@@ -95,6 +99,7 @@ export default function PatternBuilderPage() {
     setGameState('memorize');
     setPeekChances(3); // Reset peek chances on new difficulty
     setPeeksUsedThisRound(0);
+    enterFullscreen();
     
     setTimeout(() => {
       setGameState('build');
@@ -193,6 +198,11 @@ export default function PatternBuilderPage() {
     return { title: "Keep Going!", description: "Practice makes perfect!", Icon: X };
   };
   
+  const handleExit = () => {
+    exitFullscreen();
+    setGameState('setup');
+  }
+  
   const renderGrid = (gridData: (IconData | null)[], isInteractive: boolean) => {
     if (!config) return null;
     return (
@@ -249,7 +259,7 @@ export default function PatternBuilderPage() {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center p-4">
+    <div ref={gameContainerRef} className={cn("flex flex-col items-center justify-center p-4", isFullscreen && "bg-background h-screen w-screen")}>
       <Card className="w-full max-w-xl shadow-xl">
           <CardHeader className="bg-primary/10">
               <div className="flex items-center justify-between">
@@ -257,8 +267,8 @@ export default function PatternBuilderPage() {
                       <Blocks size={28} className="text-primary" />
                       <CardTitle className="text-2xl font-bold text-primary">Pattern Builder</CardTitle>
                   </div>
-                  <Button variant="outline" size="sm" onClick={() => setGameState('setup')}>
-                      <ArrowLeft size={16} className="mr-1" /> Change Difficulty
+                  <Button variant="outline" size="sm" onClick={handleExit}>
+                      <Shrink size={16} className="mr-1" /> Exit
                   </Button>
               </div>
           </CardHeader>
