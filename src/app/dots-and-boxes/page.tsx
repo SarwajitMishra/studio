@@ -512,5 +512,3 @@ function SetupDialog({ isOpen, onClose, setupDetails, onStartGame }: SetupDialog
         </Dialog>
     )
 }
-
-    

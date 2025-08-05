@@ -818,8 +818,8 @@ export default function ChessPage() {
                       {gameStatusMessage}
                     </span>
                 </div>
-                 <Button onClick={() => resetGame()} className="w-full bg-accent text-accent-foreground rounded-md shadow-md hover:bg-accent/90 transition-colors text-lg">
-                    Reset Game
+                 <Button onClick={() => { setGameState('setup'); exitFullscreen(); }} className="w-full bg-accent text-accent-foreground rounded-md shadow-md hover:bg-accent/90 transition-colors text-lg">
+                    Reset & Exit
                 </Button>
             </CardContent>
         </Card>
@@ -981,6 +981,3 @@ function SetupDialogAI({ onStart, onBack }: { onStart: (mode: 'ai', names: { w: 
         </Card>
     );
 }
-
-    
-
