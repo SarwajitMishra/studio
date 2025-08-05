@@ -113,7 +113,7 @@ export default function DotsAndBoxesPage() {
     setPlayerColors(colors);
     setGameState('playing');
     setTurn(0);
-    enterFullscreen();
+    setTimeout(() => enterFullscreen(), 100);
   }, [enterFullscreen]);
 
   const openSetupDialog = (mode: GameMode, diff: Difficulty) => {
