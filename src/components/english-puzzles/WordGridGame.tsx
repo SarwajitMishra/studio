@@ -97,7 +97,7 @@ export default function WordGridGame({ onBack, difficulty }: WordGridGameProps) 
 
   useEffect(() => {
     enterFullscreen();
-  }, [enterFullscreen]);
+  }, []);
 
   const handleExit = () => {
     exitFullscreen();

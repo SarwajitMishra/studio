@@ -55,7 +55,7 @@ export default function CrosswordGame({ difficulty, onBack }: CrosswordGameProps
 
     useEffect(() => {
         enterFullscreen();
-    }, [enterFullscreen]);
+    }, []);
 
     const handleExit = () => {
         exitFullscreen();

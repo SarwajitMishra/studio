@@ -84,7 +84,7 @@ export default function TypingRushGame({ onBack, difficulty }: TypingRushGamePro
 
     useEffect(() => {
         enterFullscreen();
-    }, [enterFullscreen]);
+    }, []);
 
     const handleExit = () => {
         exitFullscreen();

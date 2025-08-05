@@ -61,7 +61,7 @@ export default function EnglishPuzzleGame({ puzzleType, difficulty, onBack, puzz
 
   useEffect(() => {
     enterFullscreen();
-  }, [enterFullscreen]);
+  }, []);
 
   const handleExit = () => {
     exitFullscreen();
