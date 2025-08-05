@@ -27,17 +27,17 @@ const MINIMUM_MOVES: Record<Difficulty, number> = {
     3: 7, 4: 15, 5: 31, 6: 63
 };
 
-const Rod = ({ disks, rodIndex, onClick, onDragOver, onDrop, onDiskDragStart, isSelected, isWon }: { 
-    disks: number[], 
+const Rod = ({ disks, rodIndex, onClick, onDragOver, onDrop, onDiskDragStart, isSelected, isWon }: {
+    disks: number[],
     rodIndex: number,
-    onClick: () => void, 
+    onClick: () => void,
     onDragOver: (e: React.DragEvent) => void,
     onDrop: (e: React.DragEvent) => void,
     onDiskDragStart: (e: React.DragEvent, fromRodIndex: number) => void,
     isSelected: boolean,
     isWon: boolean,
 }) => (
-    <div 
+    <div
         onClick={onClick}
         onDragOver={onDragOver}
         onDrop={onDrop}
@@ -51,7 +51,7 @@ const Rod = ({ disks, rodIndex, onClick, onDragOver, onDrop, onDiskDragStart, is
             <div className="w-2 h-full bg-neutral-600 absolute bottom-0 rounded-t-sm"></div>
             {disks.map((diskSize, index) => (
                 <div
-                    key={diskSize} 
+                    key={diskSize}
                     draggable={index === disks.length - 1 && !isWon}
                     onDragStart={(e) => {
                          if (index === disks.length - 1 && !isWon) {
@@ -60,7 +60,7 @@ const Rod = ({ disks, rodIndex, onClick, onDragOver, onDrop, onDiskDragStart, is
                         }
                     }}
                     className={cn(
-                        "h-6 rounded-md shadow-md transition-all duration-200", 
+                        "h-6 rounded-md shadow-md transition-all duration-200",
                         DISK_COLORS[diskSize - 1],
                         (index === disks.length - 1 && !isWon) ? "cursor-grab active:cursor-grabbing" : "",
                         "mb-1"
@@ -85,10 +85,10 @@ export default function TowerOfHanoiPage() {
     const [isCalculatingReward, setIsCalculatingReward] = useState(false);
     const [lastReward, setLastReward] = useState<{points: number, coins: number, stars: number} | null>(null);
     const { toast } = useToast();
-    
+
     const gameContainerRef = useRef<HTMLDivElement>(null);
     const { isFullscreen, enterFullscreen, exitFullscreen } = useFullscreen(gameContainerRef);
-    
+
     const minMoves = useMemo(() => difficulty ? MINIMUM_MOVES[difficulty] : 0, [difficulty]);
 
     const StarRating = ({ rating }: { rating: number }) => (
@@ -98,7 +98,7 @@ export default function TowerOfHanoiPage() {
             ))}
         </div>
     );
-    
+
     const calculateStars = (moves: number, minMoves: number): number => {
         if (moves === minMoves) return 3;
         if (moves <= minMoves * 1.5) return 2;
@@ -120,7 +120,7 @@ export default function TowerOfHanoiPage() {
             const earned = applyRewards(rewards.sPoints, rewards.sCoins, `Solved Tower of Hanoi (${difficulty} disks)`);
             const stars = calculateStars(moves, minMoves);
             setLastReward({ points: earned.points, coins: earned.coins, stars });
-            
+
             toast({
                 title: "You Solved It! 🏆",
                 description: `You earned ${earned.points} S-Points and ${earned.coins} S-Coins!`,
@@ -134,7 +134,7 @@ export default function TowerOfHanoiPage() {
             setIsCalculatingReward(false);
         }
     }, [difficulty, moves, minMoves, toast]);
-    
+
     const startGame = (numDisks: Difficulty) => {
         if (moves > 0 && !isWon) {
             updateGameStats({ gameId: 'tower-of-hanoi', didWin: false });
@@ -160,7 +160,7 @@ export default function TowerOfHanoiPage() {
             }, 100);
         }
     };
-    
+
     const handleExitAndReset = () => {
         exitFullscreen();
         setDifficulty(null);
@@ -173,7 +173,7 @@ export default function TowerOfHanoiPage() {
         const newTowers = towers.map(t => [...t]);
         const fromRod = newTowers[fromIndex];
         const toRod = newTowers[toIndex];
-        
+
         if (fromRod.length === 0) return;
 
         const diskToMove = fromRod[fromRod.length - 1];
@@ -223,7 +223,7 @@ export default function TowerOfHanoiPage() {
             moveDisk(fromRodIndex, toRodIndex);
         }
     };
-    
+
     if (gameState === 'setup') {
         const difficulties: Difficulty[] = [3, 4, 5, 6];
         const difficultyIcons: Record<Difficulty, React.ElementType> = { 3: Shield, 4: StarIcon, 5: Gem, 6: Award };
@@ -238,9 +238,9 @@ export default function TowerOfHanoiPage() {
                     <CardContent className="space-y-6">
                         <div className="grid grid-cols-4 gap-4">
                             {difficulties.map(d => (
-                                <Button 
+                                <Button
                                     key={d}
-                                    onClick={() => setDifficulty(d)} 
+                                    onClick={() => setDifficulty(d)}
                                     variant={difficulty === d ? 'default' : 'outline'}
                                     className="text-lg py-6 flex-col h-24"
                                 >
@@ -252,8 +252,8 @@ export default function TowerOfHanoiPage() {
                                 </Button>
                             ))}
                         </div>
-                        <Button 
-                            onClick={handlePlayNow} 
+                        <Button
+                            onClick={handlePlayNow}
                             disabled={!difficulty}
                             className="w-full text-xl py-8"
                         >
@@ -271,8 +271,8 @@ export default function TowerOfHanoiPage() {
     }
 
     return (
-        <div 
-            ref={gameContainerRef} 
+        <div
+            ref={gameContainerRef}
             className="flex flex-col items-center justify-center p-4 bg-background"
             style={isFullscreen ? { height: '100vh', width: '100vw' } : {}}
         >
@@ -314,7 +314,7 @@ export default function TowerOfHanoiPage() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-            <Card 
+            <Card
                 className={cn("w-full shadow-xl transition-all duration-300", !isFullscreen && "max-w-2xl")}
                 style={isFullscreen ? { height: '100%', display: 'flex', flexDirection: 'column' } : {}}
             >
@@ -324,21 +324,21 @@ export default function TowerOfHanoiPage() {
                         Moves: {moves} | Minimum: {minMoves}
                     </CardDescription>
                 </CardHeader>
-                <CardContent 
+                <CardContent
                     className="space-y-6 flex-grow flex flex-col justify-center"
                     style={isFullscreen ? { height: '100%' } : {}}
                 >
                     <div className="grid grid-cols-3 gap-4">
                         {towers.map((disks, index) => (
-                            <Rod 
+                            <Rod
                                 key={index}
                                 rodIndex={index}
-                                disks={disks} 
-                                onClick={() => handleRodClick(index)} 
+                                disks={disks}
+                                onClick={() => handleRodClick(index)}
                                 onDragOver={handleDragOver}
                                 onDrop={(e) => handleDrop(e, index)}
                                 onDiskDragStart={handleDragStart}
-                                isSelected={selectedRod === index} 
+                                isSelected={selectedRod === index}
                                 isWon={isWon}
                             />
                         ))}
