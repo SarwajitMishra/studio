@@ -114,7 +114,7 @@ export default function TowerOfHanoiPage() {
         try {
             const rewards = await calculateRewards({
                 gameId: 'towerOfHanoi',
-                difficulty: 'hard',
+                difficulty: 'hard', // Placeholder difficulty as logic is simple
                 performanceMetrics: { moves: moves, minMoves: minMoves },
             });
             const earned = applyRewards(rewards.sPoints, rewards.sCoins, `Solved Tower of Hanoi (${difficulty} disks)`);
@@ -154,6 +154,7 @@ export default function TowerOfHanoiPage() {
     const handlePlayNow = () => {
         if (difficulty) {
             startGame(difficulty);
+            // Use a short delay to allow the state to update before requesting fullscreen
             setTimeout(() => {
                 enterFullscreen();
             }, 100);
