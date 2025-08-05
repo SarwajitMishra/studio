@@ -149,7 +149,7 @@ const ChessSquare = ({
           )}
           style={{ textShadow: piece.color === 'w' ? '0 0 3px black, 0 0 5px black' : '0 0 3px white, 0 0 5px white' }}
         >
-          {PIECE_UNICODE[piece.color][piece.type]}
+          {PIECE_UNICODE[piece.color][p.type]}
         </span>
       )}
       {isPossibleMove && !piece && (
@@ -652,6 +652,7 @@ export default function ChessPage() {
         setGameState('playing');
         setGameStatusMessage(`${playerNames.w}'s turn to move.`);
     }
+    exitFullscreen();
   };
   
   const movePairs = [];
@@ -685,6 +686,7 @@ export default function ChessPage() {
         setAiDifficulty(difficulty);
     }
     setGameState('playing');
+    enterFullscreen();
   }
 
   if (gameState === 'setup' || gameState === 'aiConfig') {
@@ -756,7 +758,7 @@ export default function ChessPage() {
             </div>
             <AlertDialogFooter>
              <Button onClick={() => resetGame()} disabled={isCalculatingReward}>Play Again</Button>
-             <Button onClick={() => setGameState('setup')} variant="outline" disabled={isCalculatingReward}>Back to Menu</Button>
+             <Button onClick={() => { setGameState('setup'); exitFullscreen(); }} variant="outline" disabled={isCalculatingReward}>Back to Menu</Button>
             </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -818,10 +820,6 @@ export default function ChessPage() {
                 </div>
                  <Button onClick={() => resetGame()} className="w-full bg-accent text-accent-foreground rounded-md shadow-md hover:bg-accent/90 transition-colors text-lg">
                     Reset Game
-                </Button>
-                <Button onClick={isFullscreen ? exitFullscreen : enterFullscreen} variant="outline" className="w-full mt-2">
-                    {isFullscreen ? <Shrink className="mr-2" /> : <Expand className="mr-2" />}
-                    {isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
                 </Button>
             </CardContent>
         </Card>

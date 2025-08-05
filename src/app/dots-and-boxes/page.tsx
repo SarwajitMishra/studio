@@ -113,7 +113,8 @@ export default function DotsAndBoxesPage() {
     setPlayerColors(colors);
     setGameState('playing');
     setTurn(0);
-  }, []);
+    enterFullscreen();
+  }, [enterFullscreen]);
 
   const openSetupDialog = (mode: GameMode, diff: Difficulty) => {
     setTempSetup({ mode, diff });
@@ -355,7 +356,7 @@ export default function DotsAndBoxesPage() {
                 </div>
                 <AlertDialogFooter>
                     <AlertDialogAction onClick={() => tempSetup && openSetupDialog(tempSetup.mode, tempSetup.diff)} disabled={isCalculatingReward}>Play Again</AlertDialogAction>
-                    <AlertDialogCancel onClick={() => setGameState('setup')} disabled={isCalculatingReward}>Back to Menu</AlertDialogCancel>
+                    <AlertDialogCancel onClick={() => { setGameState('setup'); exitFullscreen(); }} disabled={isCalculatingReward}>Back to Menu</AlertDialogCancel>
                 </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
@@ -406,11 +407,7 @@ export default function DotsAndBoxesPage() {
             </div>
           </div>
           <div className="flex gap-4">
-              <Button onClick={() => setGameState('setup')} variant="outline"><ArrowLeft className="mr-2"/> Back to Setup</Button>
-              <Button onClick={isFullscreen ? exitFullscreen : enterFullscreen} variant="outline">
-                {isFullscreen ? <Shrink className="mr-2" /> : <Expand className="mr-2" />}
-                {isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
-              </Button>
+              <Button onClick={() => { setGameState('setup'); exitFullscreen(); }} variant="outline"><ArrowLeft className="mr-2"/> Back to Setup</Button>
           </div>
       </div>
   );
