@@ -660,7 +660,7 @@ export default function ChessPage() {
     movePairs.push(moveHistory.slice(i, i + 2));
   }
   
-  const startGame = (mode: GameMode, names: { w: string, b: string }, startingPlayer: PlayerColor, difficulty?: AIDifficulty) => {
+  const startGame = useCallback((mode: GameMode, names: { w: string, b: string }, startingPlayer: PlayerColor, difficulty?: AIDifficulty) => {
     const newInitialSetup = initialBoardSetup();
     setBoard(newInitialSetup.board);
     setKingPositions(newInitialSetup.kings);
@@ -686,8 +686,11 @@ export default function ChessPage() {
         setAiDifficulty(difficulty);
     }
     setGameState('playing');
-    enterFullscreen();
-  }
+    // Use a short delay to allow the state to update before requesting fullscreen
+    setTimeout(() => {
+        enterFullscreen();
+    }, 100);
+  }, [enterFullscreen]);
 
   if (gameState === 'setup' || gameState === 'aiConfig') {
     return (
