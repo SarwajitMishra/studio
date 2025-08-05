@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { FileText, RotateCw, Lightbulb, CheckCircle, Award, Loader2, Star as StarIcon, List } from 'lucide-react';
+import { FileText, RotateCw, Lightbulb, CheckCircle, Award, Loader2, Star as StarIcon, List, Shrink } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { applyRewards, calculateRewards } from "@/lib/rewards";
@@ -16,7 +16,7 @@ import type { Difficulty } from '@/lib/constants';
 import { type CrosswordPuzzle, type CrosswordWord, CROSSWORD_PUZZLES } from '@/lib/crossword-puzzles';
 import { updateGameStats } from "@/lib/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
+import { useFullscreen } from '@/hooks/use-fullscreen';
 
 interface Cell {
   char: string | null;
@@ -49,6 +49,18 @@ export default function CrosswordGame({ difficulty, onBack }: CrosswordGameProps
     const [isGenerating, setIsGenerating] = useState(true);
     const { toast } = useToast();
     const inputRefs = useRef<(HTMLInputElement | null)[][]>([]);
+
+    const gameContainerRef = useRef<HTMLDivElement>(null);
+    const { isFullscreen, enterFullscreen, exitFullscreen } = useFullscreen(gameContainerRef);
+
+    useEffect(() => {
+        enterFullscreen();
+    }, [enterFullscreen]);
+
+    const handleExit = () => {
+        exitFullscreen();
+        onBack();
+    }
 
     const createGridFromPuzzle = useCallback((p: CrosswordPuzzle): Grid => {
         const newGrid: Grid = Array(p.gridSize).fill(null).map(() => 
@@ -90,7 +102,7 @@ export default function CrosswordGame({ difficulty, onBack }: CrosswordGameProps
                 title: "No Puzzles Available",
                 description: `We don't have any ${difficulty} crosswords right now. Please select another difficulty.`,
             });
-            onBack();
+            handleExit();
             return;
         }
 
@@ -110,7 +122,7 @@ export default function CrosswordGame({ difficulty, onBack }: CrosswordGameProps
         setIsGameOver(false);
         setIsGenerating(false);
 
-    }, [difficulty, createGridFromPuzzle, onBack, toast]);
+    }, [difficulty, createGridFromPuzzle, handleExit, toast]);
 
     useEffect(() => {
         restartGame();
@@ -320,7 +332,7 @@ export default function CrosswordGame({ difficulty, onBack }: CrosswordGameProps
     };
 
     return (
-        <div className="flex flex-col lg:flex-row items-start justify-center p-2 md:p-4 gap-6">
+        <div ref={gameContainerRef} className={cn("w-full h-full flex flex-col lg:flex-row items-start justify-center p-2 md:p-4 gap-6", isFullscreen && "bg-background")}>
              <AlertDialog open={isGameOver}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
@@ -347,7 +359,7 @@ export default function CrosswordGame({ difficulty, onBack }: CrosswordGameProps
                     </div>
                     <AlertDialogFooter>
                         <AlertDialogAction onClick={restartGame} disabled={isCalculatingReward}>New Puzzle</AlertDialogAction>
-                        <AlertDialogCancel onClick={onBack} disabled={isCalculatingReward}>Back to Menu</AlertDialogCancel>
+                        <AlertDialogCancel onClick={handleExit} disabled={isCalculatingReward}>Back to Menu</AlertDialogCancel>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

@@ -1,18 +1,19 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, FormEvent } from "react";
+import { useState, useEffect, useCallback, FormEvent, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Wand, Hash, RotateCcw, Award, ArrowLeft, CheckCircle, XCircle, Loader2, Star } from "lucide-react";
+import { Wand, Hash, RotateCcw, Award, ArrowLeft, CheckCircle, XCircle, Loader2, Star, Shrink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import type { Difficulty } from "@/lib/constants";
 import { updateGameStats } from "@/lib/progress";
 import { S_POINTS_ICON as SPointsIcon, S_COINS_ICON as SCoinsIcon } from "@/lib/constants";
 import { applyRewards, calculateRewards } from "@/lib/rewards";
+import { useFullscreen } from "@/hooks/use-fullscreen";
 
 const QUESTIONS_PER_ROUND = 5;
 
@@ -104,6 +105,17 @@ export default function WhatComesNextGame({ onBack, difficulty }: WhatComesNextG
     const [lastReward, setLastReward] = useState<{points: number, coins: number, stars: number} | null>(null);
 
     const { toast } = useToast();
+    const gameContainerRef = useRef<HTMLDivElement>(null);
+    const { isFullscreen, enterFullscreen, exitFullscreen } = useFullscreen(gameContainerRef);
+
+    useEffect(() => {
+        enterFullscreen();
+    }, [enterFullscreen]);
+
+    const handleExit = () => {
+        exitFullscreen();
+        onBack();
+    }
 
     const StarRating = ({ rating }: { rating: number }) => (
         <div className="flex justify-center">
@@ -138,7 +150,7 @@ export default function WhatComesNextGame({ onBack, difficulty }: WhatComesNextG
             setLastReward({ points: earned.points, coins: earned.coins, stars });
         } catch (error) {
             console.error("Reward calculation failed:", error);
-            toast({ variant: 'destructive', title: 'Reward Error' });
+            toast({ variant: "destructive", title: 'Reward Error' });
         } finally {
             setIsCalculatingReward(false);
         }
@@ -235,68 +247,70 @@ export default function WhatComesNextGame({ onBack, difficulty }: WhatComesNextG
     );
 
     return (
-        <Card className="w-full max-w-md shadow-xl">
-            <CardHeader className="bg-primary/10">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                        <Wand size={28} className="text-primary" />
-                        <CardTitle className="text-2xl font-bold text-primary">What Comes Next?</CardTitle>
-                    </div>
-                    <Button variant="outline" size="sm" onClick={onBack}>
-                        <ArrowLeft size={16} className="mr-1" /> Back
-                    </Button>
-                </div>
-                <CardDescription className="text-center text-md text-foreground/80 pt-2">
-                    Question: {Math.min(questionsAnswered + 1, QUESTIONS_PER_ROUND)}/{QUESTIONS_PER_ROUND} | Score: {score} | Difficulty: <span className="capitalize">{difficulty}</span>
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="p-6 space-y-6">
-                {isGameOver ? renderGameOverView() : problem && (
-                    <>
-                        <div className="text-center p-4 bg-muted rounded-lg">
-                            <p className="text-3xl font-bold text-foreground tracking-wider">
-                                {problem.displaySequence.map((item, index) => (
-                                    <span key={index} className={cn("mx-1", (item === "?" || item === "_") && "text-destructive font-black")}>
-                                        {item}{index < problem.displaySequence.length - 1 ? ", " : ""}
-                                    </span>
-                                ))}
-                            </p>
-                            {problem.description && !feedback && (
-                                <p className="text-sm text-muted-foreground mt-2">{problem.description}</p>
-                            )}
+        <div ref={gameContainerRef} className={cn("w-full h-full flex items-center justify-center", isFullscreen && "bg-background")}>
+            <Card className="w-full max-w-md shadow-xl">
+                <CardHeader className="bg-primary/10">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                            <Wand size={28} className="text-primary" />
+                            <CardTitle className="text-2xl font-bold text-primary">What Comes Next?</CardTitle>
                         </div>
-                        <form onSubmit={handleSubmitAnswer} className="space-y-4">
-                            <div>
-                                <Label htmlFor="sequenceAnswer" className="text-base font-medium flex items-center mb-1">
-                                    <Hash className="mr-2 h-5 w-5 text-muted-foreground" /> Answer:
-                                </Label>
-                                <Input
-                                    id="sequenceAnswer"
-                                    type="number"
-                                    value={userAnswer}
-                                    onChange={(e) => setUserAnswer(e.target.value)}
-                                    placeholder="Enter the number"
-                                    className="text-base"
-                                    disabled={isGameOver || !!feedback}
-                                    autoFocus
-                                />
+                        <Button variant="outline" size="sm" onClick={handleExit}>
+                            <Shrink size={16} className="mr-1" /> Exit
+                        </Button>
+                    </div>
+                    <CardDescription className="text-center text-md text-foreground/80 pt-2">
+                        Question: {Math.min(questionsAnswered + 1, QUESTIONS_PER_ROUND)}/{QUESTIONS_PER_ROUND} | Score: {score} | Difficulty: <span className="capitalize">{difficulty}</span>
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="p-6 space-y-6">
+                    {isGameOver ? renderGameOverView() : problem && (
+                        <>
+                            <div className="text-center p-4 bg-muted rounded-lg">
+                                <p className="text-3xl font-bold text-foreground tracking-wider">
+                                    {problem.displaySequence.map((item, index) => (
+                                        <span key={index} className={cn("mx-1", (item === "?" || item === "_") && "text-destructive font-black")}>
+                                            {item}{index < problem.displaySequence.length - 1 ? ", " : ""}
+                                        </span>
+                                    ))}
+                                </p>
+                                {problem.description && !feedback && (
+                                    <p className="text-sm text-muted-foreground mt-2">{problem.description}</p>
+                                )}
                             </div>
-                            <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isGameOver || !!feedback || !userAnswer.trim()}>
-                                Submit Answer
-                            </Button>
-                        </form>
-                        {feedback && !isGameOver && (
-                            <div className={cn(
-                                "mt-4 p-3 rounded-md text-center font-medium flex items-center justify-center",
-                                feedback.startsWith("Correct") ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-                            )}>
-                                {feedback.startsWith("Correct") ? <CheckCircle className="mr-2" /> : <XCircle className="mr-2" />}
-                                {feedback}
-                            </div>
-                        )}
-                    </>
-                )}
-            </CardContent>
-        </Card>
+                            <form onSubmit={handleSubmitAnswer} className="space-y-4">
+                                <div>
+                                    <Label htmlFor="sequenceAnswer" className="text-base font-medium flex items-center mb-1">
+                                        <Hash className="mr-2 h-5 w-5 text-muted-foreground" /> Answer:
+                                    </Label>
+                                    <Input
+                                        id="sequenceAnswer"
+                                        type="number"
+                                        value={userAnswer}
+                                        onChange={(e) => setUserAnswer(e.target.value)}
+                                        placeholder="Enter the number"
+                                        className="text-base"
+                                        disabled={isGameOver || !!feedback}
+                                        autoFocus
+                                    />
+                                </div>
+                                <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isGameOver || !!feedback || !userAnswer.trim()}>
+                                    Submit Answer
+                                </Button>
+                            </form>
+                            {feedback && !isGameOver && (
+                                <div className={cn(
+                                    "mt-4 p-3 rounded-md text-center font-medium flex items-center justify-center",
+                                    feedback.startsWith("Correct") ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                                )}>
+                                    {feedback.startsWith("Correct") ? <CheckCircle className="mr-2" /> : <XCircle className="mr-2" />}
+                                    {feedback}
+                                </div>
+                            )}
+                        </>
+                    )}
+                </CardContent>
+            </Card>
+        </div>
     );
 }

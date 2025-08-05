@@ -1,18 +1,19 @@
 
 "use client";
 
-import React, { useState, useEffect, useCallback, FormEvent, ReactNode } from "react";
+import React, { useState, useEffect, useCallback, FormEvent, ReactNode, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Target, RotateCcw, Lightbulb, Award, ArrowLeft, Loader2, Star } from "lucide-react";
+import { Target, RotateCcw, Lightbulb, Award, ArrowLeft, Loader2, Star, Shrink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import type { Difficulty } from "@/lib/constants";
 import { applyRewards, calculateRewards } from "@/lib/rewards";
 import { S_POINTS_ICON as SPointsIcon, S_COINS_ICON as SCoinsIcon } from "@/lib/constants";
 import { updateGameStats } from "@/lib/progress";
+import { useFullscreen } from "@/hooks/use-fullscreen";
 
 const DIFFICULTY_CONFIG = {
   easy: { max: 20 },
@@ -35,7 +36,19 @@ export default function GuessTheNumberGame({ onBack, difficulty }: GuessTheNumbe
   const [isCalculatingReward, setIsCalculatingReward] = useState<boolean>(false);
   const { toast } = useToast();
 
+  const gameContainerRef = useRef<HTMLDivElement>(null);
+  const { isFullscreen, enterFullscreen, exitFullscreen } = useFullscreen(gameContainerRef);
+
   const maxNumber = DIFFICULTY_CONFIG[difficulty].max;
+
+  useEffect(() => {
+    enterFullscreen();
+  }, [enterFullscreen]);
+
+  const handleExit = () => {
+    exitFullscreen();
+    onBack();
+  }
 
   const StarRating = ({ rating }: { rating: number }) => (
     <div className="flex justify-center">
@@ -187,74 +200,76 @@ export default function GuessTheNumberGame({ onBack, difficulty }: GuessTheNumbe
   };
 
   return (
-    <Card className="w-full max-w-md shadow-xl">
-      <CardHeader className="bg-primary/10">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <Target size={28} className="text-primary" />
-            <CardTitle className="text-2xl font-bold text-primary">Guess the Number</CardTitle>
-          </div>
-           <Button variant="outline" size="sm" onClick={onBack}>
-            <ArrowLeft size={16} className="mr-1" /> Back
-          </Button>
-        </div>
-        <CardDescription className="text-center text-md text-foreground/80 pt-2">
-          I'm thinking of a number between 1 and {maxNumber}. Can you guess it?
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="p-6 space-y-6">
-        {isGameWon ? (
-          <div className="text-center p-6 bg-green-100 rounded-lg shadow-inner">
-            <Award className="mx-auto h-16 w-16 text-yellow-500 mb-3" />
-            <h2 className="text-2xl font-bold text-green-700">You Guessed It!</h2>
-            <div className="text-lg mt-1 min-h-[5em] flex items-center justify-center">{feedback}</div>
-            {isCalculatingReward && <Loader2 className="animate-spin mx-auto my-2" />}
-            <Button onClick={resetGame} className="mt-6 w-full sm:w-auto bg-accent text-accent-foreground hover:bg-accent/90" disabled={isCalculatingReward}>
-              <RotateCcw className="mr-2 h-5 w-5" /> Play Again
+    <div ref={gameContainerRef} className={cn("w-full h-full flex items-center justify-center", isFullscreen && "bg-background")}>
+      <Card className="w-full max-w-md shadow-xl">
+        <CardHeader className="bg-primary/10">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <Target size={28} className="text-primary" />
+              <CardTitle className="text-2xl font-bold text-primary">Guess the Number</CardTitle>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleExit}>
+              <Shrink size={16} className="mr-1" /> Exit
             </Button>
           </div>
-        ) : (
-          <form onSubmit={handleGuessSubmit} className="space-y-4">
-            <div>
-              <Label htmlFor="guessInput" className="text-base font-medium flex items-center mb-1">
-                <Target className="mr-2 h-5 w-5 text-muted-foreground" /> Your Guess:
-              </Label>
-              <Input
-                id="guessInput"
-                type="number"
-                value={currentGuess}
-                onChange={(e) => setCurrentGuess(e.target.value)}
-                placeholder={`Enter a number (1-${maxNumber})`}
-                className="text-base"
-                disabled={isGameWon || secretNumber === null}
-                min="1"
-                max={maxNumber}
-              />
-            </div>
-            <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isGameWon || secretNumber === null}>
-              Submit Guess
-            </Button>
-          </form>
-        )}
-        {!isGameWon && secretNumber !== null && (
-          <div className="text-center space-y-3 pt-4 border-t border-border">
-            <div className="text-lg font-medium min-h-[1.5em] flex items-center justify-center">
-              {feedback}
-            </div>
-            <p className="text-sm text-muted-foreground">Attempts: {attempts}</p>
-            {!showHint && (
-              <Button variant="outline" size="sm" onClick={() => setFeedback(getHintText())}>
-                <Lightbulb className="mr-2 h-4 w-4" /> Get a Hint
+          <CardDescription className="text-center text-md text-foreground/80 pt-2">
+            I'm thinking of a number between 1 and {maxNumber}. Can you guess it?
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-6 space-y-6">
+          {isGameWon ? (
+            <div className="text-center p-6 bg-green-100 rounded-lg shadow-inner">
+              <Award className="mx-auto h-16 w-16 text-yellow-500 mb-3" />
+              <h2 className="text-2xl font-bold text-green-700">You Guessed It!</h2>
+              <div className="text-lg mt-1 min-h-[5em] flex items-center justify-center">{feedback}</div>
+              {isCalculatingReward && <Loader2 className="animate-spin mx-auto my-2" />}
+              <Button onClick={resetGame} className="mt-6 w-full sm:w-auto bg-accent text-accent-foreground hover:bg-accent/90" disabled={isCalculatingReward}>
+                <RotateCcw className="mr-2 h-5 w-5" /> Play Again
               </Button>
-            )}
-          </div>
-        )}
-        {!isGameWon && (
-          <Button onClick={resetGame} variant="outline" className="w-full">
-            <RotateCcw className="mr-2 h-5 w-5" /> Reset Game
-          </Button>
-        )}
-      </CardContent>
-    </Card>
+            </div>
+          ) : (
+            <form onSubmit={handleGuessSubmit} className="space-y-4">
+              <div>
+                <Label htmlFor="guessInput" className="text-base font-medium flex items-center mb-1">
+                  <Target className="mr-2 h-5 w-5 text-muted-foreground" /> Your Guess:
+                </Label>
+                <Input
+                  id="guessInput"
+                  type="number"
+                  value={currentGuess}
+                  onChange={(e) => setCurrentGuess(e.target.value)}
+                  placeholder={`Enter a number (1-${maxNumber})`}
+                  className="text-base"
+                  disabled={isGameWon || secretNumber === null}
+                  min="1"
+                  max={maxNumber}
+                />
+              </div>
+              <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isGameWon || secretNumber === null}>
+                Submit Guess
+              </Button>
+            </form>
+          )}
+          {!isGameWon && secretNumber !== null && (
+            <div className="text-center space-y-3 pt-4 border-t border-border">
+              <div className="text-lg font-medium min-h-[1.5em] flex items-center justify-center">
+                {feedback}
+              </div>
+              <p className="text-sm text-muted-foreground">Attempts: {attempts}</p>
+              {!showHint && (
+                <Button variant="outline" size="sm" onClick={() => setFeedback(getHintText())}>
+                  <Lightbulb className="mr-2 h-4 w-4" /> Get a Hint
+                </Button>
+              )}
+            </div>
+          )}
+          {!isGameWon && (
+            <Button onClick={resetGame} variant="outline" className="w-full">
+              <RotateCcw className="mr-2 h-5 w-5" /> Reset Game
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }

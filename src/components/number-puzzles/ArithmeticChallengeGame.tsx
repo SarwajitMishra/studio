@@ -1,18 +1,19 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, FormEvent, useMemo } from "react";
+import { useState, useEffect, useCallback, FormEvent, useMemo, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Calculator, RotateCcw, Award, ArrowLeft, Loader2, Star } from "lucide-react";
+import { Calculator, RotateCcw, Award, ArrowLeft, Loader2, Star, Shrink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import type { Difficulty } from "@/lib/constants";
 import { updateGameStats } from "@/lib/progress";
 import { S_POINTS_ICON as SPointsIcon, S_COINS_ICON as SCoinsIcon } from "@/lib/constants";
 import { applyRewards, calculateRewards } from "@/lib/rewards";
+import { useFullscreen } from "@/hooks/use-fullscreen";
 
 const QUESTIONS_PER_ROUND = 10;
 
@@ -44,6 +45,17 @@ export default function ArithmeticChallengeGame({ onBack, difficulty }: Arithmet
   const [lastReward, setLastReward] = useState<{points: number, coins: number, stars: number} | null>(null);
 
   const { toast } = useToast();
+  const gameContainerRef = useRef<HTMLDivElement>(null);
+  const { isFullscreen, enterFullscreen, exitFullscreen } = useFullscreen(gameContainerRef);
+
+  useEffect(() => {
+    enterFullscreen();
+  }, [enterFullscreen]);
+
+  const handleExit = () => {
+    exitFullscreen();
+    onBack();
+  }
 
   const generateProblem = useCallback(() => {
     const config = DIFFICULTY_CONFIG[difficulty];
@@ -228,24 +240,26 @@ export default function ArithmeticChallengeGame({ onBack, difficulty }: Arithmet
   };
 
   return (
-    <Card className="w-full max-w-md shadow-xl">
-      <CardHeader className="bg-primary/10">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <Calculator size={28} className="text-primary" />
-            <CardTitle className="text-2xl font-bold text-primary">Arithmetic Challenge</CardTitle>
+    <div ref={gameContainerRef} className={cn("w-full h-full flex items-center justify-center", isFullscreen && "bg-background")}>
+      <Card className="w-full max-w-md shadow-xl">
+        <CardHeader className="bg-primary/10">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <Calculator size={28} className="text-primary" />
+              <CardTitle className="text-2xl font-bold text-primary">Arithmetic Challenge</CardTitle>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleExit}>
+              <Shrink size={16} className="mr-1" /> Exit
+            </Button>
           </div>
-          <Button variant="outline" size="sm" onClick={onBack}>
-            <ArrowLeft size={16} className="mr-1" /> Back
-          </Button>
-        </div>
-        <CardDescription className="text-center text-md text-foreground/80 pt-2">
-          Question: {Math.min(questionsAnswered + 1, QUESTIONS_PER_ROUND)}/{QUESTIONS_PER_ROUND} | Score: {score} | Difficulty: <span className="capitalize">{difficulty}</span>
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="p-6">
-        {renderGameContent()}
-      </CardContent>
-    </Card>
+          <CardDescription className="text-center text-md text-foreground/80 pt-2">
+            Question: {Math.min(questionsAnswered + 1, QUESTIONS_PER_ROUND)}/{QUESTIONS_PER_ROUND} | Score: {score} | Difficulty: <span className="capitalize">{difficulty}</span>
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-6">
+          {renderGameContent()}
+        </CardContent>
+      </Card>
+    </div>
   );
 }

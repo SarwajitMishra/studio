@@ -1,13 +1,13 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, FormEvent } from "react";
+import { useState, useEffect, useCallback, FormEvent, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { Eye, Hash, RotateCw, Award, ArrowLeft, Loader2, Star as StarIcon, Mountain, Sprout, Heart, Sun, Moon, Cloud, Flower2, Leaf, Bug, Bone, Fish, Smile, Anchor, KeyRound, Gem, Gift, Plane, CarFront, Ship, Pizza, CakeSlice, Apple, Banana, Bell, Bomb, Book } from "lucide-react";
+import { Eye, Hash, RotateCw, Award, ArrowLeft, Loader2, Star as StarIcon, Mountain, Sprout, Heart, Sun, Moon, Cloud, Flower2, Leaf, Bug, Bone, Fish, Smile, Anchor, KeyRound, Gem, Gift, Plane, CarFront, Ship, Pizza, CakeSlice, Apple, Banana, Bell, Bomb, Book, Shrink } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -15,6 +15,7 @@ import type { Difficulty } from "@/lib/constants";
 import { updateGameStats } from "@/lib/progress";
 import { S_POINTS_ICON as SPointsIcon, S_COINS_ICON as SCoinsIcon } from "@/lib/constants";
 import { applyRewards, calculateRewards } from "@/lib/rewards";
+import { useFullscreen } from "@/hooks/use-fullscreen";
 
 const GAME_DURATION_S = 60;
 
@@ -86,6 +87,18 @@ export default function CountTheObjectsGame({ onBack, difficulty }: CountGamePro
   
   const [isCalculatingReward, setIsCalculatingReward] = useState(false);
   const [lastReward, setLastReward] = useState<{points: number, coins: number, stars: number} | null>(null);
+
+  const gameContainerRef = useRef<HTMLDivElement>(null);
+  const { isFullscreen, enterFullscreen, exitFullscreen } = useFullscreen(gameContainerRef);
+
+  useEffect(() => {
+    enterFullscreen();
+  }, [enterFullscreen]);
+
+  const handleExit = () => {
+    exitFullscreen();
+    onBack();
+  }
 
   const generateProblem = useCallback(() => {
     const config = DIFFICULTY_CONFIG[difficulty];
@@ -242,74 +255,76 @@ export default function CountTheObjectsGame({ onBack, difficulty }: CountGamePro
   );
 
   return (
-    <Card className="w-full max-w-lg shadow-xl">
-      <CardHeader className="bg-primary/10">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <Eye size={28} className="text-primary" />
-            <CardTitle className="text-2xl font-bold text-primary">Count me if you can</CardTitle>
+    <div ref={gameContainerRef} className={cn("w-full h-full flex items-center justify-center", isFullscreen && "bg-background")}>
+      <Card className="w-full max-w-lg shadow-xl">
+        <CardHeader className="bg-primary/10">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <Eye size={28} className="text-primary" />
+              <CardTitle className="text-2xl font-bold text-primary">Count me if you can</CardTitle>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleExit}>
+                <Shrink size={16} className="mr-1" /> Exit
+            </Button>
           </div>
-          <Button variant="outline" size="sm" onClick={onBack}>
-            <ArrowLeft size={16} className="mr-1" /> Back
-          </Button>
-        </div>
-        <CardDescription className="text-center text-md text-foreground/80 pt-2 flex justify-between items-center px-2">
-            <span>Score: {score}</span>
-            <span>Difficulty: <span className="capitalize">{difficulty}</span></span>
-        </CardDescription>
-        <Progress value={(timeLeft / GAME_DURATION_S) * 100} className="w-full mt-2" />
-      </CardHeader>
-      <CardContent className="p-6 space-y-4">
-        {isGameOver ? renderGameOverView() : problem ? (
-          <>
-            <p className="text-center text-lg font-medium">
-                How many <strong className={cn("inline-flex items-center gap-1", problem.target.color)}>
-                    <problem.target.Icon size={24}/> {problem.target.name.toLowerCase()}s
-                </strong> do you see?
-            </p>
-            <div className={cn("relative p-4 border rounded-lg bg-muted/50 h-64 overflow-hidden",
-                feedback === 'correct' && 'border-green-500 ring-4 ring-green-500/20',
-                feedback === 'incorrect' && 'border-red-500 ring-4 ring-red-500/20'
-            )}>
-                {problem.grid.map((item, index) => (
-                    <item.Icon 
-                        key={`${problem.id}-${index}`} 
-                        className={cn("absolute", item.color)} 
-                        size={Math.random() * (35-20) + 20}
-                        style={{
-                            top: `${item.top}%`,
-                            left: `${item.left}%`,
-                            transform: `rotate(${item.rotation}deg)`
-                        }}
-                    />
-                ))}
-            </div>
-            <form onSubmit={handleSubmitAnswer} className="flex items-end gap-2">
-                <div className="flex-grow">
-                    <Label htmlFor="countAnswer" className="text-sm text-muted-foreground">Your Count</Label>
-                    <Input
-                      id="countAnswer"
-                      type="number"
-                      value={userAnswer}
-                      onChange={(e) => setUserAnswer(e.target.value)}
-                      placeholder="Enter count"
-                      className="text-lg h-12"
-                      disabled={!!feedback}
-                      autoFocus
-                    />
-                </div>
-                <Button type="submit" className="h-12 text-lg" disabled={!!feedback || !userAnswer.trim()}>
-                    Submit
-                </Button>
-            </form>
-          </>
-        ) : (
-            <div className="text-center p-6 flex flex-col items-center justify-center min-h-[250px]">
-                <Loader2 size={48} className="mx-auto text-primary/50 mb-4 animate-spin"/>
-                <p className="text-lg text-muted-foreground">Loading puzzle...</p>
-            </div>
-        )}
-      </CardContent>
-    </Card>
+          <CardDescription className="text-center text-md text-foreground/80 pt-2 flex justify-between items-center px-2">
+              <span>Score: {score}</span>
+              <span>Difficulty: <span className="capitalize">{difficulty}</span></span>
+          </CardDescription>
+          <Progress value={(timeLeft / GAME_DURATION_S) * 100} className="w-full mt-2" />
+        </CardHeader>
+        <CardContent className="p-6 space-y-4">
+          {isGameOver ? renderGameOverView() : problem ? (
+            <>
+              <p className="text-center text-lg font-medium">
+                  How many <strong className={cn("inline-flex items-center gap-1", problem.target.color)}>
+                      <problem.target.Icon size={24}/> {problem.target.name.toLowerCase()}s
+                  </strong> do you see?
+              </p>
+              <div className={cn("relative p-4 border rounded-lg bg-muted/50 h-64 overflow-hidden",
+                  feedback === 'correct' && 'border-green-500 ring-4 ring-green-500/20',
+                  feedback === 'incorrect' && 'border-red-500 ring-4 ring-red-500/20'
+              )}>
+                  {problem.grid.map((item, index) => (
+                      <item.Icon 
+                          key={`${problem.id}-${index}`} 
+                          className={cn("absolute", item.color)} 
+                          size={Math.random() * (35-20) + 20}
+                          style={{
+                              top: `${item.top}%`,
+                              left: `${item.left}%`,
+                              transform: `rotate(${item.rotation}deg)`
+                          }}
+                      />
+                  ))}
+              </div>
+              <form onSubmit={handleSubmitAnswer} className="flex items-end gap-2">
+                  <div className="flex-grow">
+                      <Label htmlFor="countAnswer" className="text-sm text-muted-foreground">Your Count</Label>
+                      <Input
+                        id="countAnswer"
+                        type="number"
+                        value={userAnswer}
+                        onChange={(e) => setUserAnswer(e.target.value)}
+                        placeholder="Enter count"
+                        className="text-lg h-12"
+                        disabled={!!feedback}
+                        autoFocus
+                      />
+                  </div>
+                  <Button type="submit" className="h-12 text-lg" disabled={!!feedback || !userAnswer.trim()}>
+                      Submit
+                  </Button>
+              </form>
+            </>
+          ) : (
+              <div className="text-center p-6 flex flex-col items-center justify-center min-h-[250px]">
+                  <Loader2 size={48} className="mx-auto text-primary/50 mb-4 animate-spin"/>
+                  <p className="text-lg text-muted-foreground">Loading puzzle...</p>
+              </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }
