@@ -1,19 +1,20 @@
 
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { RotateCw, Award, Users, Cpu, ArrowLeft, Star as StarIcon, Edit, Loader2 } from 'lucide-react';
+import { RotateCw, Award, Users, Cpu, ArrowLeft, Star as StarIcon, Edit, Loader2, Expand, Shrink } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { S_POINTS_ICON as SPointsIcon, S_COINS_ICON as SCoinsIcon } from '@/lib/constants';
 import { applyRewards, calculateRewards } from "@/lib/rewards";
 import { updateGameStats } from "@/lib/progress";
 import { useToast } from '@/hooks/use-toast';
+import { useFullscreen } from '@/hooks/use-fullscreen';
 
 type PlayerId = 'P1' | 'P2';
 type GameState = 'setup' | 'playing' | 'gameOver';
@@ -92,6 +93,9 @@ export default function DotsAndBoxesPage() {
   const [isCalculatingReward, setIsCalculatingReward] = useState(false);
   const [lastReward, setLastReward] = useState<{ points: number; coins: number; stars: number } | null>(null);
   const { toast } = useToast();
+  
+  const gameContainerRef = useRef<HTMLDivElement>(null);
+  const { isFullscreen, enterFullscreen, exitFullscreen } = useFullscreen(gameContainerRef);
 
   const startGame = useCallback((mode: GameMode, diff: Difficulty, names: {P1: string, P2: string}, colors: {P1: string, P2: string}) => {
     const config = DIFFICULTY_CONFIG[diff];
@@ -316,7 +320,7 @@ export default function DotsAndBoxesPage() {
   );
 
   const renderGameScreen = () => (
-      <div className="flex flex-col items-center gap-4">
+      <div ref={gameContainerRef} className={cn("flex flex-col items-center gap-4 transition-all duration-300", isFullscreen && "bg-background justify-center h-full w-full")}>
           <AlertDialog open={gameState === 'gameOver'}>
             <AlertDialogContent>
                 <AlertDialogHeader>
@@ -401,7 +405,13 @@ export default function DotsAndBoxesPage() {
               ))}
             </div>
           </div>
-          <Button onClick={() => setGameState('setup')} variant="outline"><ArrowLeft className="mr-2"/> Back to Setup</Button>
+          <div className="flex gap-4">
+              <Button onClick={() => setGameState('setup')} variant="outline"><ArrowLeft className="mr-2"/> Back to Setup</Button>
+              <Button onClick={isFullscreen ? exitFullscreen : enterFullscreen} variant="outline">
+                {isFullscreen ? <Shrink className="mr-2" /> : <Expand className="mr-2" />}
+                {isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+              </Button>
+          </div>
       </div>
   );
 
@@ -505,3 +515,5 @@ function SetupDialog({ isOpen, onClose, setupDetails, onStartGame }: SetupDialog
         </Dialog>
     )
 }
+
+    

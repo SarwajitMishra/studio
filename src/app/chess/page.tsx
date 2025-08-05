@@ -7,7 +7,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from 'next/navigation';
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { Crown, AlertTriangle, Timer, ListChecks, ArrowLeft, Brain, Gamepad2, Users, Edit, Cpu, Award, Loader2, Coins, User as UserIcon } from "lucide-react";
+import { Crown, AlertTriangle, Timer, ListChecks, ArrowLeft, Brain, Gamepad2, Users, Edit, Cpu, Award, Loader2, Coins, User as UserIcon, Expand, Shrink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -18,6 +18,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { S_POINTS_ICON as SPointsIcon, S_COINS_ICON as SCoinsIcon } from '@/lib/constants';
 import { applyRewards, calculateRewards } from "@/lib/rewards";
 import { updateGameStats } from "@/lib/progress";
+import { useFullscreen } from '@/hooks/use-fullscreen';
 
 
 interface Piece {
@@ -188,6 +189,9 @@ export default function ChessPage() {
   const [lastReward, setLastReward] = useState<{points: number, coins: number} | null>(null);
 
   const { toast } = useToast();
+  
+  const gameContainerRef = useRef<HTMLDivElement>(null);
+  const { isFullscreen, enterFullscreen, exitFullscreen } = useFullscreen(gameContainerRef);
   
   const handleGameEnd = useCallback(async (winnerColor: PlayerColor | 'draw' | null, reason: string) => {
     setGameState('gameOver');
@@ -718,7 +722,7 @@ export default function ChessPage() {
   }
 
   return (
-    <div className="flex flex-col lg:flex-row gap-4 lg:gap-8 items-start justify-center p-2 md:p-4">
+    <div ref={gameContainerRef} className={cn("flex flex-col lg:flex-row gap-4 lg:gap-8 items-start justify-center p-2 md:p-4 transition-all duration-300", isFullscreen && "bg-background")}>
       <AlertDialog open={gameState === 'gameOver'}>
         <AlertDialogContent>
             <AlertDialogHeader>
@@ -758,9 +762,9 @@ export default function ChessPage() {
       </AlertDialog>
 
       <div className="w-full lg:max-w-2xl flex-shrink-0">
-        <Card className="shadow-xl bg-card/80 backdrop-blur-sm">
+        <Card className={cn("shadow-xl bg-card/80 backdrop-blur-sm", isFullscreen && "bg-transparent shadow-none border-none")}>
           <PlayerInfoPanel name={playerNames.b} timer={playerTimers.b} capturedPieces={capturedPieces.w} isCurrentTurn={currentPlayer === 'b' && gameState === 'playing'} />
-          <CardContent className="p-1 sm:p-2">
+          <CardContent className={cn("p-1 sm:p-2", isFullscreen && "p-0")}>
             <div
               className="grid grid-cols-8 w-full max-w-2xl aspect-square border-4 border-primary/50 rounded-md overflow-hidden shadow-lg bg-primary/40 relative"
               aria-label="Chess board"
@@ -814,6 +818,10 @@ export default function ChessPage() {
                 </div>
                  <Button onClick={() => resetGame()} className="w-full bg-accent text-accent-foreground rounded-md shadow-md hover:bg-accent/90 transition-colors text-lg">
                     Reset Game
+                </Button>
+                <Button onClick={isFullscreen ? exitFullscreen : enterFullscreen} variant="outline" className="w-full mt-2">
+                    {isFullscreen ? <Shrink className="mr-2" /> : <Expand className="mr-2" />}
+                    {isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
                 </Button>
             </CardContent>
         </Card>
@@ -975,3 +983,5 @@ function SetupDialogAI({ onStart, onBack }: { onStart: (mode: 'ai', names: { w: 
         </Card>
     );
 }
+
+    

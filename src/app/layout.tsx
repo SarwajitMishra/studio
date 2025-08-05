@@ -18,7 +18,7 @@ export default function RootLayout({
 }>) {
   const pathname = usePathname();
   // Define all pages that should not have the main layout
-  const standalonePages = ['/login', '/signup'];
+  const standalonePages = ['/login', '/signup', '/'];
   const isStandalonePage = standalonePages.includes(pathname);
 
   return (

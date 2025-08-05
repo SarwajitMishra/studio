@@ -1,17 +1,18 @@
 
 "use client";
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { RotateCw, Award, ArrowLeft, ArrowRight, Shield, Star as StarIcon, Gem, Brain, Loader2 } from 'lucide-react';
+import { RotateCw, Award, ArrowLeft, Shield, Star as StarIcon, Gem, Brain, Loader2, Shrink, Play } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { S_POINTS_ICON as SPointsIcon, S_COINS_ICON as SCoinsIcon } from '@/lib/constants';
 import { applyRewards, calculateRewards } from "@/lib/rewards";
 import { updateGameStats } from "@/lib/progress";
 import { useToast } from '@/hooks/use-toast';
+import { useFullscreen } from '@/hooks/use-fullscreen';
 
 type Towers = number[][];
 type Difficulty = 3 | 4 | 5 | 6;
@@ -85,6 +86,9 @@ export default function TowerOfHanoiPage() {
     const [lastReward, setLastReward] = useState<{points: number, coins: number, stars: number} | null>(null);
     const { toast } = useToast();
     
+    const gameContainerRef = useRef<HTMLDivElement>(null);
+    const { isFullscreen, enterFullscreen, exitFullscreen } = useFullscreen(gameContainerRef);
+    
     const minMoves = useMemo(() => difficulty ? MINIMUM_MOVES[difficulty] : 0, [difficulty]);
 
     const StarRating = ({ rating }: { rating: number }) => (
@@ -110,7 +114,7 @@ export default function TowerOfHanoiPage() {
         try {
             const rewards = await calculateRewards({
                 gameId: 'towerOfHanoi',
-                difficulty: 'hard', // Maps to a single reward type
+                difficulty: 'hard',
                 performanceMetrics: { moves: moves, minMoves: minMoves },
             });
             const earned = applyRewards(rewards.sPoints, rewards.sCoins, `Solved Tower of Hanoi (${difficulty} disks)`);
@@ -131,7 +135,7 @@ export default function TowerOfHanoiPage() {
         }
     }, [difficulty, moves, minMoves, toast]);
     
-    const startGame = useCallback((numDisks: Difficulty) => {
+    const startGame = (numDisks: Difficulty) => {
         if (moves > 0 && !isWon) {
             updateGameStats({ gameId: 'tower-of-hanoi', didWin: false });
         }
@@ -139,18 +143,28 @@ export default function TowerOfHanoiPage() {
         for (let i = numDisks; i > 0; i--) {
             initialTowers[0].push(i);
         }
-        setDifficulty(numDisks);
         setTowers(initialTowers);
         setSelectedRod(null);
         setMoves(0);
         setIsWon(false);
         setLastReward(null);
         setGameState('playing');
-    }, [moves, isWon]);
-
-    const handleDifficultySelect = (numDisks: Difficulty) => {
-        startGame(numDisks);
     };
+
+    const handlePlayNow = () => {
+        if (difficulty) {
+            startGame(difficulty);
+            setTimeout(() => {
+                enterFullscreen();
+            }, 100);
+        }
+    };
+    
+    const handleExitAndReset = () => {
+        exitFullscreen();
+        setDifficulty(null);
+        setGameState('setup');
+    }
 
     const moveDisk = useCallback((fromIndex: number, toIndex: number) => {
         if (isWon || fromIndex === toIndex) return;
@@ -210,22 +224,44 @@ export default function TowerOfHanoiPage() {
     };
     
     if (gameState === 'setup') {
+        const difficulties: Difficulty[] = [3, 4, 5, 6];
+        const difficultyIcons: Record<Difficulty, React.ElementType> = { 3: Shield, 4: StarIcon, 5: Gem, 6: Award };
+
         return (
              <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
-                <Card className="w-full max-w-md text-center shadow-xl">
+                <Card className="w-full max-w-lg text-center shadow-xl">
                     <CardHeader>
                         <CardTitle className="text-3xl font-bold">Tower of Hanoi</CardTitle>
-                        <CardDescription>Select a difficulty to start.</CardDescription>
+                        <CardDescription>First, select a difficulty. Then, press Play!</CardDescription>
                     </CardHeader>
-                    <CardContent className="grid grid-cols-2 gap-4">
-                        <Button onClick={() => handleDifficultySelect(3)} className="text-lg py-6"><Shield className="mr-2"/> 3 Disks</Button>
-                        <Button onClick={() => handleDifficultySelect(4)} className="text-lg py-6"><StarIcon className="mr-2"/> 4 Disks</Button>
-                        <Button onClick={() => handleDifficultySelect(5)} className="text-lg py-6"><Gem className="mr-2"/> 5 Disks</Button>
-                        <Button onClick={() => handleDifficultySelect(6)} className="text-lg py-6"><Award className="mr-2"/> 6 Disks</Button>
+                    <CardContent className="space-y-6">
+                        <div className="grid grid-cols-4 gap-4">
+                            {difficulties.map(d => (
+                                <Button 
+                                    key={d}
+                                    onClick={() => setDifficulty(d)} 
+                                    variant={difficulty === d ? 'default' : 'outline'}
+                                    className="text-lg py-6 flex-col h-24"
+                                >
+                                    <div className="flex items-center">
+                                        {React.createElement(difficultyIcons[d], { className: "mr-2 h-5 w-5"})}
+                                        <span>{d}</span>
+                                    </div>
+                                    <span className="text-xs mt-1">Disks</span>
+                                </Button>
+                            ))}
+                        </div>
+                        <Button 
+                            onClick={handlePlayNow} 
+                            disabled={!difficulty}
+                            className="w-full text-xl py-8"
+                        >
+                            <Play className="mr-3 h-6 w-6" /> Play Now
+                        </Button>
                     </CardContent>
                     <CardFooter>
                         <Button asChild variant="ghost" className="w-full">
-                            <Link href="/dashboard"><ArrowLeft className="mr-2"/> Back to Menu</Link>
+                            <Link href="/dashboard"><ArrowLeft className="mr-2"/> Back to All Games</Link>
                         </Button>
                     </CardFooter>
                 </Card>
@@ -234,7 +270,11 @@ export default function TowerOfHanoiPage() {
     }
 
     return (
-        <div className="flex flex-col items-center p-4">
+        <div 
+            ref={gameContainerRef} 
+            className="flex flex-col items-center justify-center p-4 bg-background"
+            style={isFullscreen ? { height: '100vh', width: '100vw' } : {}}
+        >
             <AlertDialog open={isWon}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
@@ -268,19 +308,25 @@ export default function TowerOfHanoiPage() {
                         ) : null}
                     </div>
                     <AlertDialogFooter>
-                        <AlertDialogAction onClick={() => startGame(difficulty!)} disabled={isCalculatingReward}>Play Again</AlertDialogAction>
-                        <AlertDialogCancel onClick={() => setGameState('setup')} disabled={isCalculatingReward}>Back to Menu</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => difficulty && startGame(difficulty)} disabled={isCalculatingReward}>Play Again</AlertDialogAction>
+                        <AlertDialogCancel onClick={handleExitAndReset} disabled={isCalculatingReward}>Back to Menu</AlertDialogCancel>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-            <Card className="w-full max-w-2xl shadow-xl">
+            <Card 
+                className={cn("w-full shadow-xl transition-all duration-300", !isFullscreen && "max-w-2xl")}
+                style={isFullscreen ? { height: '100%', display: 'flex', flexDirection: 'column' } : {}}
+            >
                 <CardHeader className="text-center">
                     <CardTitle className="text-3xl font-bold">Tower of Hanoi</CardTitle>
                     <CardDescription className="text-lg pt-2">
                         Moves: {moves} | Minimum: {minMoves}
                     </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-6">
+                <CardContent 
+                    className="space-y-6 flex-grow flex flex-col justify-center"
+                    style={isFullscreen ? { height: '100%' } : {}}
+                >
                     <div className="grid grid-cols-3 gap-4">
                         {towers.map((disks, index) => (
                             <Rod 
@@ -296,9 +342,9 @@ export default function TowerOfHanoiPage() {
                             />
                         ))}
                     </div>
-                     <div className="mt-6 flex gap-4">
-                        <Button onClick={() => startGame(difficulty!)} className="w-full"><RotateCw className="mr-2"/> Reset</Button>
-                        <Button onClick={() => setGameState('setup')} variant="outline" className="w-full"><ArrowLeft className="mr-2"/> Change Difficulty</Button>
+                     <div className="mt-auto pt-6 grid grid-cols-2 gap-4">
+                        <Button onClick={() => difficulty && startGame(difficulty)} className="w-full"><RotateCw className="mr-2"/> Reset</Button>
+                        <Button onClick={handleExitAndReset} variant="outline" className="w-full"><Shrink className="mr-2"/> Exit & Change</Button>
                     </div>
                 </CardContent>
             </Card>

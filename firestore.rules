@@ -1,68 +1,86 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Allow public read access to users' profiles for display purposes,
-    // but only the user can write to their own document.
+    // --- Helper Functions for Readability ---
+    function isAdmin() {
+      return request.auth != null && (request.auth.token.admin == true || request.auth.token.superAdmin == true);
+    }
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    function isBlogOwner(blog) {
+      return request.auth.uid == blog.data.authorId;
+    }
+
+
+    // --- Collection-Specific Rules ---
+
     match /users/{userId} {
-      allow read: if true;
-      allow write: if request.auth != null && request.auth.uid == userId;
+      allow read: if isSignedIn();
+      allow write: if isOwner(userId) || isAdmin();
     }
 
-    // Rules for the Forum
     match /forum-topics/{topicId} {
-      // Anyone can read topics
       allow read: if true;
-
-      // Only authenticated users can create new topics.
-      // The new topic's authorId must match the user's UID.
       allow create: if request.auth != null && request.resource.data.authorId == request.auth.uid;
-
-      // Logged-in users can update replyCount and lastActivity.
-      // The original author could be allowed to edit their post, but that's not implemented yet.
-      allow update: if request.auth != null &&
-                      (
-                        // Allow updating reply count and last activity for new replies
-                        request.resource.data.replyCount == resource.data.replyCount + 1
-                      );
-    }
-
-    match /forum-topics/{topicId}/replies/{replyId} {
-        // Anyone can read replies
+      allow update, delete: if resource.data.authorId == request.auth.uid || isAdmin();
+      
+      match /replies/{replyId} {
         allow read: if true;
-        // Only authenticated users can create replies
         allow create: if request.auth != null && request.resource.data.authorId == request.auth.uid;
-        // Users shouldn't be able to edit or delete replies for now
-        allow update, delete: if false;
+        allow update, delete: if resource.data.authorId == request.auth.uid || isAdmin();
+      }
+    }
+    
+    match /gallery-creations/{creationId} {
+      allow read: if isAdmin() || resource.data.published == true || (isOwner(resource.data.authorId) && isSignedIn());
+      allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid && request.resource.data.published == false;
+      allow update: if isAdmin();
     }
 
-
-    // Rules for the Knowledge Base
     match /knowledge-base-articles/{articleId} {
-
-      // Allow anyone to read articles that are 'published'.
-      // Allow authenticated users to read their own drafts or pending articles.
-      allow read: if resource.data.status == 'published' ||
-                     (request.auth != null && request.auth.uid == resource.data.authorId);
-
-      // Allow authenticated users to create new articles.
-      // The authorId must match their own UID.
-      // The initial status must be 'draft' or 'pending-review'.
-      allow create: if request.auth != null &&
-                       request.resource.data.authorId == request.auth.uid &&
-                       (request.resource.data.status == 'draft' || request.resource.data.status == 'pending-review');
-
-      // Allow the original author to update their article only if it's still a draft or pending review.
-      // They cannot change the authorId or the status to 'published' or 'rejected'.
-      allow update: if request.auth != null &&
-                       request.auth.uid == resource.data.authorId &&
-                       (resource.data.status == 'draft' || resource.data.status == 'pending-review') &&
-                       request.resource.data.authorId == resource.data.authorId && // Cannot change author
-                       !(request.resource.data.status == 'published' || request.resource.data.status == 'rejected'); // Cannot self-publish or self-reject
-
-      // Do not allow users to delete articles. This should be an admin-only action.
-      allow delete: if false;
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
     }
+
+    match /gameLevels/{levelId} {
+        allow read: if true;
+        allow write: if isAdmin();
+    }
+    
+    match /userScores/{userId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow write: if isOwner(userId);
+    }
+
+    // --- CORRECTED: BLOGS Collection (for Playhouse App ONLY) ---
+    match /blogs/{blogId} {
+
+      // LIST: Anyone can perform queries. The 'read' rule below is what secures the results.
+      allow list: if true;
+
+      // READ: Anyone can read a 'published' blog. An author can read their own blog, regardless of its status.
+      allow read: if resource.data.status == 'published' || 
+                   (isSignedIn() && isBlogOwner(resource));
+
+      // CREATE: An authenticated user can create a blog if the authorId matches their UID
+      // and the initial status is valid ('draft' or 'pending-review').
+      allow create: if isSignedIn() &&
+                     request.resource.data.authorId == request.auth.uid &&
+                     (request.resource.data.status == 'draft' || request.resource.data.status == 'pending-review');
+
+      // UPDATE: Only the author of the blog post can update it.
+      allow update: if isSignedIn() && isBlogOwner(request.resource);
+
+      // DELETE: Only the author can delete their own post, and only if it's a draft.
+      allow delete: if isSignedIn() && isBlogOwner(resource) && resource.data.status == 'draft';
+    }
+
   }
 }

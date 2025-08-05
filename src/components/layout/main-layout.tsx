@@ -3,7 +3,9 @@
 
 import type { ReactNode } from 'react';
 import Header from './header';
-import Footer from './footer'; // We'll create this component
+import Footer from './footer'; 
+import FloatingActionButtons from './floating-action-buttons';
+import FloatingChatButton from './floating-chat-button';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -17,6 +19,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
         {children}
       </main>
       <Footer />
+      <FloatingActionButtons />
+      <FloatingChatButton />
     </div>
   );
 }

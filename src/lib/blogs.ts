@@ -1,6 +1,4 @@
 
-'use server';
-
 import { 
     db,
 } from '@/lib/firebase';
@@ -16,8 +14,10 @@ import {
     orderBy,
     limit,
     getDoc,
-    Timestamp,
 } from 'firebase/firestore';
+import { type BlogFormValues } from '@/components/blog/BlogForm'; // Corrected import path
+
+export type BlogStatus = 'draft' | 'pending-review' | 'published' | 'rejected';
 
 export interface BlogPost {
   id: string;
@@ -27,8 +27,8 @@ export interface BlogPost {
   authorId: string;
   authorName: string;
   authorAvatar?: string;
-  status: 'draft' | 'pending' | 'published' | 'rejected';
-  createdAt: any; // serverTimestamp is used initially
+  status: BlogStatus;
+  createdAt: any;
   publishedAt?: any | null;
 }
 
@@ -38,7 +38,6 @@ export interface AuthorInfo {
   photoURL: string | null;
 }
 
-// Function to create a URL-friendly slug from a title
 const createSlug = (title: string) => {
     return title
       .toLowerCase()
@@ -47,19 +46,11 @@ const createSlug = (title: string) => {
       .replace(/-+/g, '-');
 };
 
-/**
- * Creates a new blog post document in Firestore.
- * @param data The blog post data (title, content).
- * @param author The author's user info.
- * @param status The initial status of the post.
- * @returns An object indicating success or failure.
- */
-export async function createBlogPost(data: { title: string, content: string }, author: AuthorInfo, status: 'pending' | 'draft'): Promise<{ success: boolean; error?: string }> {
+export async function createBlogPost(data: BlogFormValues, author: AuthorInfo, status: BlogStatus): Promise<{ success: boolean; error?: string }> {
   try {
     const slug = createSlug(data.title);
     const blogsCollectionRef = collection(db, 'blogs');
     
-    // Check if slug already exists to prevent duplicates
     const q = query(blogsCollectionRef, where("slug", "==", slug), limit(1));
     const slugSnapshot = await getDocs(q);
     if (!slugSnapshot.empty) {
@@ -83,6 +74,25 @@ export async function createBlogPost(data: { title: string, content: string }, a
   }
 }
 
+export async function updateBlogPost(postId: string, data: BlogFormValues, newStatus: BlogStatus): Promise<{ success: boolean; error?: string }> {
+    try {
+        const postRef = doc(db, 'blogs', postId);
+        const newSlug = createSlug(data.title);
+
+        await updateDoc(postRef, {
+            title: data.title,
+            content: data.content,
+            slug: newSlug,
+            status: newStatus,
+        });
+        return { success: true };
+    } catch (error: any) {
+        console.error("Error updating blog post:", error);
+        return { success: false, error: error.message || "An unknown error occurred." };
+    }
+}
+
+
 const processPost = (doc: any): BlogPost => {
     const data = doc.data();
     return {
@@ -93,46 +103,64 @@ const processPost = (doc: any): BlogPost => {
     } as BlogPost;
 }
 
-
-/**
- * Fetches all blog posts with 'published' status, sorted by published date.
- * @returns An array of published blog posts.
- */
 export async function getPublishedBlogs(): Promise<BlogPost[]> {
     const blogsCollectionRef = collection(db, 'blogs');
-    // Fetch all published posts without sorting at the DB level
-    const q = query(blogsCollectionRef, where("status", "==", "published"));
+    const q = query(blogsCollectionRef, where("status", "==", "published"), orderBy("publishedAt", "desc"));
     const querySnapshot = await getDocs(q);
     
-    // Map and then sort in code
-    const posts = querySnapshot.docs.map(processPost);
-    posts.sort((a, b) => {
-        const dateA = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
-        const dateB = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
-        return dateB - dateA; // Sort descending
-    });
-
-    return posts;
+    return querySnapshot.docs.map(processPost);
 }
 
-/**
- * Fetches a single blog post by its slug.
- * Ensures that only published posts are returned.
- * @param slug The URL slug of the blog post.
- * @returns The blog post data or null if not found or not published.
- */
-export async function getBlogPostBySlug(slug: string): Promise<BlogPost | null> {
+export async function getMyBlogs(uid: string): Promise<BlogPost[]> {
+    if (!uid) return [];
+    
     const blogsCollectionRef = collection(db, 'blogs');
     const q = query(
         blogsCollectionRef, 
-        where("slug", "==", slug), 
-        where("status", "==", "published"), 
-        limit(1)
+        where("authorId", "==", uid),
+        where("status", "!=", "rejected"), 
+        orderBy("createdAt", "desc")
     );
     const querySnapshot = await getDocs(q);
+    
+    return querySnapshot.docs.map(processPost);
+}
+
+export async function getBlogsForUser(uid: string): Promise<BlogPost[]> {
+    const publishedBlogs = await getPublishedBlogs();
+    const myBlogs = await getMyBlogs(uid);
+
+    const combinedMap = new Map<string, BlogPost>();
+    publishedBlogs.forEach(post => combinedMap.set(post.id, post));
+    myBlogs.forEach(post => combinedMap.set(post.id, post));
+
+    const combined = Array.from(combinedMap.values());
+    
+    combined.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    
+    return combined;
+}
+
+export async function getBlogPost(slug: string): Promise<BlogPost | null> {
+    const blogsCollectionRef = collection(db, 'blogs');
+    const q = query(blogsCollectionRef, where("slug", "==", slug), limit(1));
+    
+    const querySnapshot = await getDocs(q);
+    
     if (querySnapshot.empty) {
         return null;
     }
-    const docSnap = querySnapshot.docs[0];
-    return processPost(docSnap);
+    
+    return processPost(querySnapshot.docs[0]);
+}
+
+export async function updateBlogStatus(postId: string, newStatus: BlogStatus): Promise<{ success: boolean; error?: string }> {
+    try {
+        const postRef = doc(db, 'blogs', postId);
+        await updateDoc(postRef, { status: newStatus });
+        return { success: true };
+    } catch (error: any) {
+        console.error("Error updating blog status:", error);
+        return { success: false, error: error.message || "An unknown error occurred." };
+    }
 }

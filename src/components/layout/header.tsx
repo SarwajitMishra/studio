@@ -6,55 +6,84 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '@/components/ui/sheet';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Menu, X, Home, LogIn, UserPlus } from 'lucide-react';
-import { auth, onAuthStateChanged, signOut, type User } from '@/lib/firebase';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { LogIn, UserPlus, Settings, Users, PenSquare, Store, LogOut, User as UserIcon, Bell } from 'lucide-react';
+import { auth, onAuthStateChanged, type User } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { GAMES } from '@/lib/constants';
-
-const navItems = [
-    { href: '/dashboard', label: 'Home', Icon: Home },
-    ...GAMES.map(game => ({ href: game.href, label: game.title, Icon: game.Icon }))
-];
+import { GAMES, SETTINGS_MENU_ITEMS } from '@/lib/constants';
+import { signOut } from 'firebase/auth';
+import { SessionDialog } from '@/components/online/SessionDialog';
 
 const DEFAULT_AVATAR_SRC = '/images/avatars/modern_girl.png';
 const LOCAL_STORAGE_AVATAR_KEY = 'shravyaPlayhouse_avatar';
 
 export default function Header() {
-    const [isOpen, setIsOpen] = useState(false);
+    const [isSessionDialogOpen, setSessionDialogOpen] = useState(false);
     const [currentUser, setCurrentUser] = useState<User | null>(null);
+    const [isGuest, setIsGuest] = useState(false);
     const [avatarUrl, setAvatarUrl] = useState(DEFAULT_AVATAR_SRC);
     const pathname = usePathname();
     const router = useRouter();
     const { toast } = useToast();
 
     useEffect(() => {
+        const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+            setCurrentUser(user);
+            const guestSessionActive = sessionStorage.getItem('guest-session') === 'true';
+            setIsGuest(guestSessionActive && !user);
+
+            if (user) {
+                // Logged-in user
+                setAvatarUrl(user.photoURL || localStorage.getItem(LOCAL_STORAGE_AVATAR_KEY) || DEFAULT_AVATAR_SRC);
+            } else if (guestSessionActive) {
+                // Guest user
+                setAvatarUrl(localStorage.getItem(LOCAL_STORAGE_AVATAR_KEY) || DEFAULT_AVATAR_SRC);
+            }
+        });
+
         const updateProfileDisplay = () => {
             const user = auth.currentUser;
             if (user) {
                 setAvatarUrl(user.photoURL || localStorage.getItem(LOCAL_STORAGE_AVATAR_KEY) || DEFAULT_AVATAR_SRC);
-            } else {
-                setAvatarUrl(localStorage.getItem(LOCAL_STORAGE_AVATAR_KEY) || DEFAULT_AVATAR_SRC);
             }
         };
 
-        const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-            setCurrentUser(user);
-            updateProfileDisplay();
-        });
-
         window.addEventListener('profileUpdated', updateProfileDisplay);
+
+        // Listen for direct changes to session storage to update UI
+        const handleStorageChange = (e: StorageEvent) => {
+            if (e.key === 'guest-session') {
+                setIsGuest(e.newValue === 'true' && !auth.currentUser);
+            }
+        };
+        window.addEventListener('storage', handleStorageChange);
 
         return () => {
             unsubscribeAuth();
             window.removeEventListener('profileUpdated', updateProfileDisplay);
+            window.removeEventListener('storage', handleStorageChange);
         };
     }, []);
 
     const handleLogout = async () => {
         try {
             await signOut(auth);
+            sessionStorage.removeItem('guest-session');
+            localStorage.removeItem(LOCAL_STORAGE_AVATAR_KEY);
             toast({ title: "Logged Out", description: "You have been successfully logged out." });
             router.push('/');
         } catch (error: any) {
@@ -62,91 +91,132 @@ export default function Header() {
         }
     };
 
-    const NavLink = ({ href, children }: { href: string; children: React.ReactNode }) => (
-        <Link href={href} passHref>
-            <Button
-                variant={pathname === href ? 'secondary' : 'ghost'}
-                className="w-full justify-start text-base"
-                onClick={() => setIsOpen(false)}
-            >
-                {children}
-            </Button>
-        </Link>
-    );
+    const currentGame = GAMES.find(game => pathname.startsWith(game.href));
 
     return (
-        <header className="bg-background/80 backdrop-blur-sm border-b sticky top-0 z-50">
-            <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-                <Link href="/" className="flex items-center gap-2 font-bold text-xl text-primary">
-                    <Image src="/public/images/logo.png" alt="Shravya Playhouse Logo" width={32} height={32} data-ai-hint="logo flame" />
-                    <span>Shravya Playhouse</span>
-                </Link>
+        <>
+            <header className="bg-background/80 backdrop-blur-sm border-b sticky top-0 z-50">
+                <div className="container mx-auto px-4 py-3 flex items-center justify-between">
+                    {/* Left side of header */}
+                    <div className="flex items-center gap-2">
+                        <Link href="/dashboard" className="flex items-center gap-2 font-bold text-xl text-primary">
+                            <Image src="/images/logo.png" alt="Shravya Playhouse Logo" width={32} height={32} data-ai-hint="logo flame" />
+                            <span className="hidden sm:inline-block">Shravya Playhouse</span>
+                        </Link>
+                        {currentGame && (
+                            <>
+                                <span className="text-muted-foreground">/</span>
+                                <Link href={currentGame.href} className="font-semibold text-secondary-foreground hover:underline">
+                                  {currentGame.title}
+                                </Link>
+                            </>
+                        )}
+                        <nav className="flex items-center border-l border-border ml-2 pl-2 gap-1">
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button asChild variant={pathname.startsWith('/blogs') ? 'secondary' : 'ghost'} size="icon">
+                                            <Link href="/blogs" aria-label="Go to Blogs">
+                                                <PenSquare className="h-5 w-5" />
+                                            </Link>
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent><p>Blogs</p></TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button asChild variant={pathname.startsWith('/shop') ? 'secondary' : 'ghost'} size="icon">
+                                            <Link href="/shop" aria-label="Go to S-Shop">
+                                                <Store className="h-5 w-5" />
+                                            </Link>
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent><p>S-Shop</p></TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        </nav>
+                    </div>
 
-                {/* Desktop Navigation */}
-                <nav className="hidden md:flex items-center gap-2">
-                    {navItems.slice(0, 4).map(item => (
-                        <Button key={item.label} variant={pathname === item.href ? 'secondary' : 'ghost'} asChild>
-                            <Link href={item.href}>{item.label}</Link>
-                        </Button>
-                    ))}
-                </nav>
+                    {/* Right side of header */}
+                    <div className="flex items-center gap-1.5">
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon" onClick={() => setSessionDialogOpen(true)}>
+                                        <Users className="h-5 w-5" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent><p>Online Sessions</p></TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                     <Button asChild variant={pathname.startsWith('/notifications') ? 'secondary' : 'ghost'} size="icon">
+                                        <Link href="/notifications" aria-label="Go to Notifications">
+                                            <Bell className="h-5 w-5" />
+                                        </Link>
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent><p>Notifications</p></TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
 
-                <div className="flex items-center gap-3">
-                    {currentUser ? (
-                         <Button onClick={() => router.push('/profile')} variant="ghost" className="p-0 rounded-full h-9 w-9">
-                           <Avatar className="h-9 w-9">
-                              <AvatarImage src={avatarUrl} />
-                              <AvatarFallback>P</AvatarFallback>
-                           </Avatar>
-                        </Button>
-                    ) : (
-                        <div className="hidden md:flex gap-2">
-                            <Button variant="ghost" asChild><Link href="/login">Login</Link></Button>
-                            <Button asChild><Link href="/signup">Sign Up</Link></Button>
-                        </div>
-                    )}
-                    
-                    {/* Mobile Navigation Trigger */}
-                    <Sheet open={isOpen} onOpenChange={setIsOpen}>
-                        <SheetTrigger asChild>
-                            <Button variant="ghost" size="icon" className="md:hidden">
-                                <Menu />
-                                <span className="sr-only">Open Menu</span>
+                        {(currentUser || isGuest) && (
+                            <Button onClick={() => router.push('/profile')} variant="ghost" className="p-0 rounded-full h-9 w-9">
+                                <Avatar className="h-9 w-9">
+                                    <AvatarImage src={avatarUrl} alt="User Avatar" />
+                                    <AvatarFallback>{isGuest ? 'G' : <UserIcon size={20} />}</AvatarFallback>
+                                </Avatar>
                             </Button>
-                        </SheetTrigger>
-                        <SheetContent side="left">
-                            <SheetHeader className="sr-only">
-                              <SheetTitle>Main Menu</SheetTitle>
-                              <SheetDescription>
-                                Main navigation menu for the Shravya Playhouse application.
-                              </SheetDescription>
-                            </SheetHeader>
-                            <div className="p-4">
-                                <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)} className="absolute top-3 right-3">
-                                    <X />
-                                    <span className="sr-only">Close Menu</span>
-                                </Button>
-                                <nav className="flex flex-col gap-2 mt-8">
-                                    {navItems.map(item => (
-                                        <NavLink key={item.label} href={item.href}>
-                                            <item.Icon className="mr-2" /> {item.label}
-                                        </NavLink>
-                                    ))}
-                                    <hr className="my-2" />
-                                    {currentUser ? (
-                                        <Button variant="ghost" className="w-full justify-start text-base" onClick={handleLogout}>Logout</Button>
-                                    ) : (
-                                        <>
-                                            <NavLink href="/login"><LogIn className="mr-2" /> Login</NavLink>
-                                            <NavLink href="/signup"><UserPlus className="mr-2" /> Sign Up</NavLink>
-                                        </>
-                                    )}
-                                </nav>
-                            </div>
-                        </SheetContent>
-                    </Sheet>
+                        )}
+                        
+                        <DropdownMenu>
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="icon">
+                                                <Settings className="h-5 w-5" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                    </TooltipTrigger>
+                                    <TooltipContent><p>Settings</p></TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                {SETTINGS_MENU_ITEMS.map((item) => (
+                                    <DropdownMenuItem key={item.label} asChild className="cursor-pointer">
+                                    <Link href={item.href}>
+                                        <item.Icon className="mr-2 h-4 w-4" />
+                                        <span>{item.label}</span>
+                                    </Link>
+                                    </DropdownMenuItem>
+                                ))}
+                                <DropdownMenuSeparator />
+                                {currentUser ? (
+                                    <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600">
+                                        <LogOut className="mr-2 h-4 w-4" />
+                                        <span>Logout</span>
+                                    </DropdownMenuItem>
+                                ) : (
+                                    <>
+                                        <DropdownMenuItem onClick={() => router.push('/login')}>
+                                            <LogIn className="mr-2 h-4 w-4" />
+                                            <span>Login</span>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => router.push('/signup')}>
+                                            <UserPlus className="mr-2 h-4 w-4" />
+                                            <span>Sign Up</span>
+                                        </DropdownMenuItem>
+                                    </>
+                                )}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
                 </div>
-            </div>
-        </header>
+            </header>
+            <SessionDialog open={isSessionDialogOpen} onOpenChange={setSessionDialogOpen} />
+        </>
     );
 }

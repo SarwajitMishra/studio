@@ -190,6 +190,7 @@ export function SessionDialog({ open, onOpenChange }: SessionDialogProps) {
         <TabsTrigger value="join">Join Session</TabsTrigger>
       </TabsList>
       <TabsContent value="create" className="pt-4 space-y-4">
+        <DialogTitle className="sr-only">Create or Join Session</DialogTitle>
         {currentUser ? (
           <>
             <p className="text-sm text-muted-foreground">Click the button to generate a new session ID to share with a friend.</p>
@@ -203,8 +204,9 @@ export function SessionDialog({ open, onOpenChange }: SessionDialogProps) {
         )}
       </TabsContent>
       <TabsContent value="join" className="pt-4 space-y-4">
+          <DialogTitle className="sr-only">Create or Join Session</DialogTitle>
           {currentUser ? (
-            <>
+            <>)
                 <p className="text-sm text-muted-foreground">Enter the session ID you received from a friend.</p>
                 <Input 
                     placeholder="Enter Session ID" 
@@ -227,6 +229,7 @@ export function SessionDialog({ open, onOpenChange }: SessionDialogProps) {
 
   const renderConnectedView = () => (
     <div className="pt-4 space-y-4 flex flex-col h-[60vh]">
+        <DialogTitle className="sr-only">Online Session: {session?.id}</DialogTitle>
         <div className="grid grid-cols-2 gap-2">
             <Button variant="outline" onClick={handleCopy}>
                 <Copy className="mr-2" /> Copy ID

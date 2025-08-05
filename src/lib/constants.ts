@@ -23,6 +23,7 @@ export interface Game {
   href: string;
   color?: string;
   disabled?: boolean;
+  image?: string;
 }
 
 export const GAMES: Game[] = [
@@ -34,6 +35,7 @@ export const GAMES: Game[] = [
     description: 'Play classic chess against a friend locally or challenge our AI opponent.',
     href: '/chess',
     color: 'text-sky-600',
+    image: '/images/games/chess.png',
   },
   {
     id: 'dots-and-boxes',
@@ -43,6 +45,7 @@ export const GAMES: Game[] = [
     description: 'Connect dots to form lines and claim boxes. A game of simple rules and deep strategy.',
     href: '/dots-and-boxes',
     color: 'text-orange-500',
+    image: '/images/games/dots-and-boxes.png',
   },
   {
     id: 'tower-of-hanoi',
@@ -52,6 +55,7 @@ export const GAMES: Game[] = [
     description: 'Solve the ancient puzzle by moving disks between towers.',
     href: '/tower-of-hanoi',
     color: 'text-teal-600',
+    image: '/images/games/tower-of-hanoi.png',
   },
   {
     id: 'jigsaw',
@@ -62,6 +66,7 @@ export const GAMES: Game[] = [
     color: 'text-purple-600',
     href: '/puzzles/jigsaw',
     disabled: false,
+    image: '/images/games/jigsaw.png',
   },
   {
     id: 'memory',
@@ -72,6 +77,7 @@ export const GAMES: Game[] = [
     color: 'text-pink-600',
     href: '/puzzles/memory',
     disabled: false,
+    image: '/images/games/memory.png',
   },
   {
     id: 'sudoku',
@@ -82,6 +88,7 @@ export const GAMES: Game[] = [
     color: 'text-lime-600',
     href: '/puzzles/sudoku',
     disabled: false,
+    image: '/images/games/sudoku.png',
   },
   {
     id: 'patternBuilder',
@@ -91,6 +98,7 @@ export const GAMES: Game[] = [
     description: 'Recreate complex patterns from memory using fun icons.',
     href: '/puzzles/pattern-builder',
     disabled: false,
+    image: '/images/games/pattern-builder.png',
   },
   {
     id: 'number-puzzles',
@@ -100,6 +108,7 @@ export const GAMES: Game[] = [
     description: 'Solve math and logic puzzles. Learn while you play!',
     href: '/puzzles/numbers', 
     color: 'text-green-600',
+    image: '/images/games/number-puzzles.png',
   },
   {
     id: 'easy-english',
@@ -109,6 +118,8 @@ export const GAMES: Game[] = [
     description: 'Learn basic English words and improve typing skills!',
     href: '/puzzles/easy-english',
     color: 'text-indigo-500',
+    image: '/images/games/easy-english.png',
+    disabled: false,
   },
 ];
 
