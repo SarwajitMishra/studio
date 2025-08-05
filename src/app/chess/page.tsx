@@ -149,7 +149,7 @@ const ChessSquare = ({
           )}
           style={{ textShadow: piece.color === 'w' ? '0 0 3px black, 0 0 5px black' : '0 0 3px white, 0 0 5px white' }}
         >
-          {PIECE_UNICODE[piece.color][p.type]}
+          {PIECE_UNICODE[piece.color][piece.type]}
         </span>
       )}
       {isPossibleMove && !piece && (
@@ -983,3 +983,4 @@ function SetupDialogAI({ onStart, onBack }: { onStart: (mode: 'ai', names: { w: 
 }
 
     
+
