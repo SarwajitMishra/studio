@@ -1,20 +1,46 @@
-
-# Firebase
-.firebase/
-firebase-debug.log
-.runtimeconfig.json
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # Dependencies
 /node_modules
+/functions/node_modules
 
 # Next.js build output
 /.next/
 /out/
 
-# Other build artifacts
-/build
-/dist
+# Firebase
+.firebase/
+hosting.properties
 
-# IDE and OS files
+# Other
 .DS_Store
 *.pem
+
+# Log files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+firestore-debug.log
+firebase-debug.log
+firebase-debug.*.log
+
+# Local environment variables
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env*.local
+
+# IDE settings
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
